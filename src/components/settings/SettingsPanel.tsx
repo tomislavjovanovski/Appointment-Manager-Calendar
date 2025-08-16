@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,8 +21,26 @@ const DAYS_OF_WEEK = [
 ];
 
 export function SettingsPanel() {
-  const [settings, setSettings] = useState<AppointmentSettings>(() => settingsStorage.get());
+  const [settings, setSettings] = useState<AppointmentSettings>({
+    workingDays: [1, 2, 3, 4, 5],
+    startTime: '09:00',
+    endTime: '17:00',
+    appointmentSizes: {
+      half: { duration: 30, label: 'Half Hour' },
+      full: { duration: 60, label: 'Full Hour' },
+      double: { duration: 120, label: 'Double Hour' }
+    },
+    breakTime: 15
+  });
   const { toast } = useToast();
+  
+  useEffect(() => {
+    const loadSettings = async () => {
+      const data = await settingsStorage.get();
+      setSettings(data);
+    };
+    loadSettings();
+  }, []);
 
   const handleSave = () => {
     settingsStorage.save(settings);
@@ -32,8 +50,8 @@ export function SettingsPanel() {
     });
   };
 
-  const handleExport = () => {
-    const data = dataManagement.exportAll();
+  const handleExport = async () => {
+    const data = await dataManagement.exportAll();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -55,11 +73,12 @@ export function SettingsPanel() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
         dataManagement.importAll(data);
-        setSettings(settingsStorage.get());
+        const newSettings = await settingsStorage.get();
+        setSettings(newSettings);
         toast({
           title: "Data imported",
           description: "Your data has been restored successfully.",

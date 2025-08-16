@@ -1,0 +1,11 @@
+{
+  "workingDays": [1, 2, 3, 4, 5],
+  "startTime": "09:00",
+  "endTime": "17:00",
+  "appointmentSizes": {
+    "half": { "duration": 30, "label": "Half Hour" },
+    "full": { "duration": 60, "label": "Full Hour" },
+    "double": { "duration": 120, "label": "Double Hour" }
+  },
+  "breakTime": 15
+}

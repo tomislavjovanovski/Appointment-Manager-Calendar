@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,15 @@ interface AppointmentCalendarProps {
 
 export function AppointmentCalendar({ onCreateAppointment, onAppointmentClick }: AppointmentCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [appointments] = useState(() => appointmentsStorage.getAll());
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  
+  useEffect(() => {
+    const loadAppointments = async () => {
+      const data = await appointmentsStorage.getAll();
+      setAppointments(data);
+    };
+    loadAppointments();
+  }, []);
   
   const selectedDateAppointments = appointments.filter(apt => 
     isSameDay(new Date(apt.date), selectedDate)

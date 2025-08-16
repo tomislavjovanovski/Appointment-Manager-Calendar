@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,40 @@ interface PatientListProps {
 }
 
 export function PatientList({ onPatientClick, onCreatePatient }: PatientListProps) {
-  const [patients] = useState(() => patientsStorage.getAll());
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [appointmentCounts, setAppointmentCounts] = useState<Record<string, number>>({});
+  const [lastAppointments, setLastAppointments] = useState<Record<string, string | null>>({});
+  
+  useEffect(() => {
+    const loadData = async () => {
+      const patientsData = await patientsStorage.getAll();
+      setPatients(patientsData);
+      
+      // Load appointment data for each patient
+      const counts: Record<string, number> = {};
+      const lastDates: Record<string, string | null> = {};
+      
+      for (const patient of patientsData) {
+        const appointments = await appointmentsStorage.getByPatient(patient.id);
+        counts[patient.id] = appointments.length;
+        
+        if (appointments.length > 0) {
+          const sortedAppointments = appointments.sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          lastDates[patient.id] = sortedAppointments[0].date;
+        } else {
+          lastDates[patient.id] = null;
+        }
+      }
+      
+      setAppointmentCounts(counts);
+      setLastAppointments(lastDates);
+    };
+    
+    loadData();
+  }, []);
   
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -24,17 +56,11 @@ export function PatientList({ onPatientClick, onCreatePatient }: PatientListProp
   );
 
   const getPatientAppointmentCount = (patientId: string) => {
-    return appointmentsStorage.getByPatient(patientId).length;
+    return appointmentCounts[patientId] || 0;
   };
 
   const getLastAppointmentDate = (patientId: string) => {
-    const appointments = appointmentsStorage.getByPatient(patientId);
-    if (appointments.length === 0) return null;
-    
-    const sortedAppointments = appointments.sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    return sortedAppointments[0].date;
+    return lastAppointments[patientId];
   };
 
   return (

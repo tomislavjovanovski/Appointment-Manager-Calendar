@@ -13,129 +13,210 @@ const defaultSettings: AppointmentSettings = {
   breakTime: 15
 };
 
-// Storage keys
-const STORAGE_KEYS = {
-  PATIENTS: 'appointment_patients',
-  APPOINTMENTS: 'appointment_appointments',
-  SETTINGS: 'appointment_settings'
+// In-memory storage
+let patientsData: Patient[] = [];
+let appointmentsData: Appointment[] = [];
+let settingsData: AppointmentSettings = defaultSettings;
+let isInitialized = false;
+
+// Initialize data from JSON files
+const initializeData = async (): Promise<void> => {
+  if (isInitialized) return;
+  
+  try {
+    // Load patients
+    const patientsResponse = await fetch('/data/patients.json');
+    if (patientsResponse.ok) {
+      patientsData = await patientsResponse.json();
+    }
+    
+    // Load appointments
+    const appointmentsResponse = await fetch('/data/appointments.json');
+    if (appointmentsResponse.ok) {
+      appointmentsData = await appointmentsResponse.json();
+    }
+    
+    // Load settings
+    const settingsResponse = await fetch('/data/settings.json');
+    if (settingsResponse.ok) {
+      settingsData = { ...defaultSettings, ...(await settingsResponse.json()) };
+    }
+    
+    isInitialized = true;
+  } catch (error) {
+    console.warn('Could not load initial data from JSON files:', error);
+    isInitialized = true;
+  }
+};
+
+// Auto-save to downloadable JSON files
+const saveToFile = (data: any, filename: string): void => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 // Patient storage
 export const patientsStorage = {
-  getAll: (): Patient[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.PATIENTS);
-    return data ? JSON.parse(data) : [];
+  getAll: async (): Promise<Patient[]> => {
+    await initializeData();
+    return [...patientsData];
   },
   
   save: (patients: Patient[]): void => {
-    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+    patientsData = [...patients];
+    saveToFile(patientsData, 'patients.json');
   },
   
-  add: (patient: Omit<Patient, 'id' | 'createdAt'>): Patient => {
-    const patients = patientsStorage.getAll();
+  add: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> => {
+    await initializeData();
     const newPatient: Patient = {
       ...patient,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString()
     };
-    patients.push(newPatient);
-    patientsStorage.save(patients);
+    patientsData.push(newPatient);
+    saveToFile(patientsData, 'patients.json');
     return newPatient;
   },
   
-  update: (id: string, updates: Partial<Patient>): void => {
-    const patients = patientsStorage.getAll();
-    const index = patients.findIndex(p => p.id === id);
+  update: async (id: string, updates: Partial<Patient>): Promise<void> => {
+    await initializeData();
+    const index = patientsData.findIndex(p => p.id === id);
     if (index !== -1) {
-      patients[index] = { ...patients[index], ...updates };
-      patientsStorage.save(patients);
+      patientsData[index] = { ...patientsData[index], ...updates };
+      saveToFile(patientsData, 'patients.json');
     }
   },
   
-  delete: (id: string): void => {
-    const patients = patientsStorage.getAll().filter(p => p.id !== id);
-    patientsStorage.save(patients);
+  delete: async (id: string): Promise<void> => {
+    await initializeData();
+    patientsData = patientsData.filter(p => p.id !== id);
+    saveToFile(patientsData, 'patients.json');
   }
 };
 
 // Appointment storage
 export const appointmentsStorage = {
-  getAll: (): Appointment[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
-    return data ? JSON.parse(data) : [];
+  getAll: async (): Promise<Appointment[]> => {
+    await initializeData();
+    return [...appointmentsData];
   },
   
   save: (appointments: Appointment[]): void => {
-    localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(appointments));
+    appointmentsData = [...appointments];
+    saveToFile(appointmentsData, 'appointments.json');
   },
   
-  add: (appointment: Omit<Appointment, 'id' | 'createdAt'>): Appointment => {
-    const appointments = appointmentsStorage.getAll();
+  add: async (appointment: Omit<Appointment, 'id' | 'createdAt'>): Promise<Appointment> => {
+    await initializeData();
     const newAppointment: Appointment = {
       ...appointment,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString()
     };
-    appointments.push(newAppointment);
-    appointmentsStorage.save(appointments);
+    appointmentsData.push(newAppointment);
+    saveToFile(appointmentsData, 'appointments.json');
     return newAppointment;
   },
   
-  update: (id: string, updates: Partial<Appointment>): void => {
-    const appointments = appointmentsStorage.getAll();
-    const index = appointments.findIndex(a => a.id === id);
+  update: async (id: string, updates: Partial<Appointment>): Promise<void> => {
+    await initializeData();
+    const index = appointmentsData.findIndex(a => a.id === id);
     if (index !== -1) {
-      appointments[index] = { ...appointments[index], ...updates };
-      appointmentsStorage.save(appointments);
+      appointmentsData[index] = { ...appointmentsData[index], ...updates };
+      saveToFile(appointmentsData, 'appointments.json');
     }
   },
   
-  delete: (id: string): void => {
-    const appointments = appointmentsStorage.getAll().filter(a => a.id !== id);
-    appointmentsStorage.save(appointments);
+  delete: async (id: string): Promise<void> => {
+    await initializeData();
+    appointmentsData = appointmentsData.filter(a => a.id !== id);
+    saveToFile(appointmentsData, 'appointments.json');
   },
   
-  getByPatient: (patientId: string): Appointment[] => {
-    return appointmentsStorage.getAll().filter(a => a.patientId === patientId);
+  getByPatient: async (patientId: string): Promise<Appointment[]> => {
+    await initializeData();
+    return appointmentsData.filter(a => a.patientId === patientId);
   },
   
-  getByDate: (date: string): Appointment[] => {
-    return appointmentsStorage.getAll().filter(a => a.date === date);
+  getByDate: async (date: string): Promise<Appointment[]> => {
+    await initializeData();
+    return appointmentsData.filter(a => a.date === date);
   }
 };
 
 // Settings storage
 export const settingsStorage = {
-  get: (): AppointmentSettings => {
-    const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    return data ? { ...defaultSettings, ...JSON.parse(data) } : defaultSettings;
+  get: async (): Promise<AppointmentSettings> => {
+    await initializeData();
+    return { ...settingsData };
   },
   
   save: (settings: AppointmentSettings): void => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    settingsData = { ...settings };
+    saveToFile(settingsData, 'settings.json');
   },
   
-  update: (updates: Partial<AppointmentSettings>): void => {
-    const current = settingsStorage.get();
-    const updated = { ...current, ...updates };
-    settingsStorage.save(updated);
+  update: async (updates: Partial<AppointmentSettings>): Promise<void> => {
+    await initializeData();
+    settingsData = { ...settingsData, ...updates };
+    saveToFile(settingsData, 'settings.json');
   }
 };
 
 // Export/Import functionality
 export const dataManagement = {
-  exportAll: () => {
+  exportAll: async () => {
+    await initializeData();
     return {
-      patients: patientsStorage.getAll(),
-      appointments: appointmentsStorage.getAll(),
-      settings: settingsStorage.get(),
+      patients: [...patientsData],
+      appointments: [...appointmentsData],
+      settings: { ...settingsData },
       exportedAt: new Date().toISOString()
     };
   },
   
   importAll: (data: any) => {
-    if (data.patients) patientsStorage.save(data.patients);
-    if (data.appointments) appointmentsStorage.save(data.appointments);
-    if (data.settings) settingsStorage.save(data.settings);
+    if (data.patients) {
+      patientsData = data.patients;
+      saveToFile(patientsData, 'patients.json');
+    }
+    if (data.appointments) {
+      appointmentsData = data.appointments;
+      saveToFile(appointmentsData, 'appointments.json');
+    }
+    if (data.settings) {
+      settingsData = data.settings;
+      saveToFile(settingsData, 'settings.json');
+    }
+  },
+  
+  // Load data from uploaded JSON files
+  loadFromFiles: (files: { patients?: File; appointments?: File; settings?: File }) => {
+    Object.entries(files).forEach(([type, file]) => {
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target?.result as string);
+            if (type === 'patients') {
+              patientsData = data;
+            } else if (type === 'appointments') {
+              appointmentsData = data;
+            } else if (type === 'settings') {
+              settingsData = { ...defaultSettings, ...data };
+            }
+          } catch (error) {
+            console.error(`Error loading ${type} data:`, error);
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
   }
 };
