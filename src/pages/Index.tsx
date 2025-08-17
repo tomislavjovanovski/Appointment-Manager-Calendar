@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { AppointmentCalendar } from '@/components/dashboard/AppointmentCalendar';
 import { PatientList } from '@/components/patients/PatientList';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
+import { NotificationManager } from '@/components/notifications/NotificationManager';
 import { CreateAppointmentDialog } from '@/components/appointments/CreateAppointmentDialog';
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
 import { Patient, Appointment } from '@/types/appointment';
@@ -54,7 +55,12 @@ const Index = () => {
           />
         );
       case 'settings':
-        return <SettingsPanel />;
+        return (
+          <div className="space-y-6">
+            <SettingsPanel />
+            <NotificationManager />
+          </div>
+        );
       default:
         return <div>Page not found</div>;
     }

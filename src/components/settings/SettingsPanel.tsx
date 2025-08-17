@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Clock, Calendar, Download, Upload, Save } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell } from 'lucide-react';
 import { AppointmentSettings } from '@/types/appointment';
 import { settingsStorage, dataManagement } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -30,7 +31,18 @@ export function SettingsPanel() {
       full: { duration: 60, label: 'Full Hour' },
       double: { duration: 120, label: 'Double Hour' }
     },
-    breakTime: 15
+    breakTime: 15,
+    notifications: {
+      emailWebhookUrl: '',
+      smsWebhookUrl: '',
+      emailNotificationTime: '09:00',
+      smsNotificationTime: '09:00',
+      enableDayBeforeEmail: true,
+      enableSameDayEmail: true,
+      enableSameDaySMS: true,
+      emailTemplate: '',
+      smsTemplate: ''
+    }
   });
   const { toast } = useToast();
   
@@ -207,6 +219,168 @@ export function SettingsPanel() {
                 </Badge>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Notification Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" />
+              Notification Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Zapier Webhooks */}
+            <div className="space-y-4">
+              <h4 className="font-medium flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Email Notifications (Zapier)
+              </h4>
+              <div>
+                <Label htmlFor="emailWebhook">Email Webhook URL</Label>
+                <Input
+                  id="emailWebhook"
+                  placeholder="https://hooks.zapier.com/hooks/catch/..."
+                  value={settings.notifications.emailWebhookUrl}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    notifications: { ...settings.notifications, emailWebhookUrl: e.target.value }
+                  })}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="emailTime">Notification Time</Label>
+                  <Input
+                    id="emailTime"
+                    type="time"
+                    value={settings.notifications.emailNotificationTime}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      notifications: { ...settings.notifications, emailNotificationTime: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email Settings</Label>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="dayBeforeEmail"
+                      checked={settings.notifications.enableDayBeforeEmail}
+                      onCheckedChange={(checked) => setSettings({
+                        ...settings,
+                        notifications: { ...settings.notifications, enableDayBeforeEmail: checked as boolean }
+                      })}
+                    />
+                    <Label htmlFor="dayBeforeEmail" className="text-sm">Day before reminder</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="sameDayEmail"
+                      checked={settings.notifications.enableSameDayEmail}
+                      onCheckedChange={(checked) => setSettings({
+                        ...settings,
+                        notifications: { ...settings.notifications, enableSameDayEmail: checked as boolean }
+                      })}
+                    />
+                    <Label htmlFor="sameDayEmail" className="text-sm">Same day reminder</Label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="emailTemplate">Email HTML Template (Optional)</Label>
+                <Textarea
+                  id="emailTemplate"
+                  placeholder="Use template variables: PATIENT_NAME, DATE, TIME, TYPE, DURATION, NOTES"
+                  rows={4}
+                  value={settings.notifications.emailTemplate}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    notifications: { ...settings.notifications, emailTemplate: e.target.value }
+                  })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Leave empty to use default template. HTML is supported.
+                </p>
+              </div>
+            </div>
+
+            {/* SMS Settings */}
+            <div className="space-y-4 pt-4 border-t">
+              <h4 className="font-medium flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                SMS Notifications (Zapier + Twilio)
+              </h4>
+              <div>
+                <Label htmlFor="smsWebhook">SMS Webhook URL</Label>
+                <Input
+                  id="smsWebhook"
+                  placeholder="https://hooks.zapier.com/hooks/catch/..."
+                  value={settings.notifications.smsWebhookUrl}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    notifications: { ...settings.notifications, smsWebhookUrl: e.target.value }
+                  })}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="smsTime">SMS Time</Label>
+                  <Input
+                    id="smsTime"
+                    type="time"
+                    value={settings.notifications.smsNotificationTime}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      notifications: { ...settings.notifications, smsNotificationTime: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>SMS Settings</Label>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="sameDaySMS"
+                      checked={settings.notifications.enableSameDaySMS}
+                      onCheckedChange={(checked) => setSettings({
+                        ...settings,
+                        notifications: { ...settings.notifications, enableSameDaySMS: checked as boolean }
+                      })}
+                    />
+                    <Label htmlFor="sameDaySMS" className="text-sm">Same day SMS</Label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="smsTemplate">SMS Message Template</Label>
+                <Textarea
+                  id="smsTemplate"
+                  placeholder="Hi PATIENT_NAME, reminder: You have a TYPE appointment today at TIME."
+                  rows={3}
+                  value={settings.notifications.smsTemplate}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    notifications: { ...settings.notifications, smsTemplate: e.target.value }
+                  })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use placeholders: PATIENT_NAME, DATE, TIME, TYPE
+                </p>
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+              <p><strong>Setup Instructions:</strong></p>
+              <p>1. Create Zaps in Zapier with Webhook triggers</p>
+              <p>2. Connect email service (Gmail, SendGrid) for emails</p>
+              <p>3. Connect Twilio for SMS (set to Macedonian numbers)</p>
+              <p>4. Paste the webhook URLs above</p>
+            </div>
           </CardContent>
         </Card>
 

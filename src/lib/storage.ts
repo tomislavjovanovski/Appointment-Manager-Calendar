@@ -10,7 +10,18 @@ const defaultSettings: AppointmentSettings = {
     full: { duration: 60, label: 'Full Hour' },
     double: { duration: 120, label: 'Double Hour' }
   },
-  breakTime: 15
+  breakTime: 15,
+  notifications: {
+    emailWebhookUrl: '',
+    smsWebhookUrl: '',
+    emailNotificationTime: '09:00',
+    smsNotificationTime: '09:00',
+    enableDayBeforeEmail: true,
+    enableSameDayEmail: true,
+    enableSameDaySMS: true,
+    emailTemplate: '',
+    smsTemplate: ''
+  }
 };
 
 // In-memory storage

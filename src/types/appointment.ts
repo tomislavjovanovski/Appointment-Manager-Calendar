@@ -24,6 +24,18 @@ export interface Appointment {
   createdAt: string;
 }
 
+export interface NotificationSettings {
+  emailWebhookUrl: string;
+  smsWebhookUrl: string;
+  emailNotificationTime: string; // time to send notifications (e.g., "09:00")
+  smsNotificationTime: string;
+  enableDayBeforeEmail: boolean;
+  enableSameDayEmail: boolean;
+  enableSameDaySMS: boolean;
+  emailTemplate: string; // HTML template for emails
+  smsTemplate: string; // SMS message template
+}
+
 export interface AppointmentSettings {
   workingDays: number[]; // 0 = Sunday, 1 = Monday, etc.
   startTime: string;
@@ -34,4 +46,5 @@ export interface AppointmentSettings {
     double: { duration: 120; label: 'Double Hour' };
   };
   breakTime: number; // minutes between appointments
+  notifications: NotificationSettings;
 }
