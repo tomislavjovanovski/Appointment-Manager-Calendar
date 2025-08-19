@@ -54,12 +54,20 @@ export function SettingsPanel() {
     loadSettings();
   }, []);
 
-  const handleSave = () => {
-    settingsStorage.save(settings);
-    toast({
-      title: "Settings saved",
-      description: "Your appointment settings have been updated successfully.",
-    });
+  const handleSave = async () => {
+    try {
+      await settingsStorage.save(settings);
+      toast({
+        title: "Settings saved",
+        description: "Your appointment settings have been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error saving settings",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleExport = async () => {
@@ -88,7 +96,7 @@ export function SettingsPanel() {
     reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        dataManagement.importAll(data);
+        await dataManagement.importAll(data);
         const newSettings = await settingsStorage.get();
         setSettings(newSettings);
         toast({

@@ -1,233 +1,165 @@
 import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
 
-// Default settings
-const defaultSettings: AppointmentSettings = {
-  workingDays: [1, 2, 3, 4, 5], // Monday to Friday
-  startTime: '09:00',
-  endTime: '17:00',
-  appointmentSizes: {
-    half: { duration: 30, label: 'Half Hour' },
-    full: { duration: 60, label: 'Full Hour' },
-    double: { duration: 120, label: 'Double Hour' }
-  },
-  breakTime: 15,
-  notifications: {
-    emailWebhookUrl: '',
-    smsWebhookUrl: '',
-    emailNotificationTime: '09:00',
-    smsNotificationTime: '09:00',
-    enableDayBeforeEmail: true,
-    enableSameDayEmail: true,
-    enableSameDaySMS: true,
-    emailTemplate: '',
-    smsTemplate: ''
-  }
-};
+// API base URL
+const API_BASE_URL = 'http://localhost:3000/api';
 
-// In-memory storage
-let patientsData: Patient[] = [];
-let appointmentsData: Appointment[] = [];
-let settingsData: AppointmentSettings = defaultSettings;
-let isInitialized = false;
-
-// Initialize data from JSON files
-const initializeData = async (): Promise<void> => {
-  if (isInitialized) return;
+// API helper functions
+const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  });
   
-  try {
-    // Load patients
-    const patientsResponse = await fetch('/data/patients.json');
-    if (patientsResponse.ok) {
-      patientsData = await patientsResponse.json();
-    }
-    
-    // Load appointments
-    const appointmentsResponse = await fetch('/data/appointments.json');
-    if (appointmentsResponse.ok) {
-      appointmentsData = await appointmentsResponse.json();
-    }
-    
-    // Load settings
-    const settingsResponse = await fetch('/data/settings.json');
-    if (settingsResponse.ok) {
-      settingsData = { ...defaultSettings, ...(await settingsResponse.json()) };
-    }
-    
-    isInitialized = true;
-  } catch (error) {
-    console.warn('Could not load initial data from JSON files:', error);
-    isInitialized = true;
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.statusText}`);
   }
+  
+  return response.json();
 };
 
-// Auto-save to downloadable JSON files
-const saveToFile = (data: any, filename: string): void => {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+// Initialize data (now just a placeholder since we use API)
+export const initializeData = async () => {
+  // No longer needed since we fetch from API
+  return Promise.resolve();
 };
 
-// Patient storage
+// Patient storage operations
 export const patientsStorage = {
   getAll: async (): Promise<Patient[]> => {
-    await initializeData();
-    return [...patientsData];
-  },
-  
-  save: (patients: Patient[]): void => {
-    patientsData = [...patients];
-    saveToFile(patientsData, 'patients.json');
+    return await apiCall('/patients');
   },
   
   add: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> => {
-    await initializeData();
-    const newPatient: Patient = {
-      ...patient,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString()
-    };
-    patientsData.push(newPatient);
-    saveToFile(patientsData, 'patients.json');
-    return newPatient;
+    return await apiCall('/patients', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...patient,
+        createdAt: new Date().toISOString()
+      }),
+    });
   },
   
-  update: async (id: string, updates: Partial<Patient>): Promise<void> => {
-    await initializeData();
-    const index = patientsData.findIndex(p => p.id === id);
-    if (index !== -1) {
-      patientsData[index] = { ...patientsData[index], ...updates };
-      saveToFile(patientsData, 'patients.json');
-    }
+  update: async (id: string, updates: Partial<Patient>): Promise<Patient> => {
+    return await apiCall(`/patients/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
   },
   
   delete: async (id: string): Promise<void> => {
-    await initializeData();
-    patientsData = patientsData.filter(p => p.id !== id);
-    saveToFile(patientsData, 'patients.json');
+    await apiCall(`/patients/${id}`, {
+      method: 'DELETE',
+    });
   }
 };
 
-// Appointment storage
+// Appointment storage operations
 export const appointmentsStorage = {
   getAll: async (): Promise<Appointment[]> => {
-    await initializeData();
-    return [...appointmentsData];
-  },
-  
-  save: (appointments: Appointment[]): void => {
-    appointmentsData = [...appointments];
-    saveToFile(appointmentsData, 'appointments.json');
+    return await apiCall('/appointments');
   },
   
   add: async (appointment: Omit<Appointment, 'id' | 'createdAt'>): Promise<Appointment> => {
-    await initializeData();
-    const newAppointment: Appointment = {
-      ...appointment,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString()
-    };
-    appointmentsData.push(newAppointment);
-    saveToFile(appointmentsData, 'appointments.json');
-    return newAppointment;
+    return await apiCall('/appointments', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...appointment,
+        createdAt: new Date().toISOString()
+      }),
+    });
   },
   
-  update: async (id: string, updates: Partial<Appointment>): Promise<void> => {
-    await initializeData();
-    const index = appointmentsData.findIndex(a => a.id === id);
-    if (index !== -1) {
-      appointmentsData[index] = { ...appointmentsData[index], ...updates };
-      saveToFile(appointmentsData, 'appointments.json');
-    }
+  update: async (id: string, updates: Partial<Appointment>): Promise<Appointment> => {
+    return await apiCall(`/appointments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
   },
   
   delete: async (id: string): Promise<void> => {
-    await initializeData();
-    appointmentsData = appointmentsData.filter(a => a.id !== id);
-    saveToFile(appointmentsData, 'appointments.json');
+    await apiCall(`/appointments/${id}`, {
+      method: 'DELETE',
+    });
   },
   
   getByPatient: async (patientId: string): Promise<Appointment[]> => {
-    await initializeData();
-    return appointmentsData.filter(a => a.patientId === patientId);
+    const appointments = await apiCall('/appointments');
+    return appointments.filter((a: any) => a.patientId === patientId);
   },
   
   getByDate: async (date: string): Promise<Appointment[]> => {
-    await initializeData();
-    return appointmentsData.filter(a => a.date === date);
+    const appointments = await apiCall('/appointments');
+    return appointments.filter((a: any) => a.date === date);
   }
 };
 
-// Settings storage
+// Settings storage operations
 export const settingsStorage = {
   get: async (): Promise<AppointmentSettings> => {
-    await initializeData();
-    return { ...settingsData };
+    return await apiCall('/settings');
   },
   
-  save: (settings: AppointmentSettings): void => {
-    settingsData = { ...settings };
-    saveToFile(settingsData, 'settings.json');
+  save: async (settings: AppointmentSettings): Promise<AppointmentSettings> => {
+    return await apiCall('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
   },
   
-  update: async (updates: Partial<AppointmentSettings>): Promise<void> => {
-    await initializeData();
-    settingsData = { ...settingsData, ...updates };
-    saveToFile(settingsData, 'settings.json');
+  update: async (updates: Partial<AppointmentSettings>): Promise<AppointmentSettings> => {
+    return await apiCall('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
   }
 };
 
-// Export/Import functionality
+// Data management for export/import
 export const dataManagement = {
   exportAll: async () => {
-    await initializeData();
-    return {
-      patients: [...patientsData],
-      appointments: [...appointmentsData],
-      settings: { ...settingsData },
-      exportedAt: new Date().toISOString()
+    const patients = await patientsStorage.getAll();
+    const appointments = await appointmentsStorage.getAll();
+    const settings = await settingsStorage.get();
+    
+    const allData = {
+      patients,
+      appointments,
+      settings,
+      exportDate: new Date().toISOString()
     };
+    
+    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'medical-data-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
   },
-  
-  importAll: (data: any) => {
-    if (data.patients) {
-      patientsData = data.patients;
-      saveToFile(patientsData, 'patients.json');
-    }
-    if (data.appointments) {
-      appointmentsData = data.appointments;
-      saveToFile(appointmentsData, 'appointments.json');
-    }
-    if (data.settings) {
-      settingsData = data.settings;
-      saveToFile(settingsData, 'settings.json');
-    }
-  },
-  
-  // Load data from uploaded JSON files
-  loadFromFiles: (files: { patients?: File; appointments?: File; settings?: File }) => {
-    Object.entries(files).forEach(([type, file]) => {
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const data = JSON.parse(e.target?.result as string);
-            if (type === 'patients') {
-              patientsData = data;
-            } else if (type === 'appointments') {
-              appointmentsData = data;
-            } else if (type === 'settings') {
-              settingsData = { ...defaultSettings, ...data };
-            }
-          } catch (error) {
-            console.error(`Error loading ${type} data:`, error);
-          }
-        };
-        reader.readAsText(file);
+
+  importAll: async (data: any) => {
+    // Since we now use API, we'll need to recreate all the data
+    try {
+      if (data.settings) {
+        await settingsStorage.save(data.settings);
       }
-    });
+      if (data.patients) {
+        // Note: This is a simplified import - in production you'd want better handling
+        for (const patient of data.patients) {
+          await patientsStorage.add(patient);
+        }
+      }
+      if (data.appointments) {
+        for (const appointment of data.appointments) {
+          await appointmentsStorage.add(appointment);
+        }
+      }
+    } catch (error) {
+      console.error('Error importing data:', error);
+      throw error;
+    }
   }
 };
