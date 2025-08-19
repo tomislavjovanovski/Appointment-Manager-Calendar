@@ -4,10 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { UserPlus, User, Mail, Phone, MapPin, Contact } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { UserPlus, User, Mail, Phone, MapPin, Contact, CalendarIcon } from 'lucide-react';
 import { Patient } from '@/types/appointment';
 import { patientsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface CreatePatientDialogProps {
   open: boolean;
@@ -29,12 +33,13 @@ export function CreatePatientDialog({
     emergencyContact: '',
     notes: ''
   });
+  const [birthDate, setBirthDate] = useState<Date>();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone || !formData.dateOfBirth) {
+    if (!formData.name || !formData.email || !formData.phone || !birthDate) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -44,7 +49,10 @@ export function CreatePatientDialog({
     }
 
     try {
-      await patientsStorage.add(formData);
+      await patientsStorage.add({
+        ...formData,
+        dateOfBirth: format(birthDate, 'yyyy-MM-dd')
+      });
 
       toast({
         title: "Patient created",
@@ -64,6 +72,7 @@ export function CreatePatientDialog({
         emergencyContact: '',
         notes: ''
       });
+      setBirthDate(undefined);
     } catch (error) {
       toast({
         title: "Error",
@@ -135,14 +144,33 @@ export function CreatePatientDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dateOfBirth">Date of Birth *</Label>
-            <Input
-              id="dateOfBirth"
-              type="date"
-              value={formData.dateOfBirth}
-              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              required
-            />
+            <Label>Date of Birth *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !birthDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {birthDate ? format(birthDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={birthDate}
+                  onSelect={setBirthDate}
+                  disabled={(date) =>
+                    date > new Date() || date < new Date("1900-01-01")
+                  }
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">

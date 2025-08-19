@@ -1,0 +1,179 @@
+import { useState, useEffect } from 'react';
+import { Scheduler } from '@aldabil/react-scheduler';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CalendarIcon, Clock, Plus } from 'lucide-react';
+import { format } from 'date-fns';
+import { Appointment } from '@/types/appointment';
+import { appointmentsStorage, settingsStorage } from '@/lib/storage';
+
+interface WeeklySchedulerProps {
+  onCreateAppointment: (date: Date) => void;
+  onAppointmentClick: (appointment: Appointment) => void;
+}
+
+export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: WeeklySchedulerProps) {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [settings, setSettings] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [appointmentsData, settingsData] = await Promise.all([
+          appointmentsStorage.getAll(),
+          settingsStorage.get()
+        ]);
+        setAppointments(appointmentsData);
+        setSettings(settingsData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Convert appointments to scheduler events
+  const events = appointments.map(apt => ({
+    event_id: apt.id,
+    title: `${apt.patientName} - ${apt.type}`,
+    start: new Date(`${apt.date}T${apt.startTime}`),
+    end: new Date(`${apt.date}T${apt.endTime}`),
+    color: apt.status === 'scheduled' ? '#3b82f6' : 
+           apt.status === 'completed' ? '#10b981' :
+           apt.status === 'cancelled' ? '#ef4444' : '#f59e0b',
+    appointment: apt
+  }));
+
+  // Working hours
+  const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
+  const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
+
+  const handleEventClick = (event: any) => {
+    if (event.appointment) {
+      onAppointmentClick(event.appointment);
+    }
+  };
+
+  const handleCellClick = (start: Date, end: Date) => {
+    onCreateAppointment(start);
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <Clock className="w-8 h-8 mx-auto mb-2 animate-spin text-primary" />
+            <p className="text-muted-foreground">Loading scheduler...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <CalendarIcon className="w-6 h-6 text-primary" />
+            Weekly Schedule
+          </h2>
+          <p className="text-muted-foreground">
+            Working hours: {settings.startTime || '09:00'} - {settings.endTime || '17:00'}
+          </p>
+        </div>
+        <Button
+          onClick={() => onCreateAppointment(new Date())}
+          className="bg-gradient-to-r from-primary to-primary-foreground"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Appointment
+        </Button>
+      </div>
+
+      {/* Scheduler */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="h-[600px]">
+            <Scheduler
+              view="week"
+              events={events}
+              selectedDate={new Date()}
+              onSelectedDateChange={() => {}}
+              onEventClick={handleEventClick}
+              onCellClick={handleCellClick}
+              hourFormat="24"
+              week={{
+                weekDays: [0, 1, 2, 3, 4, 5, 6],
+                weekStartOn: 1, // Monday
+                startHour: startHour as any,
+                endHour: endHour as any,
+                step: 30,
+                navigation: true,
+                disableGoToDay: false
+              }}
+              translations={{
+                navigation: {
+                  month: "Month",
+                  week: "Week",
+                  day: "Day",
+                  today: "Today",
+                  agenda: "Agenda"
+                },
+                form: {
+                  addTitle: "Add Event",
+                  editTitle: "Edit Event",
+                  confirm: "Confirm",
+                  delete: "Delete",
+                  cancel: "Cancel"
+                },
+                event: {
+                  title: "Title",
+                  subtitle: "Subtitle", 
+                  start: "Start",
+                  end: "End",
+                  allDay: "All Day"
+                },
+                moreEvents: "More...",
+                noDataToDisplay: "No appointments scheduled",
+                loading: "Loading..."
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Legend */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Status Legend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-blue-500"></div>
+              <span>Scheduled</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-green-500"></div>
+              <span>Completed</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-red-500"></div>
+              <span>Cancelled</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-yellow-500"></div>
+              <span>No Show</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

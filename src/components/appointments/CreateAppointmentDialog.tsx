@@ -7,12 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { CalendarIcon, Clock, User, Plus, UserPlus } from 'lucide-react';
 import { Appointment, Patient } from '@/types/appointment';
 import { appointmentsStorage, patientsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 interface CreateAppointmentDialogProps {
   open: boolean;
@@ -261,13 +264,33 @@ export function CreateAppointmentDialog({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="patientDob">Date of Birth</Label>
-                      <Input
-                        id="patientDob"
-                        type="date"
-                        value={patientFormData.dateOfBirth}
-                        onChange={(e) => setPatientFormData({ ...patientFormData, dateOfBirth: e.target.value })}
-                      />
+                      <Label>Date of Birth</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !patientFormData.dateOfBirth && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {patientFormData.dateOfBirth ? format(new Date(patientFormData.dateOfBirth), "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={patientFormData.dateOfBirth ? new Date(patientFormData.dateOfBirth) : undefined}
+                            onSelect={(date) => setPatientFormData({ ...patientFormData, dateOfBirth: date ? format(date, 'yyyy-MM-dd') : '' })}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                   

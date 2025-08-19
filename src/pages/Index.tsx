@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { AppointmentCalendar } from '@/components/dashboard/AppointmentCalendar';
+import { WeeklyScheduler } from '@/components/dashboard/WeeklyScheduler';
 import { PatientList } from '@/components/patients/PatientList';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { NotificationManager } from '@/components/notifications/NotificationManager';
@@ -42,7 +42,7 @@ const Index = () => {
     switch (activeTab) {
       case 'dashboard':
         return (
-          <AppointmentCalendar
+          <WeeklyScheduler
             onCreateAppointment={handleCreateAppointment}
             onAppointmentClick={handleAppointmentClick}
           />
