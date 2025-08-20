@@ -53,13 +53,23 @@ export function CreateAppointmentDialog({
 
   useEffect(() => {
     const loadPatients = async () => {
-      const data = await patientsStorage.getAll();
-      setPatients(data);
+      try {
+        const data = await patientsStorage.getAll();
+        setPatients(data);
+      } catch (error) {
+        console.error('Failed to load patients:', error);
+        setPatients([]);
+        toast({
+          title: "Unable to load patients",
+          description: "The data service isn't reachable. You can still add a new patient.",
+          variant: "destructive",
+        });
+      }
     };
     if (open) {
       loadPatients();
     }
-  }, [open]);
+  }, [open, toast]);
 
   useEffect(() => {
     if (selectedDate) {
