@@ -108,6 +108,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
               onEventClick={handleEventClick}
               onCellClick={handleCellClick}
               hourFormat="24"
+              editable={false}
               week={{
                 weekDays: [0, 1, 2, 3, 4, 5, 6],
                 weekStartOn: 1, // Monday
