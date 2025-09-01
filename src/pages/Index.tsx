@@ -6,6 +6,7 @@ import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { NotificationManager } from '@/components/notifications/NotificationManager';
 import { CreateAppointmentDialog } from '@/components/appointments/CreateAppointmentDialog';
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
+import { EditAppointmentDialog } from '@/components/appointments/EditAppointmentDialog';
 import { Patient, Appointment } from '@/types/appointment';
 
 const Index = () => {
@@ -14,6 +15,8 @@ const Index = () => {
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   const handleCreateAppointment = (date: Date) => {
     setSelectedDate(date);
@@ -21,10 +24,10 @@ const Index = () => {
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
-    // TODO: Open appointment details dialog
-    console.log('Appointment clicked:', appointment);
+    setSelectedAppointment(appointment);
+    setEditDialogOpen(true);
   };
-
+  
   const handlePatientClick = (patient: Patient) => {
     // TODO: Open patient details dialog
     console.log('Patient clicked:', patient);
@@ -43,6 +46,7 @@ const Index = () => {
       case 'dashboard':
         return (
           <WeeklyScheduler
+            key={refreshTrigger}
             onCreateAppointment={handleCreateAppointment}
             onAppointmentClick={handleAppointmentClick}
           />
@@ -84,6 +88,13 @@ const Index = () => {
         open={patientDialogOpen}
         onOpenChange={setPatientDialogOpen}
         onPatientCreated={handleRefresh}
+      />
+
+      <EditAppointmentDialog
+        open={editDialogOpen}
+        onOpenChange={(o)=>{ setEditDialogOpen(o); if(!o) setSelectedAppointment(null);} }
+        appointment={selectedAppointment}
+        onUpdated={handleRefresh}
       />
     </div>
   );

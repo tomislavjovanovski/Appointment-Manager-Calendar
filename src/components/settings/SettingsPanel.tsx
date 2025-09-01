@@ -10,6 +10,7 @@ import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare,
 import { AppointmentSettings } from '@/types/appointment';
 import { settingsStorage, dataManagement } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const DAYS_OF_WEEK = [
   { id: 0, name: 'Sunday', short: 'Sun' },
@@ -32,6 +33,7 @@ export function SettingsPanel() {
       double: { duration: 120, label: 'Double Hour' }
     },
     breakTime: 15,
+    timeSlotMinutes: 15,
     notifications: {
       emailWebhookUrl: '',
       smsWebhookUrl: '',
@@ -164,16 +166,34 @@ export function SettingsPanel() {
               </div>
             </div>
             
-            <div>
-              <Label htmlFor="breakTime">Break Time (minutes)</Label>
-              <Input
-                id="breakTime"
-                type="number"
-                min="0"
-                max="60"
-                value={settings.breakTime}
-                onChange={(e) => setSettings({ ...settings, breakTime: parseInt(e.target.value) || 0 })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="breakTime">Break Time (minutes)</Label>
+                <Input
+                  id="breakTime"
+                  type="number"
+                  min="0"
+                  max="60"
+                  value={settings.breakTime}
+                  onChange={(e) => setSettings({ ...settings, breakTime: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <Label>Time Slot Interval</Label>
+                <Select
+                  value={String(settings.timeSlotMinutes ?? 30)}
+                  onValueChange={(value) => setSettings({ ...settings, timeSlotMinutes: parseInt(value) as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 minutes</SelectItem>
+                    <SelectItem value="30">30 minutes</SelectItem>
+                    <SelectItem value="60">60 minutes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>

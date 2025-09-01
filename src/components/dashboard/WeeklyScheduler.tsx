@@ -47,19 +47,41 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
     appointment: apt
   }));
 
-  // Working hours
-  const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
-  const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
+// Working hours
+const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
+const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
+const step = typeof settings.timeSlotMinutes === 'number' ? settings.timeSlotMinutes : 30;
 
-  const handleEventClick = (event: any) => {
-    if (event.appointment) {
-      onAppointmentClick(event.appointment);
-    }
-  };
+const handleEventClick = (event: any) => {
+  if (event.appointment) {
+    onAppointmentClick(event.appointment);
+  }
+};
 
-  const handleCellClick = (start: Date, end: Date) => {
-    onCreateAppointment(start);
-  };
+const handleCellClick = (start: Date, end: Date) => {
+  onCreateAppointment(start);
+};
+
+const handleEventDrop = async (
+  _dragEvent: DragEvent,
+  _droppedOn: Date,
+  updatedEvent: any,
+  originalEvent: any
+) => {
+  const apt = originalEvent.appointment as Appointment;
+  const newDate = format(updatedEvent.start, 'yyyy-MM-dd');
+  const startTime = format(updatedEvent.start, 'HH:mm');
+  const endTime = format(updatedEvent.end, 'HH:mm');
+  try {
+    await appointmentsStorage.update(apt.id, { date: newDate, startTime, endTime });
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === apt.id ? { ...a, date: newDate, startTime, endTime } : a))
+    );
+    return { ...updatedEvent, appointment: { ...apt, date: newDate, startTime, endTime } };
+  } catch (err) {
+    console.error('Failed to update appointment on drop', err);
+  }
+};
 
   if (loading) {
     return (
@@ -108,13 +130,14 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
               onEventClick={handleEventClick}
               onCellClick={handleCellClick}
               hourFormat="24"
-              editable={false}
+              editable
+              onEventDrop={handleEventDrop}
               week={{
                 weekDays: [0, 1, 2, 3, 4, 5, 6],
                 weekStartOn: 1, // Monday
                 startHour: startHour as any,
                 endHour: endHour as any,
-                step: 30,
+                step: step as any,
                 navigation: true,
                 disableGoToDay: false
               }}

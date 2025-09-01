@@ -46,5 +46,6 @@ export interface AppointmentSettings {
     double: { duration: 120; label: 'Double Hour' };
   };
   breakTime: number; // minutes between appointments
+  timeSlotMinutes: 15 | 30 | 60; // grid/time step in minutes
   notifications: NotificationSettings;
 }

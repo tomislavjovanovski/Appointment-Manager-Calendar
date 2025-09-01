@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { CalendarIcon, Clock, User, Plus, UserPlus } from 'lucide-react';
 import { Appointment, Patient } from '@/types/appointment';
-import { appointmentsStorage, patientsStorage } from '@/lib/storage';
+import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -50,6 +50,8 @@ export function CreateAppointmentDialog({
     notes: ''
   });
   const { toast } = useToast();
+  const [timeSlotMinutes, setTimeSlotMinutes] = useState<number>(30);
+
 
   useEffect(() => {
     const loadPatients = async () => {
@@ -76,6 +78,14 @@ export function CreateAppointmentDialog({
       setFormData(prev => ({ ...prev, date: format(selectedDate, 'yyyy-MM-dd') }));
     }
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (open) {
+      settingsStorage.get().then((s: any) => {
+        setTimeSlotMinutes(typeof s?.timeSlotMinutes === 'number' ? s.timeSlotMinutes : 30);
+      }).catch(() => setTimeSlotMinutes(30));
+    }
+  }, [open]);
 
   const calculateEndTime = (startTime: string, duration: number) => {
     const [hours, minutes] = startTime.split(':').map(Number);
@@ -375,6 +385,7 @@ export function CreateAppointmentDialog({
                     <Input
                       id="startTime"
                       type="time"
+                      step={timeSlotMinutes * 60}
                       value={formData.startTime}
                       onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                       required

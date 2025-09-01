@@ -8,6 +8,7 @@
     "double": { "duration": 120, "label": "Double Hour" }
   },
   "breakTime": 15,
+  "timeSlotMinutes": 15,
   "notifications": {
     "emailWebhookUrl": "",
     "smsWebhookUrl": "",
