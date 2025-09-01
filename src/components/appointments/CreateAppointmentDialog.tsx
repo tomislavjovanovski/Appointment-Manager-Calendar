@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -204,6 +204,9 @@ export function CreateAppointmentDialog({
             <CalendarIcon className="w-5 h-5 text-primary" />
             Create Appointment & Patient
           </DialogTitle>
+          <DialogDescription>
+            Schedule a new appointment and manage patient information.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="grid grid-cols-2 gap-6">

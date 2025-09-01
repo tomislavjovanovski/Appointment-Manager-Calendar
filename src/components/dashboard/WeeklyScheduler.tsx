@@ -14,36 +14,55 @@ interface WeeklySchedulerProps {
 
 export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: WeeklySchedulerProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [settings, setSettings] = useState<any>({});
+  const [settings, setSettings] = useState<any>({
+    startTime: '09:00',
+    endTime: '17:00',
+    timeSlotMinutes: 30
+  });
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const refreshData = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const loadData = async () => {
       try {
+        setLoading(true);
         const [appointmentsData, settingsData] = await Promise.all([
-          appointmentsStorage.getAll(),
-          settingsStorage.get()
+          appointmentsStorage.getAll().catch(() => []),
+          settingsStorage.get().catch(() => ({
+            startTime: '09:00',
+            endTime: '17:00', 
+            timeSlotMinutes: 30
+          }))
         ]);
-        setAppointments(appointmentsData);
-        setSettings(settingsData);
+        
+        if (isMounted) {
+          setAppointments(appointmentsData);
+          setSettings(settingsData);
+        }
       } catch (error) {
         console.error('Error loading data:', error);
-        // Set defaults on error to prevent loops
-        setAppointments([]);
-        setSettings({
-          startTime: '09:00',
-          endTime: '17:00',
-          timeSlotMinutes: 30
-        });
+        if (isMounted) {
+          setAppointments([]);
+          setSettings({
+            startTime: '09:00',
+            endTime: '17:00',
+            timeSlotMinutes: 30
+          });
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+    
     loadData();
-  }, [refreshKey]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Only run once on mount
 
   // Convert appointments to scheduler events
   const events = appointments.map(apt => ({
@@ -84,7 +103,9 @@ const handleEventDrop = async (
   const endTime = format(updatedEvent.end, 'HH:mm');
   try {
     await appointmentsStorage.update(apt.id, { date: newDate, startTime, endTime });
-    refreshData(); // Refresh the entire scheduler data
+    // Reload data manually after successful update
+    const updatedAppointments = await appointmentsStorage.getAll().catch(() => appointments);
+    setAppointments(updatedAppointments);
     return { ...updatedEvent, appointment: { ...apt, date: newDate, startTime, endTime } };
   } catch (err) {
     console.error('Failed to update appointment on drop', err);
