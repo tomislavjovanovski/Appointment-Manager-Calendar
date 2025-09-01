@@ -46,7 +46,6 @@ const Index = () => {
       case 'dashboard':
         return (
           <WeeklyScheduler
-            key={refreshTrigger}
             onCreateAppointment={handleCreateAppointment}
             onAppointmentClick={handleAppointmentClick}
           />

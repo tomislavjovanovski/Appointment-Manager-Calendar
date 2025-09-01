@@ -16,6 +16,9 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshData = () => setRefreshKey(prev => prev + 1);
 
   useEffect(() => {
     const loadData = async () => {
@@ -28,12 +31,19 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
         setSettings(settingsData);
       } catch (error) {
         console.error('Error loading data:', error);
+        // Set defaults on error to prevent loops
+        setAppointments([]);
+        setSettings({
+          startTime: '09:00',
+          endTime: '17:00',
+          timeSlotMinutes: 30
+        });
       } finally {
         setLoading(false);
       }
     };
     loadData();
-  }, []);
+  }, [refreshKey]);
 
   // Convert appointments to scheduler events
   const events = appointments.map(apt => ({
@@ -74,12 +84,11 @@ const handleEventDrop = async (
   const endTime = format(updatedEvent.end, 'HH:mm');
   try {
     await appointmentsStorage.update(apt.id, { date: newDate, startTime, endTime });
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === apt.id ? { ...a, date: newDate, startTime, endTime } : a))
-    );
+    refreshData(); // Refresh the entire scheduler data
     return { ...updatedEvent, appointment: { ...apt, date: newDate, startTime, endTime } };
   } catch (err) {
     console.error('Failed to update appointment on drop', err);
+    return originalEvent; // Return original on error
   }
 };
 
