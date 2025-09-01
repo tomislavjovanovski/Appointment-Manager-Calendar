@@ -63,7 +63,7 @@ const handleCellClick = (start: Date, end: Date) => {
 };
 
 const handleEventDrop = async (
-  _dragEvent: DragEvent,
+  _dragEvent: React.DragEvent<HTMLButtonElement>,
   _droppedOn: Date,
   updatedEvent: any,
   originalEvent: any
