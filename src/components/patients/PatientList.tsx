@@ -147,7 +147,10 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
                         <div>
                           <h3 className="font-semibold text-lg text-foreground">{patient.name}</h3>
                           <p className="text-sm text-muted-foreground">
-                            Born {format(new Date(patient.dateOfBirth), 'MMM d, yyyy')}
+                            {patient.dateOfBirth ? 
+                              `Born ${format(new Date(patient.dateOfBirth), 'MMM d, yyyy')}` 
+                              : 'No birth date provided'
+                            }
                           </p>
                         </div>
                       </div>

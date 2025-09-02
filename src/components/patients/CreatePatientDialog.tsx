@@ -39,7 +39,7 @@ export function CreatePatientDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone || !birthDate) {
+    if (!formData.name || !formData.email || !formData.phone) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -51,7 +51,7 @@ export function CreatePatientDialog({
     try {
       await patientsStorage.add({
         ...formData,
-        dateOfBirth: format(birthDate, 'yyyy-MM-dd')
+        dateOfBirth: birthDate ? format(birthDate, 'yyyy-MM-dd') : ''
       });
 
       toast({
@@ -144,7 +144,7 @@ export function CreatePatientDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Date of Birth *</Label>
+            <Label>Date of Birth</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
