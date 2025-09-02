@@ -3,6 +3,7 @@ import cors from 'cors';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { google } from 'googleapis';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,14 @@ const DATA_DIR = path.join(__dirname, '../public/data');
 const PATIENTS_FILE = path.join(DATA_DIR, 'patients.json');
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const GOOGLE_TOKENS_FILE = path.join(DATA_DIR, 'google-tokens.json');
+
+// Google Calendar setup
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID || '',
+  process.env.GOOGLE_CLIENT_SECRET || '',
+  'http://localhost:3000/api/google/callback'
+);
 
 // Ensure data directory exists
 async function ensureDataDir() {
@@ -177,6 +186,120 @@ app.put('/api/settings', async (req, res) => {
     res.json(req.body);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// Google Calendar Authentication endpoints
+app.post('/api/google/auth', (req, res) => {
+  const { clientId, clientSecret } = req.body;
+  
+  if (!clientId || !clientSecret) {
+    return res.status(400).json({ error: 'Client ID and Client Secret are required' });
+  }
+
+  oauth2Client.setCredentials({});
+  oauth2Client._clientId = clientId;
+  oauth2Client._clientSecret = clientSecret;
+
+  const scopes = ['https://www.googleapis.com/auth/calendar'];
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: scopes,
+  });
+
+  res.json({ authUrl: url });
+});
+
+app.post('/api/google/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+    const { tokens } = await oauth2Client.getToken(code);
+    
+    await writeJsonFile(GOOGLE_TOKENS_FILE, tokens);
+    oauth2Client.setCredentials(tokens);
+    
+    res.json({ success: true, tokens });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to exchange code for tokens' });
+  }
+});
+
+// Google Calendar sync endpoints
+app.get('/api/google/events', async (req, res) => {
+  try {
+    const tokens = await readJsonFile(GOOGLE_TOKENS_FILE, null);
+    if (!tokens) {
+      return res.status(401).json({ error: 'Not authenticated with Google Calendar' });
+    }
+
+    oauth2Client.setCredentials(tokens);
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    
+    const { startDate, endDate } = req.query;
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
+      timeMax: endDate ? new Date(endDate).toISOString() : undefined,
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    res.json(response.data.items || []);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch Google Calendar events' });
+  }
+});
+
+app.post('/api/google/events', async (req, res) => {
+  try {
+    const tokens = await readJsonFile(GOOGLE_TOKENS_FILE, null);
+    if (!tokens) {
+      return res.status(401).json({ error: 'Not authenticated with Google Calendar' });
+    }
+
+    oauth2Client.setCredentials(tokens);
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    
+    const { appointment } = req.body;
+    const event = {
+      summary: `${appointment.patientName} - ${appointment.type}`,
+      description: appointment.notes || '',
+      start: {
+        dateTime: `${appointment.date}T${appointment.startTime}:00`,
+        timeZone: 'UTC',
+      },
+      end: {
+        dateTime: `${appointment.date}T${appointment.endTime}:00`,
+        timeZone: 'UTC',
+      },
+    };
+
+    const response = await calendar.events.insert({
+      calendarId: 'primary',
+      resource: event,
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create Google Calendar event' });
+  }
+});
+
+app.get('/api/google/status', async (req, res) => {
+  try {
+    const tokens = await readJsonFile(GOOGLE_TOKENS_FILE, null);
+    res.json({ connected: !!tokens });
+  } catch (error) {
+    res.json({ connected: false });
+  }
+});
+
+app.delete('/api/google/disconnect', async (req, res) => {
+  try {
+    await fs.unlink(GOOGLE_TOKENS_FILE).catch(() => {});
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to disconnect' });
   }
 });
 

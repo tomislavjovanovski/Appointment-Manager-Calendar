@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { CalendarIcon, Clock, User, Plus, UserPlus } from 'lucide-react';
 import { Appointment, Patient } from '@/types/appointment';
@@ -47,7 +48,8 @@ export function CreateAppointmentDialog({
     startTime: '09:00',
     duration: 60 as 30 | 60 | 120,
     type: 'consultation' as 'consultation' | 'follow-up' | 'procedure',
-    notes: ''
+    notes: '',
+    syncToGoogle: true
   });
   const { toast } = useToast();
   const [timeSlotMinutes, setTimeSlotMinutes] = useState<number>(30);
@@ -170,10 +172,50 @@ export function CreateAppointmentDialog({
         notes: formData.notes
       });
 
-      toast({
-        title: "Appointment created",
-        description: `Appointment scheduled for ${selectedPatient.name}`,
-      });
+      // Sync to Google Calendar if enabled
+      if (formData.syncToGoogle) {
+        try {
+          const appointment = {
+            patientId: formData.patientId,
+            patientName: selectedPatient.name,
+            date: formData.date,
+            startTime: formData.startTime,
+            endTime,
+            duration: formData.duration,
+            type: formData.type,
+            status: 'scheduled',
+            notes: formData.notes
+          };
+
+          const response = await fetch('/api/google/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appointment }),
+          });
+          
+          if (response.ok) {
+            toast({
+              title: "Appointment created",
+              description: `Appointment scheduled for ${selectedPatient.name} and synced to Google Calendar`,
+            });
+          } else {
+            toast({
+              title: "Partial Success",
+              description: "Appointment created but failed to sync to Google Calendar",
+            });
+          }
+        } catch (error) {
+          toast({
+            title: "Partial Success", 
+            description: "Appointment created but failed to sync to Google Calendar",
+          });
+        }
+      } else {
+        toast({
+          title: "Appointment created",
+          description: `Appointment scheduled for ${selectedPatient.name}`,
+        });
+      }
 
       onAppointmentCreated?.();
       onOpenChange(false);
@@ -185,7 +227,8 @@ export function CreateAppointmentDialog({
         startTime: '09:00',
         duration: 60,
         type: 'consultation',
-        notes: ''
+        notes: '',
+        syncToGoogle: true
       });
     } catch (error) {
       toast({
@@ -435,6 +478,17 @@ export function CreateAppointmentDialog({
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={3}
                   />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="sync-google"
+                    checked={formData.syncToGoogle}
+                    onCheckedChange={(checked) => setFormData({ ...formData, syncToGoogle: checked as boolean })}
+                  />
+                  <Label htmlFor="sync-google" className="text-sm">
+                    Sync to Google Calendar
+                  </Label>
                 </div>
 
                 <Separator />

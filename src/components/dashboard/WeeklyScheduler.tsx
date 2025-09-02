@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { Scheduler } from '@aldabil/react-scheduler';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarIcon, Clock, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CalendarIcon, Clock, Plus, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Appointment } from '@/types/appointment';
 import { appointmentsStorage, settingsStorage } from '@/lib/storage';
+import { GoogleCalendarSync } from './GoogleCalendarSync';
+import { useToast } from '@/hooks/use-toast';
 
 interface WeeklySchedulerProps {
   onCreateAppointment: (date: Date) => void;
@@ -20,6 +23,9 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
     timeSlotMinutes: 30
   });
   const [loading, setLoading] = useState(true);
+  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
+  const [showGoogleSync, setShowGoogleSync] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     let isMounted = true;
@@ -64,8 +70,31 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
     };
   }, []); // Only run once on mount
 
+  const syncToGoogleCalendar = async (appointment: Appointment) => {
+    try {
+      const response = await fetch('/api/google/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Synced to Google Calendar",
+          description: `Appointment for ${appointment.patientName} has been added to Google Calendar`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync appointment to Google Calendar",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Convert appointments to scheduler events
-  const events = appointments.map(apt => ({
+  const appointmentEvents = appointments.map(apt => ({
     event_id: apt.id,
     title: `${apt.patientName} - ${apt.type}`,
     start: new Date(`${apt.date}T${apt.startTime}`),
@@ -76,12 +105,32 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick }: Wee
     appointment: apt
   }));
 
+  // Convert Google Calendar events to scheduler events
+  const googleCalendarEvents = googleEvents.map(event => ({
+    event_id: `google-${event.id}`,
+    title: event.summary || 'Google Calendar Event',
+    start: new Date(event.start.dateTime || event.start.date),
+    end: new Date(event.end.dateTime || event.end.date),
+    color: '#9333ea', // Purple for Google events
+    editable: false,
+    google: true
+  }));
+
+  const events = [...appointmentEvents, ...googleCalendarEvents];
+
 // Working hours
 const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
 const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
 const step = typeof settings.timeSlotMinutes === 'number' ? settings.timeSlotMinutes : 30;
 
 const handleEventClick = (event: any) => {
+  if (event.google) {
+    toast({
+      title: "Google Calendar Event",
+      description: "This is a Google Calendar event. Edit it in Google Calendar.",
+    });
+    return;
+  }
   if (event.appointment) {
     onAppointmentClick(event.appointment);
   }
@@ -139,13 +188,22 @@ const handleEventDrop = async (
             Working hours: {settings.startTime || '09:00'} - {settings.endTime || '17:00'}
           </p>
         </div>
-        <Button
-          onClick={() => onCreateAppointment(new Date())}
-          className="bg-gradient-to-r from-primary to-primary-foreground"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Appointment
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowGoogleSync(!showGoogleSync)}
+            variant="outline"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Google Calendar
+          </Button>
+          <Button
+            onClick={() => onCreateAppointment(new Date())}
+            className="bg-gradient-to-r from-primary to-primary-foreground"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Appointment
+          </Button>
+        </div>
       </div>
 
       {/* Scheduler */}
@@ -202,13 +260,16 @@ const handleEventDrop = async (
         </CardContent>
       </Card>
 
+      {/* Google Calendar Integration */}
+      {showGoogleSync && <GoogleCalendarSync />}
+
       {/* Legend */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Status Legend</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-6 text-sm">
+          <div className="flex gap-6 text-sm flex-wrap">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-blue-500"></div>
               <span>Scheduled</span>
@@ -224,6 +285,10 @@ const handleEventDrop = async (
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-yellow-500"></div>
               <span>No Show</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-purple-500"></div>
+              <span>Google Calendar</span>
             </div>
           </div>
         </CardContent>
