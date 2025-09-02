@@ -1,7 +1,8 @@
 import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
 
 // API base URL
-const API_BASE_URL = 'http://localhost:3000/api';
+// Use relative path to work in preview; will fail if backend isn't running
+const API_BASE_URL = '/api';
 
 // API helper functions
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
@@ -20,6 +21,62 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   return response.json();
 };
 
+// Local fallback helpers (used when API is unavailable)
+const LS_KEYS = {
+  patients: 'ls_patients',
+  appointments: 'ls_appointments',
+  settings: 'ls_settings',
+};
+
+const readLS = <T,>(key: string, defaultValue: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+};
+
+const writeLS = (key: string, data: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+};
+
+const generateId = () => {
+  try {
+    // @ts-ignore
+    const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : null;
+    return uuid ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+};
+
+const DEFAULT_SETTINGS: AppointmentSettings = {
+  workingDays: [1, 2, 3, 4, 5],
+  startTime: '09:00',
+  endTime: '17:00',
+  appointmentSizes: {
+    half: { duration: 30, label: 'Half Hour' },
+    full: { duration: 60, label: 'Full Hour' },
+    double: { duration: 120, label: 'Double Hour' },
+  },
+  breakTime: 10,
+  timeSlotMinutes: 30,
+  notifications: {
+    emailWebhookUrl: '',
+    smsWebhookUrl: '',
+    emailNotificationTime: '09:00',
+    smsNotificationTime: '09:00',
+    enableDayBeforeEmail: false,
+    enableSameDayEmail: false,
+    enableSameDaySMS: false,
+    emailTemplate: '',
+    smsTemplate: '',
+  },
+};
+
 // Initialize data (now just a placeholder since we use API)
 export const initializeData = async () => {
   // No longer needed since we fetch from API
@@ -29,91 +86,179 @@ export const initializeData = async () => {
 // Patient storage operations
 export const patientsStorage = {
   getAll: async (): Promise<Patient[]> => {
-    return await apiCall('/patients');
+    try {
+      return await apiCall('/patients');
+    } catch {
+      return readLS<Patient[]>(LS_KEYS.patients, []);
+    }
   },
   
   add: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> => {
-    return await apiCall('/patients', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...patient,
-        createdAt: new Date().toISOString()
-      }),
-    });
+    try {
+      return await apiCall('/patients', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...patient,
+          createdAt: new Date().toISOString()
+        }),
+      });
+    } catch {
+      const all = readLS<Patient[]>(LS_KEYS.patients, []);
+      const newPatient: Patient = {
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+        ...(patient as any),
+      } as Patient;
+      all.push(newPatient);
+      writeLS(LS_KEYS.patients, all);
+      return newPatient;
+    }
   },
   
   update: async (id: string, updates: Partial<Patient>): Promise<Patient> => {
-    return await apiCall(`/patients/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+    try {
+      return await apiCall(`/patients/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch {
+      const all = readLS<Patient[]>(LS_KEYS.patients, []);
+      const idx = all.findIndex(p => p.id === id);
+      if (idx === -1) throw new Error('Patient not found (offline)');
+      all[idx] = { ...all[idx], ...updates } as Patient;
+      writeLS(LS_KEYS.patients, all);
+      return all[idx];
+    }
   },
   
   delete: async (id: string): Promise<void> => {
-    await apiCall(`/patients/${id}`, {
-      method: 'DELETE',
-    });
+    try {
+      await apiCall(`/patients/${id}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      const all = readLS<Patient[]>(LS_KEYS.patients, []);
+      const next = all.filter(p => p.id !== id);
+      writeLS(LS_KEYS.patients, next);
+    }
   }
 };
 
 // Appointment storage operations
 export const appointmentsStorage = {
   getAll: async (): Promise<Appointment[]> => {
-    return await apiCall('/appointments');
+    try {
+      return await apiCall('/appointments');
+    } catch {
+      return readLS<Appointment[]>(LS_KEYS.appointments, []);
+    }
   },
   
   add: async (appointment: Omit<Appointment, 'id' | 'createdAt'>): Promise<Appointment> => {
-    return await apiCall('/appointments', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...appointment,
-        createdAt: new Date().toISOString()
-      }),
-    });
+    try {
+      return await apiCall('/appointments', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...appointment,
+          createdAt: new Date().toISOString()
+        }),
+      });
+    } catch {
+      const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
+      const newApt: Appointment = {
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+        ...(appointment as any),
+      } as Appointment;
+      all.push(newApt);
+      writeLS(LS_KEYS.appointments, all);
+      return newApt;
+    }
   },
   
   update: async (id: string, updates: Partial<Appointment>): Promise<Appointment> => {
-    return await apiCall(`/appointments/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+    try {
+      return await apiCall(`/appointments/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch {
+      const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
+      const idx = all.findIndex(a => a.id === id);
+      if (idx === -1) throw new Error('Appointment not found (offline)');
+      all[idx] = { ...all[idx], ...updates } as Appointment;
+      writeLS(LS_KEYS.appointments, all);
+      return all[idx];
+    }
   },
   
   delete: async (id: string): Promise<void> => {
-    await apiCall(`/appointments/${id}`, {
-      method: 'DELETE',
-    });
+    try {
+      await apiCall(`/appointments/${id}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
+      const next = all.filter(a => a.id !== id);
+      writeLS(LS_KEYS.appointments, next);
+    }
   },
   
   getByPatient: async (patientId: string): Promise<Appointment[]> => {
-    const appointments = await apiCall('/appointments');
-    return appointments.filter((a: any) => a.patientId === patientId);
+    try {
+      const appointments = await apiCall('/appointments');
+      return appointments.filter((a: any) => a.patientId === patientId);
+    } catch {
+      const appointments = readLS<Appointment[]>(LS_KEYS.appointments, []);
+      return appointments.filter((a) => a.patientId === patientId);
+    }
   },
   
   getByDate: async (date: string): Promise<Appointment[]> => {
-    const appointments = await apiCall('/appointments');
-    return appointments.filter((a: any) => a.date === date);
+    try {
+      const appointments = await apiCall('/appointments');
+      return appointments.filter((a: any) => a.date === date);
+    } catch {
+      const appointments = readLS<Appointment[]>(LS_KEYS.appointments, []);
+      return appointments.filter((a) => a.date === date);
+    }
   }
 };
 
 // Settings storage operations
 export const settingsStorage = {
   get: async (): Promise<AppointmentSettings> => {
-    return await apiCall('/settings');
+    try {
+      return await apiCall('/settings');
+    } catch {
+      return readLS<AppointmentSettings>(LS_KEYS.settings, DEFAULT_SETTINGS);
+    }
   },
   
   save: async (settings: AppointmentSettings): Promise<AppointmentSettings> => {
-    return await apiCall('/settings', {
-      method: 'PUT',
-      body: JSON.stringify(settings),
-    });
+    try {
+      return await apiCall('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      });
+    } catch {
+      writeLS(LS_KEYS.settings, settings);
+      return settings;
+    }
   },
   
   update: async (updates: Partial<AppointmentSettings>): Promise<AppointmentSettings> => {
-    return await apiCall('/settings', {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+    try {
+      return await apiCall('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch {
+      const current = readLS<AppointmentSettings>(LS_KEYS.settings, DEFAULT_SETTINGS);
+      const next = { ...current, ...updates } as AppointmentSettings;
+      writeLS(LS_KEYS.settings, next);
+      return next;
+    }
   }
 };
 
