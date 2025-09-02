@@ -55,6 +55,7 @@ const Index = () => {
           <PatientList
             onPatientClick={handlePatientClick}
             onCreatePatient={handleCreatePatient}
+            refreshTrigger={refreshTrigger}
           />
         );
       case 'settings':

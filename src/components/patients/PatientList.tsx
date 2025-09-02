@@ -11,9 +11,10 @@ import { format } from 'date-fns';
 interface PatientListProps {
   onPatientClick: (patient: Patient) => void;
   onCreatePatient: () => void;
+  refreshTrigger?: number;
 }
 
-export function PatientList({ onPatientClick, onCreatePatient }: PatientListProps) {
+export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }: PatientListProps) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [appointmentCounts, setAppointmentCounts] = useState<Record<string, number>>({});
@@ -21,33 +22,40 @@ export function PatientList({ onPatientClick, onCreatePatient }: PatientListProp
   
   useEffect(() => {
     const loadData = async () => {
-      const patientsData = await patientsStorage.getAll();
-      setPatients(patientsData);
-      
-      // Load appointment data for each patient
-      const counts: Record<string, number> = {};
-      const lastDates: Record<string, string | null> = {};
-      
-      for (const patient of patientsData) {
-        const appointments = await appointmentsStorage.getByPatient(patient.id);
-        counts[patient.id] = appointments.length;
+      try {
+        const patientsData = await patientsStorage.getAll().catch(() => []);
+        setPatients(patientsData);
         
-        if (appointments.length > 0) {
-          const sortedAppointments = appointments.sort((a, b) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          lastDates[patient.id] = sortedAppointments[0].date;
-        } else {
-          lastDates[patient.id] = null;
+        // Load appointment data for each patient
+        const counts: Record<string, number> = {};
+        const lastDates: Record<string, string | null> = {};
+        
+        for (const patient of patientsData) {
+          const appointments = await appointmentsStorage.getByPatient(patient.id).catch(() => []);
+          counts[patient.id] = appointments.length;
+          
+          if (appointments.length > 0) {
+            const sortedAppointments = appointments.sort((a, b) => 
+              new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+            lastDates[patient.id] = sortedAppointments[0].date;
+          } else {
+            lastDates[patient.id] = null;
+          }
         }
+        
+        setAppointmentCounts(counts);
+        setLastAppointments(lastDates);
+      } catch (error) {
+        console.error('Error loading patient data:', error);
+        setPatients([]);
+        setAppointmentCounts({});
+        setLastAppointments({});
       }
-      
-      setAppointmentCounts(counts);
-      setLastAppointments(lastDates);
     };
     
     loadData();
-  }, []);
+  }, [refreshTrigger]);
   
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
