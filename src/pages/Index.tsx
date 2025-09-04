@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { WeeklyScheduler } from '@/components/dashboard/WeeklyScheduler';
 import { PatientList } from '@/components/patients/PatientList';
-import { SettingsPanel } from '@/components/settings/SettingsPanel';
-import { NotificationManager } from '@/components/notifications/NotificationManager';
-import { GoogleCalendarSync } from '@/components/dashboard/GoogleCalendarSync';
+import { TabbedSettingsPanel } from '@/components/settings/TabbedSettingsPanel';
 import { CreateAppointmentDialog } from '@/components/appointments/CreateAppointmentDialog';
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
 import { EditAppointmentDialog } from '@/components/appointments/EditAppointmentDialog';
@@ -60,13 +58,7 @@ const Index = () => {
           />
         );
       case 'settings':
-        return (
-          <div className="space-y-6">
-            <SettingsPanel />
-            <NotificationManager />
-            <GoogleCalendarSync />
-          </div>
-        );
+        return <TabbedSettingsPanel />;
       default:
         return <div>Page not found</div>;
     }

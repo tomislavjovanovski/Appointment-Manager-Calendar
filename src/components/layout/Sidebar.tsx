@@ -1,6 +1,7 @@
 import { Calendar, Users, Settings, Stethoscope } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { NotificationManager } from '@/components/notifications/NotificationManager';
 
 interface SidebarProps {
   activeTab: string;
@@ -55,6 +56,11 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           })}
         </div>
       </nav>
+
+      {/* Notification Manager */}
+      <div className="p-4 border-t border-border">
+        <NotificationManager />
+      </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
