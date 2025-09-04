@@ -4,6 +4,7 @@ import { WeeklyScheduler } from '@/components/dashboard/WeeklyScheduler';
 import { PatientList } from '@/components/patients/PatientList';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { NotificationManager } from '@/components/notifications/NotificationManager';
+import { GoogleCalendarSync } from '@/components/dashboard/GoogleCalendarSync';
 import { CreateAppointmentDialog } from '@/components/appointments/CreateAppointmentDialog';
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
 import { EditAppointmentDialog } from '@/components/appointments/EditAppointmentDialog';
@@ -63,6 +64,7 @@ const Index = () => {
           <div className="space-y-6">
             <SettingsPanel />
             <NotificationManager />
+            <GoogleCalendarSync />
           </div>
         );
       default:
