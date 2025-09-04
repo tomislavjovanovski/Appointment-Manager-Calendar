@@ -13,6 +13,7 @@ import { settingsStorage, dataManagement } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GoogleCalendarSync } from '@/components/dashboard/GoogleCalendarSync';
+import { NotificationManager } from '@/components/notifications/NotificationManager';
 
 const DAYS_OF_WEEK = [
   { id: 0, name: 'Sunday', short: 'Sun' },
@@ -272,6 +273,9 @@ export function TabbedSettingsPanel() {
 
         {/* Integration Tab */}
         <TabsContent value="integration" className="space-y-6">
+          {/* Notification Manager */}
+          <NotificationManager />
+          
           {/* Notification Settings */}
           <Card>
             <CardHeader>
