@@ -137,6 +137,7 @@ const handleEventClick = (event: any) => {
 };
 
 const handleCellClick = (start: Date, end: Date) => {
+  console.log('Calendar cell clicked:', start, end);
   onCreateAppointment(start);
 };
 

@@ -18,6 +18,7 @@ const Index = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   const handleCreateAppointment = (date: Date) => {
+    console.log('handleCreateAppointment called with:', date);
     setSelectedDate(date);
     setAppointmentDialogOpen(true);
   };
