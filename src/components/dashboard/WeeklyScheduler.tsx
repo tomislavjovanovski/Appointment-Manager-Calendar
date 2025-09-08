@@ -220,6 +220,8 @@ const handleEventDrop = async (
               onCellClick={handleCellClick}
               hourFormat="24"
               editable
+              disableViewer
+              customEditor={() => null}
               onEventDrop={handleEventDrop}
               week={{
                 weekDays: [0, 1, 2, 3, 4, 5, 6],
