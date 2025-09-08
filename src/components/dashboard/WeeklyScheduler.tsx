@@ -214,25 +214,25 @@ const handleEventDrop = async (
             <Scheduler
               view="week"
               events={events}
-              selectedDate={new Date()}
-              navigation={false}
-              onSelectedDateChange={() => {}}
-              onEventClick={handleEventClick}
-              onCellClick={handleCellClick}
-              hourFormat="24"
-              editable
-              disableViewer
-              customEditor={() => null}
-              onEventDrop={handleEventDrop}
-              week={{
-                weekDays: [0, 1, 2, 3, 4, 5, 6],
-                weekStartOn: 1, // Monday
-                startHour: startHour as any,
-                endHour: endHour as any,
-                step: step as any,
-                navigation: true,
-                disableGoToDay: false
-              }}
+               selectedDate={new Date()}
+               navigation={false}
+               disableViewNavigator
+               onSelectedDateChange={() => {}}
+               onEventClick={handleEventClick}
+               onCellClick={handleCellClick}
+               hourFormat="24"
+               editable
+               disableViewer
+               onEventDrop={handleEventDrop}
+               week={{
+                 weekDays: [0, 1, 2, 3, 4, 5, 6],
+                 weekStartOn: 1, // Monday
+                 startHour: startHour as any,
+                 endHour: endHour as any,
+                 step: step as any,
+                 navigation: false,
+                 disableGoToDay: true
+               }}
               translations={{
                 navigation: {
                   month: "Month",
