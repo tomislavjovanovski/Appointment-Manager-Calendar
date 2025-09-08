@@ -215,6 +215,7 @@ const handleEventDrop = async (
               view="week"
               events={events}
               selectedDate={new Date()}
+              navigation={false}
               onSelectedDateChange={() => {}}
               onEventClick={handleEventClick}
               onCellClick={handleCellClick}
