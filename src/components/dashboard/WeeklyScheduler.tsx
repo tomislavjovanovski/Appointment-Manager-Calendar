@@ -210,10 +210,10 @@ const handleEventDrop = async (
       {/* Scheduler */}
       <Card>
         <CardContent className="p-0">
-          <div className="h-[600px]">
-            <Scheduler
-              view="week"
-              events={events}
+            <div className="h-[600px] weekly-scheduler">
+              <Scheduler
+                view="week"
+                events={events}
                selectedDate={new Date()}
                navigation={false}
                disableViewNavigator
@@ -221,9 +221,9 @@ const handleEventDrop = async (
                onEventClick={handleEventClick}
                onCellClick={handleCellClick}
                hourFormat="24"
-               editable
+               editable={false}
                disableViewer
-               onEventDrop={handleEventDrop}
+               customEditor={() => null}
                week={{
                  weekDays: [0, 1, 2, 3, 4, 5, 6],
                  weekStartOn: 1, // Monday

@@ -124,3 +124,10 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Hide React Scheduler navigation (date pickers) within weekly scheduler */
+  .weekly-scheduler .rs__navigation {
+    display: none !important;
+  }
+}
