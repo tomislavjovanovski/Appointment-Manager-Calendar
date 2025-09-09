@@ -220,11 +220,12 @@ const handleEventDrop = async (
                onSelectedDateChange={() => {}}
                onEventClick={handleEventClick}
                onCellClick={handleCellClick}
-               hourFormat="24"
-               editable={false}
-               disableViewer
-               customEditor={() => null}
-               week={{
+                hourFormat="24"
+                editable
+                onEventDrop={handleEventDrop}
+                disableViewer
+                customEditor={() => null}
+                week={{
                  weekDays: [0, 1, 2, 3, 4, 5, 6],
                  weekStartOn: 1, // Monday
                  startHour: startHour as any,
