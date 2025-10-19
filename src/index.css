@@ -130,4 +130,11 @@ All colors MUST be HSL.
   .weekly-scheduler .rs__navigation {
     display: none !important;
   }
+  
+  /* Hide date/time picker dialogs from scheduler */
+  .rs__dialog,
+  .rs__dialog__backdrop,
+  .MuiDialog-root {
+    display: none !important;
+  }
 }

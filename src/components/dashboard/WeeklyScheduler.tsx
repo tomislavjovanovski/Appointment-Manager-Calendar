@@ -217,11 +217,11 @@ const handleEventDrop = async (
                selectedDate={new Date()}
                navigation={false}
                disableViewNavigator
-               onSelectedDateChange={() => {}}
-               onEventClick={handleEventClick}
-               onCellClick={handleCellClick}
+                onSelectedDateChange={() => {}}
+                onEventClick={handleEventClick}
+                onCellClick={handleCellClick}
                 hourFormat="24"
-                editable
+                editable={false}
                 onEventDrop={handleEventDrop}
                 disableViewer
                 customEditor={() => null}
