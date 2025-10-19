@@ -241,7 +241,7 @@ export function CreateAppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl">
+      <DialogContent className="max-w-[80vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-primary" />
@@ -252,7 +252,7 @@ export function CreateAppointmentDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-[2fr_3fr] gap-6">
           {/* Left Side - Patient */}
           <Card>
             <CardHeader>
