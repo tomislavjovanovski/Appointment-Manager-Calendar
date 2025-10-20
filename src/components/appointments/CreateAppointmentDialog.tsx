@@ -77,7 +77,11 @@ export function CreateAppointmentDialog({
 
   useEffect(() => {
     if (selectedDate) {
-      setFormData(prev => ({ ...prev, date: format(selectedDate, 'yyyy-MM-dd') }));
+      setFormData(prev => ({ 
+        ...prev, 
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        startTime: format(selectedDate, 'HH:mm')
+      }));
     }
   }, [selectedDate]);
 
@@ -422,6 +426,7 @@ export function CreateAppointmentDialog({
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      disabled={!!selectedDate}
                       required
                     />
                   </div>
@@ -434,6 +439,7 @@ export function CreateAppointmentDialog({
                       step={timeSlotMinutes * 60}
                       value={formData.startTime}
                       onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                      disabled={!!selectedDate}
                       required
                     />
                   </div>
