@@ -1,6 +1,8 @@
 # Medical Appointment Management System
 
 A comprehensive medical appointment scheduling and patient management system with Google Calendar integration.
+![Medical Appointment Management System](docs/screenshots/preview.png)
+
 
 ## Project Overview
 
