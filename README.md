@@ -6,8 +6,6 @@ A comprehensive medical appointment scheduling and patient management system wit
 
 This application is a full-featured medical practice management system designed to streamline appointment scheduling, patient record management, and calendar synchronization. Built with modern web technologies, it provides an intuitive interface for healthcare professionals to manage their daily operations efficiently.
 
-**Project URL**: https://lovable.dev/projects/6a43f42e-f923-4822-8268-997e55881a9a
-
 ## Key Features
 
 ### 📅 Appointment Management
@@ -315,17 +313,6 @@ For Google Calendar integration in production:
 1. Ensure backend server is running on port 3001
 2. Check for CORS configuration in server
 3. Verify API endpoints are correct
-
-## Contributing
-
-This project was created with [Lovable](https://lovable.dev) and can be edited directly through the platform or via traditional development workflows.
-
-## Support
-
-- [Lovable Documentation](https://docs.lovable.dev/)
-- [Lovable Discord Community](https://discord.com/channels/1119885301872070706/1280461670979993613)
-- [Google Calendar API Documentation](https://developers.google.com/calendar/api/guides/overview)
-
 ## License
 
 Built with ❤️ using Lovable
