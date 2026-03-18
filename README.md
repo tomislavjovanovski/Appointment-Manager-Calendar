@@ -313,6 +313,3 @@ For Google Calendar integration in production:
 1. Ensure backend server is running on port 3001
 2. Check for CORS configuration in server
 3. Verify API endpoints are correct
-## License
-
-Built with ❤️ using Lovable
