@@ -222,37 +222,16 @@ The application uses browser Local Storage for data persistence:
 
 ### Code Editing
 
-**Option 1: Use Lovable (Recommended)**
-- Visit the [Lovable Project](https://lovable.dev/projects/6a43f42e-f923-4822-8268-997e55881a9a)
-- Use AI prompts to make changes
-- Changes are automatically committed to the repository
-
-**Option 2: Local IDE**
+**Option 1: Local IDE**
 - Clone the repository
 - Make changes in your preferred IDE
-- Push changes to sync with Lovable
 
-**Option 3: GitHub Codespaces**
+**Option 2: GitHub Codespaces**
 - Open the repository on GitHub
 - Click "Code" > "Codespaces" > "New codespace"
 - Edit files directly in the browser
 
 ## Deployment
-
-### Deploy with Lovable
-
-1. Open [Lovable](https://lovable.dev/projects/6a43f42e-f923-4822-8268-997e55881a9a)
-2. Click "Share" > "Publish"
-3. Your app will be deployed automatically
-
-### Custom Domain
-
-To connect a custom domain:
-1. Navigate to Project > Settings > Domains
-2. Click "Connect Domain"
-3. Follow the DNS configuration instructions
-
-Read more: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain)
 
 ### Backend Deployment
 
