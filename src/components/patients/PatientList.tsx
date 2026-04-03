@@ -7,6 +7,7 @@ import { Search, Plus, User, Phone, Mail, Calendar } from 'lucide-react';
 import { Patient } from '@/types/appointment';
 import { patientsStorage, appointmentsStorage } from '@/lib/storage';
 import { format } from 'date-fns';
+import { useI18n } from '@/i18n';
 
 interface PatientListProps {
   onPatientClick: (patient: Patient) => void;
@@ -15,6 +16,7 @@ interface PatientListProps {
 }
 
 export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }: PatientListProps) {
+  const { t, dateFnsLocale } = useI18n();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [appointmentCounts, setAppointmentCounts] = useState<Record<string, number>>({});
@@ -74,30 +76,35 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Patients</h2>
-          <p className="text-muted-foreground">Manage your patient database</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <User className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t('patients.title')}</h2>
+          </div>
+          <p className="max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground">{t('patients.subtitle')}</p>
         </div>
         <Button 
           onClick={onCreatePatient}
-          className="bg-gradient-to-r from-accent to-accent-hover hover:opacity-90"
+          className="h-10 shrink-0 shadow-sm transition-shadow hover:shadow-md"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Patient
+          <Plus className="mr-2 h-4 w-4" />
+          {t('patients.addPatient')}
         </Button>
       </div>
 
       {/* Search */}
-      <Card>
+      <Card className="border-border/80 shadow-soft">
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search patients by name, email, or phone..."
+              placeholder={t('patients.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="h-11 border-border/80 bg-background/80 pl-10 shadow-sm transition-colors focus-visible:ring-primary/25"
             />
           </div>
         </CardContent>
@@ -106,22 +113,22 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
       {/* Patient List */}
       <div className="grid gap-4">
         {filteredPatients.length === 0 ? (
-          <Card className="text-center py-12">
+          <Card className="border-border/80 py-12 text-center shadow-soft">
             <CardContent>
               <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-medium mb-2">
-                {searchQuery ? 'No patients found' : 'No patients yet'}
+                {searchQuery ? t('patients.noResults') : t('patients.noPatientsYet')}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {searchQuery 
-                  ? 'Try adjusting your search criteria'
-                  : 'Start by adding your first patient to the system'
+                  ? t('patients.trySearch')
+                  : t('patients.addFirstHint')
                 }
               </p>
               {!searchQuery && (
                 <Button onClick={onCreatePatient} variant="outline">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Patient
+                  {t('patients.addFirst')}
                 </Button>
               )}
             </CardContent>
@@ -134,22 +141,22 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
             return (
               <Card 
                 key={patient.id} 
-                className="cursor-pointer hover:shadow-medium transition-all duration-200 hover:border-primary/20"
+                className="cursor-pointer border-border/80 shadow-soft transition-all duration-200 hover:border-primary/25 hover:shadow-medium"
                 onClick={() => onPatientClick(patient)}
               >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-medical-blue rounded-full flex items-center justify-center">
-                          <User className="w-6 h-6 text-white" />
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-medical-blue shadow-sm ring-2 ring-primary/10">
+                          <User className="h-6 w-6 text-primary-foreground" />
                         </div>
                         <div>
                           <h3 className="font-semibold text-lg text-foreground">{patient.name}</h3>
                           <p className="text-sm text-muted-foreground">
                             {patient.dateOfBirth ? 
-                              `Born ${format(new Date(patient.dateOfBirth), 'MMM d, yyyy')}` 
-                              : 'No birth date provided'
+                              t('patients.born', { date: format(new Date(patient.dateOfBirth), 'MMM d, yyyy', { locale: dateFnsLocale }) }) 
+                              : t('patients.noBirthDate')
                             }
                           </p>
                         </div>
@@ -169,12 +176,14 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
                     
                     <div className="text-right space-y-2">
                       <Badge variant="outline" className="text-xs">
-                        {appointmentCount} appointment{appointmentCount !== 1 ? 's' : ''}
+                        {appointmentCount === 1
+                          ? t('patients.appointmentsCountOne')
+                          : t('patients.appointmentsCount', { count: appointmentCount })}
                       </Badge>
                       {lastAppointment && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="w-3 h-3" />
-                          <span>Last: {format(new Date(lastAppointment), 'MMM d')}</span>
+                          <span>{t('patients.last', { date: format(new Date(lastAppointment), 'MMM d', { locale: dateFnsLocale }) })}</span>
                         </div>
                       )}
                     </div>

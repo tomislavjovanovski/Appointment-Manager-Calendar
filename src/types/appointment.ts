@@ -1,3 +1,5 @@
+import type { AppLocale } from '@/i18n/types';
+
 export interface Patient {
   id: string;
   name: string;
@@ -37,6 +39,8 @@ export interface NotificationSettings {
 }
 
 export interface AppointmentSettings {
+  /** UI language; persisted with other settings */
+  locale?: AppLocale;
   workingDays: number[]; // 0 = Sunday, 1 = Monday, etc.
   startTime: string;
   endTime: string;

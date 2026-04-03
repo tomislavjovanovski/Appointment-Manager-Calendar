@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,8 +7,10 @@ import { Appointment, Patient } from '@/types/appointment';
 import { NotificationService } from './NotificationService';
 import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/i18n';
 
 export function NotificationManager() {
+  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -23,17 +25,18 @@ export function NotificationManager() {
       await notificationService.checkAndSendScheduledNotifications(
         appointments,
         patients,
-        settings.notifications
+        settings.notifications,
+        settings.locale ?? 'en'
       );
 
       toast({
-        title: "Notifications Processed",
-        description: "All scheduled notifications have been processed.",
+        title: t('notifications.processedTitle'),
+        description: t('notifications.processedDesc'),
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to process notifications.",
+        title: t('notifications.errorTitle'),
+        description: t('notifications.errorDesc'),
         variant: "destructive",
       });
     } finally {
@@ -58,18 +61,17 @@ export function NotificationManager() {
   const [todayCount, setTodayCount] = useState(0);
   const [tomorrowCount, setTomorrowCount] = useState(0);
 
-  // Load counts on mount
-  useState(() => {
+  useEffect(() => {
     getTodayAppointments().then(apps => setTodayCount(apps.length));
     getTomorrowAppointments().then(apps => setTomorrowCount(apps.length));
-  });
+  }, []);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bell className="w-5 h-5 text-primary" />
-          Notification Manager
+          {t('notifications.managerTitle')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -77,7 +79,7 @@ export function NotificationManager() {
           <div className="p-4 border border-border rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Today's Appointments</p>
+                <p className="text-sm text-muted-foreground">{t('notifications.today')}</p>
                 <p className="text-2xl font-bold text-foreground">{todayCount}</p>
               </div>
               <Clock className="w-8 h-8 text-blue-500" />
@@ -87,7 +89,7 @@ export function NotificationManager() {
           <div className="p-4 border border-border rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Tomorrow's Appointments</p>
+                <p className="text-sm text-muted-foreground">{t('notifications.tomorrow')}</p>
                 <p className="text-2xl font-bold text-foreground">{tomorrowCount}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -96,9 +98,9 @@ export function NotificationManager() {
         </div>
 
         <div className="space-y-2">
-          <h4 className="font-medium">Manual Notification Trigger</h4>
+          <h4 className="font-medium">{t('notifications.manualTitle')}</h4>
           <p className="text-sm text-muted-foreground">
-            Send notifications for today's and tomorrow's appointments based on your settings.
+            {t('notifications.manualDesc')}
           </p>
           <Button
             onClick={handleSendScheduledNotifications}
@@ -106,12 +108,12 @@ export function NotificationManager() {
             className="w-full"
           >
             <Send className="w-4 h-4 mr-2" />
-            {isLoading ? 'Sending Notifications...' : 'Send Scheduled Notifications'}
+            {isLoading ? t('notifications.sending') : t('notifications.send')}
           </Button>
         </div>
 
         <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-          <p><strong>Automation Tip:</strong> You can set up a scheduled Zap in Zapier to call this function automatically at your configured notification times.</p>
+          <p><strong>{t('notifications.automationTip')}</strong> {t('notifications.automationText')}</p>
         </div>
       </CardContent>
     </Card>

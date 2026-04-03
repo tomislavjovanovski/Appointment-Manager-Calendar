@@ -48,6 +48,7 @@ const Index = () => {
           <WeeklyScheduler
             onCreateAppointment={handleCreateAppointment}
             onAppointmentClick={handleAppointmentClick}
+            refreshTrigger={refreshTrigger}
           />
         );
       case 'patients':
@@ -68,8 +69,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 p-6">
-        {renderContent()}
+      <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-6 md:p-8 lg:px-10 lg:py-9">
+        <div className="mx-auto max-w-[1600px]">{renderContent()}</div>
       </main>
       
       <CreateAppointmentDialog

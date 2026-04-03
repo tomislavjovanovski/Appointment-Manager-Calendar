@@ -153,6 +153,7 @@ app.delete('/api/appointments/:id', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   try {
     const settings = await readJsonFile(SETTINGS_FILE, {
+      locale: "en",
       workingDays: [1, 2, 3, 4, 5],
       startTime: "09:00",
       endTime: "17:00",
@@ -162,6 +163,7 @@ app.get('/api/settings', async (req, res) => {
         double: { duration: 120, label: "Double Hour" }
       },
       breakTime: 15,
+      timeSlotMinutes: 30,
       notifications: {
         emailWebhookUrl: "",
         smsWebhookUrl: "",

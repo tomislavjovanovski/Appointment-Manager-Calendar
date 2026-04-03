@@ -1,4 +1,5 @@
 import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
+import type { AppLocale } from '@/i18n/types';
 
 // API base URL
 // Use relative path to work in preview; will fail if backend isn't running
@@ -54,6 +55,7 @@ const generateId = () => {
 };
 
 const DEFAULT_SETTINGS: AppointmentSettings = {
+  locale: 'en',
   workingDays: [1, 2, 3, 4, 5],
   startTime: '09:00',
   endTime: '17:00',
@@ -76,6 +78,23 @@ const DEFAULT_SETTINGS: AppointmentSettings = {
     smsTemplate: '',
   },
 };
+
+export function normalizeSettings(data: Partial<AppointmentSettings> | null | undefined): AppointmentSettings {
+  const d = data ?? {};
+  const locale: AppLocale = d.locale === 'mk' ? 'mk' : 'en';
+  return {
+    ...DEFAULT_SETTINGS,
+    ...d,
+    locale,
+    workingDays: Array.isArray(d.workingDays) ? d.workingDays : DEFAULT_SETTINGS.workingDays,
+    notifications: { ...DEFAULT_SETTINGS.notifications, ...d.notifications },
+    appointmentSizes: {
+      half: { ...DEFAULT_SETTINGS.appointmentSizes.half, ...d.appointmentSizes?.half },
+      full: { ...DEFAULT_SETTINGS.appointmentSizes.full, ...d.appointmentSizes?.full },
+      double: { ...DEFAULT_SETTINGS.appointmentSizes.double, ...d.appointmentSizes?.double },
+    },
+  };
+}
 
 // Initialize data (now just a placeholder since we use API)
 export const initializeData = async () => {
@@ -229,35 +248,38 @@ export const appointmentsStorage = {
 export const settingsStorage = {
   get: async (): Promise<AppointmentSettings> => {
     try {
-      return await apiCall('/settings');
+      const data = await apiCall('/settings');
+      return normalizeSettings(data);
     } catch {
-      return readLS<AppointmentSettings>(LS_KEYS.settings, DEFAULT_SETTINGS);
+      return normalizeSettings(readLS<Partial<AppointmentSettings>>(LS_KEYS.settings, {}));
     }
   },
   
   save: async (settings: AppointmentSettings): Promise<AppointmentSettings> => {
     try {
-      return await apiCall('/settings', {
+      const data = await apiCall('/settings', {
         method: 'PUT',
         body: JSON.stringify(settings),
       });
+      return normalizeSettings(data);
     } catch {
       writeLS(LS_KEYS.settings, settings);
-      return settings;
+      return normalizeSettings(settings);
     }
   },
   
   update: async (updates: Partial<AppointmentSettings>): Promise<AppointmentSettings> => {
     try {
-      return await apiCall('/settings', {
+      const data = await apiCall('/settings', {
         method: 'PUT',
         body: JSON.stringify(updates),
       });
+      return normalizeSettings(data);
     } catch {
-      const current = readLS<AppointmentSettings>(LS_KEYS.settings, DEFAULT_SETTINGS);
+      const current = normalizeSettings(readLS<Partial<AppointmentSettings>>(LS_KEYS.settings, {}));
       const next = { ...current, ...updates } as AppointmentSettings;
       writeLS(LS_KEYS.settings, next);
-      return next;
+      return normalizeSettings(next);
     }
   }
 };

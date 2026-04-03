@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, CheckCircle, ExternalLink, Settings, RotateCcw, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/i18n';
 
 interface GoogleCalendarEvent {
   id: string;
@@ -16,6 +17,7 @@ interface GoogleCalendarEvent {
 }
 
 export function GoogleCalendarSync() {
+  const { t } = useI18n();
   const [isConnected, setIsConnected] = useState(false);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
@@ -44,8 +46,8 @@ export function GoogleCalendarSync() {
   const handleConnect = async () => {
     if (!clientId || !clientSecret) {
       toast({
-        title: "Missing Credentials",
-        description: "Please enter both Client ID and Client Secret",
+        title: t('google.toastMissingCredsTitle'),
+        description: t('google.toastMissingCredsDesc'),
         variant: "destructive",
       });
       return;
@@ -63,14 +65,14 @@ export function GoogleCalendarSync() {
       if (data.authUrl) {
         window.open(data.authUrl, '_blank');
         toast({
-          title: "Authorization Required",
-          description: "Complete the authorization in the new window, then check connection status",
+          title: t('google.toastAuthTitle'),
+          description: t('google.toastAuthDesc'),
         });
       }
     } catch (error) {
       toast({
-        title: "Connection Failed",
-        description: "Failed to initiate Google Calendar connection",
+        title: t('google.toastConnectFailedTitle'),
+        description: t('google.toastConnectFailedDesc'),
         variant: "destructive",
       });
     } finally {
@@ -84,13 +86,13 @@ export function GoogleCalendarSync() {
       setIsConnected(false);
       setGoogleEvents([]);
       toast({
-        title: "Disconnected",
-        description: "Google Calendar has been disconnected",
+        title: t('google.toastDisconnectedTitle'),
+        description: t('google.toastDisconnectedDesc'),
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to disconnect Google Calendar",
+        title: t('google.toastDisconnectErrTitle'),
+        description: t('google.toastDisconnectErrDesc'),
         variant: "destructive",
       });
     }
@@ -128,15 +130,15 @@ export function GoogleCalendarSync() {
 
       if (response.ok) {
         toast({
-          title: "Synced to Google Calendar",
-          description: `Appointment for ${appointment.patientName} has been added to Google Calendar`,
+          title: t('toast.syncedGoogleTitle'),
+          description: t('toast.syncedGoogleDesc', { name: appointment.patientName }),
         });
         fetchGoogleEvents();
       }
     } catch (error) {
       toast({
-        title: "Sync Failed",
-        description: "Failed to sync appointment to Google Calendar",
+        title: t('toast.syncFailedTitle'),
+        description: t('toast.syncFailedDesc'),
         variant: "destructive",
       });
     }
@@ -149,16 +151,16 @@ export function GoogleCalendarSync() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Google Calendar Integration
+            {t('google.title')}
             {isConnected ? (
               <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
                 <CheckCircle className="w-3 h-3 mr-1" />
-                Connected
+                {t('google.connected')}
               </Badge>
             ) : (
               <Badge variant="secondary">
                 <XCircle className="w-3 h-3 mr-1" />
-                Not Connected
+                {t('google.notConnected')}
               </Badge>
             )}
           </CardTitle>
@@ -167,20 +169,25 @@ export function GoogleCalendarSync() {
           {!isConnected ? (
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <h4 className="font-medium mb-2">Setup Instructions:</h4>
+                <h4 className="font-medium mb-2">{t('google.setupTitle')}</h4>
                 <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Cloud Console <ExternalLink className="w-3 h-3 inline" /></a></li>
-                  <li>Create a new project or select existing one</li>
-                  <li>Enable the Google Calendar API</li>
-                  <li>Create OAuth 2.0 credentials</li>
-                  <li>Add http://localhost:3000/api/google/callback as redirect URI</li>
-                  <li>Copy Client ID and Client Secret below</li>
+                  <li>
+                    {t('google.step1Prefix')}{' '}
+                    <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      {t('google.consoleName')} <ExternalLink className="w-3 h-3 inline" />
+                    </a>
+                  </li>
+                  <li>{t('google.step2')}</li>
+                  <li>{t('google.step3')}</li>
+                  <li>{t('google.step4')}</li>
+                  <li>{t('google.step5')}</li>
+                  <li>{t('google.step6')}</li>
                 </ol>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="clientId">Google Client ID</Label>
+                  <Label htmlFor="clientId">{t('google.clientId')}</Label>
                   <Input
                     id="clientId"
                     value={clientId}
@@ -189,7 +196,7 @@ export function GoogleCalendarSync() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="clientSecret">Google Client Secret</Label>
+                  <Label htmlFor="clientSecret">{t('google.clientSecret')}</Label>
                   <Input
                     id="clientSecret"
                     type="password"
@@ -201,7 +208,7 @@ export function GoogleCalendarSync() {
               </div>
               
               <Button onClick={handleConnect} disabled={loading} className="w-full">
-                {loading ? 'Connecting...' : 'Connect to Google Calendar'}
+                {loading ? t('google.connecting') : t('google.connect')}
               </Button>
             </div>
           ) : (
@@ -209,15 +216,15 @@ export function GoogleCalendarSync() {
               <div className="flex items-center gap-4">
                 <Button onClick={fetchGoogleEvents} disabled={syncing} variant="outline">
                   <RotateCcw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                  {syncing ? 'Syncing...' : 'Refresh Events'}
+                  {syncing ? t('google.syncing') : t('google.refreshEvents')}
                 </Button>
                 <Button onClick={checkConnectionStatus} variant="outline">
                   <Settings className="w-4 h-4 mr-2" />
-                  Check Status
+                  {t('google.checkStatus')}
                 </Button>
               </div>
               <Button onClick={handleDisconnect} variant="destructive">
-                Disconnect
+                {t('google.disconnect')}
               </Button>
             </div>
           )}
@@ -228,12 +235,12 @@ export function GoogleCalendarSync() {
       {isConnected && (
         <Card>
           <CardHeader>
-            <CardTitle>Recent Google Calendar Events</CardTitle>
+            <CardTitle>{t('google.recentEvents')}</CardTitle>
           </CardHeader>
           <CardContent>
             {googleEvents.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                No events found in your Google Calendar
+                {t('google.noEvents')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -248,7 +255,7 @@ export function GoogleCalendarSync() {
                         }
                       </p>
                     </div>
-                    <Badge variant="outline">Google</Badge>
+                    <Badge variant="outline">{t('google.badge')}</Badge>
                   </div>
                 ))}
               </div>

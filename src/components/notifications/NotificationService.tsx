@@ -1,5 +1,7 @@
 import { Appointment, Patient, NotificationSettings } from '@/types/appointment';
 import { useToast } from '@/hooks/use-toast';
+import { translate } from '@/i18n/dictionary';
+import type { AppLocale } from '@/i18n/types';
 
 export class NotificationService {
   private toast: any;
@@ -12,7 +14,8 @@ export class NotificationService {
     appointment: Appointment,
     patient: Patient,
     settings: NotificationSettings,
-    isReminderType: 'day-before' | 'same-day'
+    isReminderType: 'day-before' | 'same-day',
+    locale: AppLocale = 'en'
   ) {
     if (!settings.emailWebhookUrl) {
       console.warn('Email webhook URL not configured');
@@ -48,14 +51,14 @@ export class NotificationService {
       });
 
       this.toast({
-        title: "Email Sent",
-        description: `Email notification sent to ${patient.name}`,
+        title: translate(locale, 'notifications.emailSentTitle'),
+        description: translate(locale, 'notifications.emailSentDesc', { name: patient.name }),
       });
     } catch (error) {
       console.error('Failed to send email notification:', error);
       this.toast({
-        title: "Email Failed",
-        description: `Failed to send email to ${patient.name}`,
+        title: translate(locale, 'notifications.emailFailedTitle'),
+        description: translate(locale, 'notifications.emailFailedDesc', { name: patient.name }),
         variant: "destructive",
       });
     }
@@ -64,7 +67,8 @@ export class NotificationService {
   async sendSMSNotification(
     appointment: Appointment,
     patient: Patient,
-    settings: NotificationSettings
+    settings: NotificationSettings,
+    locale: AppLocale = 'en'
   ) {
     if (!settings.smsWebhookUrl) {
       console.warn('SMS webhook URL not configured');
@@ -95,14 +99,14 @@ export class NotificationService {
       });
 
       this.toast({
-        title: "SMS Sent",
-        description: `SMS notification sent to ${patient.name}`,
+        title: translate(locale, 'notifications.smsSentTitle'),
+        description: translate(locale, 'notifications.smsSentDesc', { name: patient.name }),
       });
     } catch (error) {
       console.error('Failed to send SMS notification:', error);
       this.toast({
-        title: "SMS Failed",
-        description: `Failed to send SMS to ${patient.name}`,
+        title: translate(locale, 'notifications.smsFailedTitle'),
+        description: translate(locale, 'notifications.smsFailedDesc', { name: patient.name }),
         variant: "destructive",
       });
     }
@@ -184,7 +188,8 @@ export class NotificationService {
   async checkAndSendScheduledNotifications(
     appointments: Appointment[],
     patients: Patient[],
-    settings: NotificationSettings
+    settings: NotificationSettings,
+    locale: AppLocale = 'en'
   ) {
     const today = new Date();
     const tomorrow = new Date();
@@ -202,16 +207,16 @@ export class NotificationService {
       // Same day notifications
       if (appointment.date === todayStr) {
         if (settings.enableSameDayEmail) {
-          await this.sendEmailNotification(appointment, patient, settings, 'same-day');
+          await this.sendEmailNotification(appointment, patient, settings, 'same-day', locale);
         }
         if (settings.enableSameDaySMS) {
-          await this.sendSMSNotification(appointment, patient, settings);
+          await this.sendSMSNotification(appointment, patient, settings, locale);
         }
       }
 
       // Day before notifications
       if (appointment.date === tomorrowStr && settings.enableDayBeforeEmail) {
-        await this.sendEmailNotification(appointment, patient, settings, 'day-before');
+        await this.sendEmailNotification(appointment, patient, settings, 'day-before', locale);
       }
     }
   }

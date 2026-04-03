@@ -17,6 +17,7 @@ import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/sto
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n';
 
 interface CreateAppointmentDialogProps {
   open: boolean;
@@ -31,6 +32,7 @@ export function CreateAppointmentDialog({
   selectedDate,
   onAppointmentCreated 
 }: CreateAppointmentDialogProps) {
+  const { t, dateFnsLocale } = useI18n();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [showCreatePatient, setShowCreatePatient] = useState(false);
   const [patientFormData, setPatientFormData] = useState({
@@ -64,8 +66,8 @@ export function CreateAppointmentDialog({
         console.error('Failed to load patients:', error);
         setPatients([]);
         toast({
-          title: "Unable to load patients",
-          description: "The data service isn't reachable. You can still add a new patient.",
+          title: t('createAppointment.toastLoadPatientsTitle'),
+          description: t('createAppointment.toastLoadPatientsDesc'),
           variant: "destructive",
         });
       }
@@ -73,7 +75,7 @@ export function CreateAppointmentDialog({
     if (open) {
       loadPatients();
     }
-  }, [open, toast]);
+  }, [open, toast, t]);
 
   useEffect(() => {
     if (selectedDate) {
@@ -104,8 +106,8 @@ export function CreateAppointmentDialog({
   const handleCreatePatient = async () => {
     if (!patientFormData.name || !patientFormData.email || !patientFormData.phone) {
       toast({
-        title: "Error",
-        description: "Please fill in all required patient fields",
+        title: t('createAppointment.toastError'),
+        description: t('createAppointment.toastPatientFields'),
         variant: "destructive",
       });
       return;
@@ -134,13 +136,13 @@ export function CreateAppointmentDialog({
       setShowCreatePatient(false);
       
       toast({
-        title: "Patient created",
-        description: `${newPatient.name} has been added successfully`,
+        title: t('createAppointment.toastPatientCreatedTitle'),
+        description: t('createAppointment.toastPatientCreatedDesc', { name: newPatient.name }),
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create patient",
+        title: t('createAppointment.toastError'),
+        description: t('createAppointment.toastPatientFailed'),
         variant: "destructive",
       });
     }
@@ -151,8 +153,8 @@ export function CreateAppointmentDialog({
     
     if (!formData.patientId) {
       toast({
-        title: "Error",
-        description: "Please select a patient",
+        title: t('createAppointment.toastError'),
+        description: t('createAppointment.toastSelectPatient'),
         variant: "destructive",
       });
       return;
@@ -199,25 +201,25 @@ export function CreateAppointmentDialog({
           
           if (response.ok) {
             toast({
-              title: "Appointment created",
-              description: `Appointment scheduled for ${selectedPatient.name} and synced to Google Calendar`,
+              title: t('createAppointment.toastCreatedTitle'),
+              description: t('createAppointment.toastCreatedSynced', { name: selectedPatient.name }),
             });
           } else {
             toast({
-              title: "Partial Success",
-              description: "Appointment created but failed to sync to Google Calendar",
+              title: t('createAppointment.toastPartialTitle'),
+              description: t('createAppointment.toastPartialDesc'),
             });
           }
         } catch (error) {
           toast({
-            title: "Partial Success", 
-            description: "Appointment created but failed to sync to Google Calendar",
+            title: t('createAppointment.toastPartialTitle'), 
+            description: t('createAppointment.toastPartialDesc'),
           });
         }
       } else {
         toast({
-          title: "Appointment created",
-          description: `Appointment scheduled for ${selectedPatient.name}`,
+          title: t('createAppointment.toastCreatedTitle'),
+          description: t('createAppointment.toastCreatedDesc', { name: selectedPatient.name }),
         });
       }
 
@@ -236,8 +238,8 @@ export function CreateAppointmentDialog({
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create appointment",
+        title: t('createAppointment.toastError'),
+        description: t('createAppointment.toastCreateFailed'),
         variant: "destructive",
       });
     }
@@ -249,10 +251,10 @@ export function CreateAppointmentDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-primary" />
-            Create Appointment & Patient
+            {t('createAppointment.title')}
           </DialogTitle>
           <DialogDescription>
-            Schedule a new appointment and manage patient information.
+            {t('createAppointment.description')}
           </DialogDescription>
         </DialogHeader>
         
@@ -263,7 +265,7 @@ export function CreateAppointmentDialog({
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <User className="w-5 h-5 text-primary" />
-                  Patient
+                  {t('createAppointment.patient')}
                 </span>
                 <Button
                   type="button"
@@ -272,17 +274,17 @@ export function CreateAppointmentDialog({
                   onClick={() => setShowCreatePatient(!showCreatePatient)}
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  {showCreatePatient ? 'Select Existing' : 'Add New'}
+                  {showCreatePatient ? t('createAppointment.selectExisting') : t('createAppointment.addNew')}
                 </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {!showCreatePatient ? (
                 <div className="space-y-2">
-                  <Label htmlFor="patient">Select Patient *</Label>
+                  <Label htmlFor="patient">{t('createAppointment.selectPatient')}</Label>
                   <Select value={formData.patientId} onValueChange={(value) => setFormData({ ...formData, patientId: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choose a patient" />
+                      <SelectValue placeholder={t('createAppointment.choosePatient')} />
                     </SelectTrigger>
                     <SelectContent>
                       {patients.map((patient) => (
@@ -303,16 +305,16 @@ export function CreateAppointmentDialog({
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="patientName">Name *</Label>
+                      <Label htmlFor="patientName">{t('createAppointment.name')}</Label>
                       <Input
                         id="patientName"
                         value={patientFormData.name}
                         onChange={(e) => setPatientFormData({ ...patientFormData, name: e.target.value })}
-                        placeholder="Patient name"
+                        placeholder={t('createAppointment.phName')}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="patientEmail">Email *</Label>
+                      <Label htmlFor="patientEmail">{t('createAppointment.email')}</Label>
                       <Input
                         id="patientEmail"
                         type="email"
@@ -325,7 +327,7 @@ export function CreateAppointmentDialog({
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="patientPhone">Phone *</Label>
+                      <Label htmlFor="patientPhone">{t('createAppointment.phone')}</Label>
                       <Input
                         id="patientPhone"
                         value={patientFormData.phone}
@@ -334,7 +336,7 @@ export function CreateAppointmentDialog({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Date of Birth</Label>
+                      <Label>{t('createAppointment.dob')}</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -345,12 +347,13 @@ export function CreateAppointmentDialog({
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {patientFormData.dateOfBirth ? format(new Date(patientFormData.dateOfBirth), "PPP") : <span>Pick a date</span>}
+                            {patientFormData.dateOfBirth ? format(new Date(patientFormData.dateOfBirth), "PPP", { locale: dateFnsLocale }) : <span>{t('createAppointment.pickDate')}</span>}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
+                            locale={dateFnsLocale}
                             selected={patientFormData.dateOfBirth ? new Date(patientFormData.dateOfBirth) : undefined}
                             onSelect={(date) => setPatientFormData({ ...patientFormData, dateOfBirth: date ? format(date, 'yyyy-MM-dd') : '' })}
                             disabled={(date) =>
@@ -365,32 +368,32 @@ export function CreateAppointmentDialog({
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="patientAddress">Address</Label>
+                    <Label htmlFor="patientAddress">{t('createAppointment.address')}</Label>
                     <Input
                       id="patientAddress"
                       value={patientFormData.address}
                       onChange={(e) => setPatientFormData({ ...patientFormData, address: e.target.value })}
-                      placeholder="123 Main St, City, State 12345"
+                      placeholder={t('createAppointment.phAddress')}
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="emergencyContact">Emergency Contact</Label>
+                    <Label htmlFor="emergencyContact">{t('createAppointment.emergencyContact')}</Label>
                     <Input
                       id="emergencyContact"
                       value={patientFormData.emergencyContact}
                       onChange={(e) => setPatientFormData({ ...patientFormData, emergencyContact: e.target.value })}
-                      placeholder="Name & Phone"
+                      placeholder={t('createAppointment.phEmergency')}
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="patientNotes">Notes</Label>
+                    <Label htmlFor="patientNotes">{t('createAppointment.notes')}</Label>
                     <Textarea
                       id="patientNotes"
                       value={patientFormData.notes}
                       onChange={(e) => setPatientFormData({ ...patientFormData, notes: e.target.value })}
-                      placeholder="Additional notes..."
+                      placeholder={t('createAppointment.phNotes')}
                       rows={2}
                     />
                   </div>
@@ -401,7 +404,7 @@ export function CreateAppointmentDialog({
                     className="w-full bg-gradient-to-r from-primary to-medical-purple"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Patient
+                    {t('createAppointment.createPatientBtn')}
                   </Button>
                 </div>
               )}
@@ -413,14 +416,14 @@ export function CreateAppointmentDialog({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-primary" />
-                Appointment Details
+                {t('createAppointment.appointmentDetails')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date *</Label>
+                    <Label htmlFor="date">{t('createAppointment.date')}</Label>
                     <Input
                       id="date"
                       type="date"
@@ -432,7 +435,7 @@ export function CreateAppointmentDialog({
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="startTime">Start Time *</Label>
+                    <Label htmlFor="startTime">{t('createAppointment.startTime')}</Label>
                     <Input
                       id="startTime"
                       type="time"
@@ -447,39 +450,39 @@ export function CreateAppointmentDialog({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="duration">Duration</Label>
+                    <Label htmlFor="duration">{t('createAppointment.duration')}</Label>
                     <Select value={formData.duration.toString()} onValueChange={(value) => setFormData({ ...formData, duration: Number(value) as 30 | 60 | 120 })}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="30">30 minutes</SelectItem>
-                        <SelectItem value="60">1 hour</SelectItem>
-                        <SelectItem value="120">2 hours</SelectItem>
+                        <SelectItem value="30">{t('createAppointment.dur30')}</SelectItem>
+                        <SelectItem value="60">{t('createAppointment.dur60')}</SelectItem>
+                        <SelectItem value="120">{t('createAppointment.dur120')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="type">Type</Label>
+                    <Label htmlFor="type">{t('createAppointment.type')}</Label>
                     <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as any })}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="consultation">Consultation</SelectItem>
-                        <SelectItem value="follow-up">Follow-up</SelectItem>
-                        <SelectItem value="procedure">Procedure</SelectItem>
+                        <SelectItem value="consultation">{t('appointment.types.consultation')}</SelectItem>
+                        <SelectItem value="follow-up">{t('appointment.types.followUp')}</SelectItem>
+                        <SelectItem value="procedure">{t('appointment.types.procedure')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="appointmentNotes">Appointment Notes</Label>
+                  <Label htmlFor="appointmentNotes">{t('createAppointment.appointmentNotes')}</Label>
                   <Textarea
                     id="appointmentNotes"
-                    placeholder="Additional notes for this appointment..."
+                    placeholder={t('createAppointment.appointmentNotesPh')}
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={3}
@@ -493,7 +496,7 @@ export function CreateAppointmentDialog({
                     onCheckedChange={(checked) => setFormData({ ...formData, syncToGoogle: checked as boolean })}
                   />
                   <Label htmlFor="sync-google" className="text-sm">
-                    Sync to Google Calendar
+                    {t('createAppointment.syncGoogle')}
                   </Label>
                 </div>
 
@@ -501,7 +504,7 @@ export function CreateAppointmentDialog({
 
                 <div className="flex justify-end gap-2 pt-4">
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                    Cancel
+                    {t('createAppointment.cancel')}
                   </Button>
                   <Button 
                     type="submit" 
@@ -509,7 +512,7 @@ export function CreateAppointmentDialog({
                     disabled={!formData.patientId}
                   >
                     <CalendarIcon className="w-4 h-4 mr-2" />
-                    Create Appointment
+                    {t('createAppointment.submit')}
                   </Button>
                 </div>
               </form>

@@ -14,19 +14,23 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GoogleCalendarSync } from '@/components/dashboard/GoogleCalendarSync';
 import { NotificationManager } from '@/components/notifications/NotificationManager';
+import { useI18n } from '@/i18n';
+import type { AppLocale } from '@/i18n/types';
 
 const DAYS_OF_WEEK = [
-  { id: 0, name: 'Sunday', short: 'Sun' },
-  { id: 1, name: 'Monday', short: 'Mon' },
-  { id: 2, name: 'Tuesday', short: 'Tue' },
-  { id: 3, name: 'Wednesday', short: 'Wed' },
-  { id: 4, name: 'Thursday', short: 'Thu' },
-  { id: 5, name: 'Friday', short: 'Fri' },
-  { id: 6, name: 'Saturday', short: 'Sat' },
+  { id: 0, shortKey: 'sun' as const },
+  { id: 1, shortKey: 'mon' as const },
+  { id: 2, shortKey: 'tue' as const },
+  { id: 3, shortKey: 'wed' as const },
+  { id: 4, shortKey: 'thu' as const },
+  { id: 5, shortKey: 'fri' as const },
+  { id: 6, shortKey: 'sat' as const },
 ];
 
 export function TabbedSettingsPanel() {
+  const { t, setLocale } = useI18n();
   const [settings, setSettings] = useState<AppointmentSettings>({
+    locale: 'en',
     workingDays: [1, 2, 3, 4, 5],
     startTime: '09:00',
     endTime: '17:00',
@@ -62,14 +66,15 @@ export function TabbedSettingsPanel() {
   const handleSave = async () => {
     try {
       await settingsStorage.save(settings);
+      setLocale(settings.locale === 'mk' ? 'mk' : 'en');
       toast({
-        title: "Settings saved",
-        description: "Your appointment settings have been updated successfully.",
+        title: t('settings.savedTitle'),
+        description: t('settings.savedDesc'),
       });
     } catch (error) {
       toast({
-        title: "Error saving settings",
-        description: "Failed to save settings. Please try again.",
+        title: t('settings.saveErrorTitle'),
+        description: t('settings.saveErrorDesc'),
         variant: "destructive"
       });
     }
@@ -88,8 +93,8 @@ export function TabbedSettingsPanel() {
     URL.revokeObjectURL(url);
     
     toast({
-      title: "Data exported",
-      description: "Your backup file has been downloaded successfully.",
+      title: t('settings.exportToastTitle'),
+      description: t('settings.exportToastDesc'),
     });
   };
 
@@ -104,14 +109,15 @@ export function TabbedSettingsPanel() {
         await dataManagement.importAll(data);
         const newSettings = await settingsStorage.get();
         setSettings(newSettings);
+        setLocale(newSettings.locale === 'mk' ? 'mk' : 'en');
         toast({
-          title: "Data imported",
-          description: "Your data has been restored successfully.",
+          title: t('settings.importToastTitle'),
+          description: t('settings.importToastDesc'),
         });
       } catch (error) {
         toast({
-          title: "Import failed",
-          description: "The file format is invalid or corrupted.",
+          title: t('settings.importErrorTitle'),
+          description: t('settings.importErrorDesc'),
           variant: "destructive",
         });
       }
@@ -130,44 +136,73 @@ export function TabbedSettingsPanel() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Settings className="w-6 h-6 text-primary" />
-          Settings
-        </h2>
-        <p className="text-muted-foreground">Configure your appointment system</p>
+      <div className="space-y-1">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Settings className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t('settings.title')}</h2>
+        </div>
+        <p className="max-w-2xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground">{t('settings.subtitle')}</p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full">
-          <TabsTrigger value="general" className="flex items-center gap-2">
+        <TabsList className="grid h-11 w-full grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 shadow-sm">
+          <TabsTrigger value="general" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
             <Settings className="w-4 h-4" />
-            General Settings
+            {t('settings.tabGeneral')}
           </TabsTrigger>
-          <TabsTrigger value="integration" className="flex items-center gap-2">
+          <TabsTrigger value="integration" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
             <Puzzle className="w-4 h-4" />
-            Integration
+            {t('settings.tabIntegration')}
           </TabsTrigger>
-          <TabsTrigger value="data" className="flex items-center gap-2">
+          <TabsTrigger value="data" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
             <Database className="w-4 h-4" />
-            Data Management
+            {t('settings.tabData')}
           </TabsTrigger>
         </TabsList>
 
         {/* General Settings Tab */}
         <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-primary" />
+                {t('settings.language')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Label>{t('settings.language')}</Label>
+              <Select
+                value={settings.locale ?? 'en'}
+                onValueChange={(value) =>
+                  setSettings({ ...settings, locale: value as AppLocale })
+                }
+              >
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">{t('settings.langEnglish')}</SelectItem>
+                  <SelectItem value="mk">{t('settings.langMacedonian')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">{t('settings.languageHint')}</p>
+            </CardContent>
+          </Card>
+
           {/* Working Hours */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-primary" />
-                Working Hours
+                {t('settings.workingHours')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="startTime">Start Time</Label>
+                  <Label htmlFor="startTime">{t('settings.startTime')}</Label>
                   <Input
                     id="startTime"
                     type="time"
@@ -176,7 +211,7 @@ export function TabbedSettingsPanel() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="endTime">End Time</Label>
+                  <Label htmlFor="endTime">{t('settings.endTime')}</Label>
                   <Input
                     id="endTime"
                     type="time"
@@ -188,7 +223,7 @@ export function TabbedSettingsPanel() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="breakTime">Break Time (minutes)</Label>
+                  <Label htmlFor="breakTime">{t('settings.breakTime')}</Label>
                   <Input
                     id="breakTime"
                     type="number"
@@ -199,7 +234,7 @@ export function TabbedSettingsPanel() {
                   />
                 </div>
                 <div>
-                  <Label>Time Slot Interval</Label>
+                  <Label>{t('settings.timeSlotInterval')}</Label>
                   <Select
                     value={String(settings.timeSlotMinutes ?? 30)}
                     onValueChange={(value) => setSettings({ ...settings, timeSlotMinutes: parseInt(value) as any })}
@@ -208,9 +243,9 @@ export function TabbedSettingsPanel() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="15">15 minutes</SelectItem>
-                      <SelectItem value="30">30 minutes</SelectItem>
-                      <SelectItem value="60">60 minutes</SelectItem>
+                      <SelectItem value="15">{t('settings.slot15')}</SelectItem>
+                      <SelectItem value="30">{t('settings.slot30')}</SelectItem>
+                      <SelectItem value="60">{t('settings.slot60')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -223,7 +258,7 @@ export function TabbedSettingsPanel() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary" />
-                Working Days
+                {t('settings.workingDays')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -242,7 +277,7 @@ export function TabbedSettingsPanel() {
                         }
                       `}
                     >
-                      <div className="text-xs font-medium">{day.short}</div>
+                      <div className="text-xs font-medium">{t(`days.short.${day.shortKey}`)}</div>
                     </div>
                   );
                 })}
@@ -253,20 +288,24 @@ export function TabbedSettingsPanel() {
           {/* Appointment Sizes */}
           <Card>
             <CardHeader>
-              <CardTitle>Appointment Duration Types</CardTitle>
+              <CardTitle>{t('settings.appointmentDurationTypes')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(settings.appointmentSizes).map(([key, size]) => (
+              {Object.entries(settings.appointmentSizes).map(([key, size]) => {
+                const labelKey =
+                  key === 'half' ? 'settings.sizeHalf' : key === 'full' ? 'settings.sizeFull' : 'settings.sizeDouble';
+                return (
                 <div key={key} className="flex items-center justify-between p-3 border border-border rounded-lg">
                   <div>
-                    <div className="font-medium">{size.label}</div>
-                    <div className="text-sm text-muted-foreground">{size.duration} minutes</div>
+                    <div className="font-medium">{t(labelKey)}</div>
+                    <div className="text-sm text-muted-foreground">{t('settings.minutes', { n: size.duration })}</div>
                   </div>
                   <Badge variant="outline" className="bg-primary/10 text-primary">
-                    {size.duration}min
+                    {t('settings.minutesShort', { n: size.duration })}
                   </Badge>
                 </div>
-              ))}
+              );
+              })}
             </CardContent>
           </Card>
         </TabsContent>
@@ -281,7 +320,7 @@ export function TabbedSettingsPanel() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-primary" />
-                Notification Settings
+                {t('settings.notificationSettings')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -289,10 +328,10 @@ export function TabbedSettingsPanel() {
               <div className="space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  Email Notifications (Zapier)
+                  {t('settings.emailZapier')}
                 </h4>
                 <div>
-                  <Label htmlFor="emailWebhook">Email Webhook URL</Label>
+                  <Label htmlFor="emailWebhook">{t('settings.emailWebhook')}</Label>
                   <Input
                     id="emailWebhook"
                     placeholder="https://hooks.zapier.com/hooks/catch/..."
@@ -306,7 +345,7 @@ export function TabbedSettingsPanel() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="emailTime">Notification Time</Label>
+                    <Label htmlFor="emailTime">{t('settings.notificationTime')}</Label>
                     <Input
                       id="emailTime"
                       type="time"
@@ -318,7 +357,7 @@ export function TabbedSettingsPanel() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Email Settings</Label>
+                    <Label>{t('settings.emailSettingsLabel')}</Label>
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="dayBeforeEmail"
@@ -328,7 +367,7 @@ export function TabbedSettingsPanel() {
                           notifications: { ...settings.notifications, enableDayBeforeEmail: checked as boolean }
                         })}
                       />
-                      <Label htmlFor="dayBeforeEmail" className="text-sm">Day before reminder</Label>
+                      <Label htmlFor="dayBeforeEmail" className="text-sm">{t('settings.dayBeforeReminder')}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -339,16 +378,16 @@ export function TabbedSettingsPanel() {
                           notifications: { ...settings.notifications, enableSameDayEmail: checked as boolean }
                         })}
                       />
-                      <Label htmlFor="sameDayEmail" className="text-sm">Same day reminder</Label>
+                      <Label htmlFor="sameDayEmail" className="text-sm">{t('settings.sameDayReminder')}</Label>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="emailTemplate">Email HTML Template (Optional)</Label>
+                  <Label htmlFor="emailTemplate">{t('settings.emailTemplate')}</Label>
                   <Textarea
                     id="emailTemplate"
-                    placeholder="Use template variables: PATIENT_NAME, DATE, TIME, TYPE, DURATION, NOTES"
+                    placeholder={t('settings.emailTemplatePlaceholder')}
                     rows={4}
                     value={settings.notifications.emailTemplate}
                     onChange={(e) => setSettings({
@@ -357,7 +396,7 @@ export function TabbedSettingsPanel() {
                     })}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Leave empty to use default template. HTML is supported.
+                    {t('settings.emailTemplateHint')}
                   </p>
                 </div>
               </div>
@@ -366,10 +405,10 @@ export function TabbedSettingsPanel() {
               <div className="space-y-4 pt-4 border-t">
                 <h4 className="font-medium flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
-                  SMS Notifications (Zapier + Twilio)
+                  {t('settings.smsZapier')}
                 </h4>
                 <div>
-                  <Label htmlFor="smsWebhook">SMS Webhook URL</Label>
+                  <Label htmlFor="smsWebhook">{t('settings.smsWebhook')}</Label>
                   <Input
                     id="smsWebhook"
                     placeholder="https://hooks.zapier.com/hooks/catch/..."
@@ -383,7 +422,7 @@ export function TabbedSettingsPanel() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="smsTime">SMS Time</Label>
+                    <Label htmlFor="smsTime">{t('settings.smsTime')}</Label>
                     <Input
                       id="smsTime"
                       type="time"
@@ -395,7 +434,7 @@ export function TabbedSettingsPanel() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>SMS Settings</Label>
+                    <Label>{t('settings.smsSettingsLabel')}</Label>
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="sameDaySMS"
@@ -405,16 +444,16 @@ export function TabbedSettingsPanel() {
                           notifications: { ...settings.notifications, enableSameDaySMS: checked as boolean }
                         })}
                       />
-                      <Label htmlFor="sameDaySMS" className="text-sm">Same day SMS</Label>
+                      <Label htmlFor="sameDaySMS" className="text-sm">{t('settings.sameDaySms')}</Label>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="smsTemplate">SMS Message Template</Label>
+                  <Label htmlFor="smsTemplate">{t('settings.smsTemplate')}</Label>
                   <Textarea
                     id="smsTemplate"
-                    placeholder="Hi PATIENT_NAME, reminder: You have a TYPE appointment today at TIME."
+                    placeholder={t('settings.smsTemplatePlaceholder')}
                     rows={3}
                     value={settings.notifications.smsTemplate}
                     onChange={(e) => setSettings({
@@ -423,17 +462,17 @@ export function TabbedSettingsPanel() {
                     })}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Use placeholders: PATIENT_NAME, DATE, TIME, TYPE
+                    {t('settings.smsTemplateHint')}
                   </p>
                 </div>
               </div>
 
               <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                <p><strong>Setup Instructions:</strong></p>
-                <p>1. Create Zaps in Zapier with Webhook triggers</p>
-                <p>2. Connect email service (Gmail, SendGrid) for emails</p>
-                <p>3. Connect Twilio for SMS (set to Macedonian numbers)</p>
-                <p>4. Paste the webhook URLs above</p>
+                <p><strong>{t('settings.zapierHelpTitle')}</strong></p>
+                <p>1. {t('settings.zapierHelp1')}</p>
+                <p>2. {t('settings.zapierHelp2')}</p>
+                <p>3. {t('settings.zapierHelp3')}</p>
+                <p>4. {t('settings.zapierHelp4')}</p>
               </div>
             </CardContent>
           </Card>
@@ -448,14 +487,14 @@ export function TabbedSettingsPanel() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="w-5 h-5 text-primary" />
-                Data Management
+                {t('settings.dataTitle')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-4">
                 <Button onClick={handleExport} variant="outline" className="flex-1">
                   <Download className="w-4 h-4 mr-2" />
-                  Export Data
+                  {t('settings.export')}
                 </Button>
                 
                 <div className="flex-1">
@@ -469,15 +508,15 @@ export function TabbedSettingsPanel() {
                   <Button asChild variant="outline" className="w-full">
                     <label htmlFor="import-file" className="cursor-pointer">
                       <Upload className="w-4 h-4 mr-2" />
-                      Import Data
+                      {t('settings.import')}
                     </label>
                   </Button>
                 </div>
               </div>
               
               <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                <p><strong>Export:</strong> Download all your patients, appointments, and settings as a backup file.</p>
-                <p><strong>Import:</strong> Restore data from a previously exported backup file.</p>
+                <p><strong>{t('settings.exportHelp')}</strong> {t('settings.exportHelpText')}</p>
+                <p><strong>{t('settings.importHelp')}</strong> {t('settings.importHelpText')}</p>
               </div>
             </CardContent>
           </Card>
@@ -486,7 +525,7 @@ export function TabbedSettingsPanel() {
         {/* Save Button - Always visible */}
         <Button onClick={handleSave} className="w-full bg-gradient-to-r from-accent to-accent-hover">
           <Save className="w-4 h-4 mr-2" />
-          Save Settings
+          {t('settings.save')}
         </Button>
       </Tabs>
     </div>

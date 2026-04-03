@@ -12,6 +12,7 @@ import { patientsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n';
 
 interface CreatePatientDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function CreatePatientDialog({
   onOpenChange, 
   onPatientCreated 
 }: CreatePatientDialogProps) {
+  const { t, dateFnsLocale } = useI18n();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -41,8 +43,8 @@ export function CreatePatientDialog({
     
     if (!formData.name || !formData.email || !formData.phone) {
       toast({
-        title: "Error",
-        description: "Please fill in all required fields",
+        title: t('common.error'),
+        description: t('createPatient.toastRequired'),
         variant: "destructive",
       });
       return;
@@ -55,8 +57,8 @@ export function CreatePatientDialog({
       });
 
       toast({
-        title: "Patient created",
-        description: `${formData.name} has been added to the system`,
+        title: t('createPatient.toastCreatedTitle'),
+        description: t('createPatient.toastCreatedDesc', { name: formData.name }),
       });
 
       onPatientCreated?.();
@@ -75,8 +77,8 @@ export function CreatePatientDialog({
       setBirthDate(undefined);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create patient",
+        title: t('common.error'),
+        description: t('createPatient.toastFailed'),
         variant: "destructive",
       });
     }
@@ -92,7 +94,7 @@ export function CreatePatientDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-primary" />
-            Add New Patient
+            {t('createPatient.title')}
           </DialogTitle>
         </DialogHeader>
         
@@ -100,13 +102,13 @@ export function CreatePatientDialog({
           <div className="space-y-2">
             <Label htmlFor="name" className="flex items-center gap-2">
               <User className="w-4 h-4" />
-              Full Name *
+              {t('createPatient.fullName')}
             </Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder="Enter patient's full name"
+              placeholder={t('createPatient.phName')}
               required
             />
           </div>
@@ -115,14 +117,14 @@ export function CreatePatientDialog({
             <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                Email *
+                {t('createPatient.email')}
               </Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="patient@email.com"
+                placeholder={t('createPatient.phEmail')}
                 required
               />
             </div>
@@ -130,21 +132,21 @@ export function CreatePatientDialog({
             <div className="space-y-2">
               <Label htmlFor="phone" className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                Phone *
+                {t('createPatient.phone')}
               </Label>
               <Input
                 id="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="+1 (555) 123-4567"
+                placeholder={t('createPatient.phPhone')}
                 required
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Date of Birth</Label>
+            <Label>{t('createPatient.dob')}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -155,12 +157,13 @@ export function CreatePatientDialog({
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {birthDate ? format(birthDate, "PPP") : <span>Pick a date</span>}
+                  {birthDate ? format(birthDate, "PPP", { locale: dateFnsLocale }) : <span>{t('createPatient.pickDate')}</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
+                  locale={dateFnsLocale}
                   selected={birthDate}
                   onSelect={setBirthDate}
                   disabled={(date) =>
@@ -176,34 +179,34 @@ export function CreatePatientDialog({
           <div className="space-y-2">
             <Label htmlFor="address" className="flex items-center gap-2">
               <MapPin className="w-4 h-4" />
-              Address
+              {t('createPatient.address')}
             </Label>
             <Input
               id="address"
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder="Street address, city, state, zip"
+              placeholder={t('createPatient.phAddress')}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="emergencyContact" className="flex items-center gap-2">
               <Contact className="w-4 h-4" />
-              Emergency Contact
+              {t('createPatient.emergencyContact')}
             </Label>
             <Input
               id="emergencyContact"
               value={formData.emergencyContact}
               onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-              placeholder="Name and phone number"
+              placeholder={t('createPatient.phEmergency')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{t('createPatient.notes')}</Label>
             <Textarea
               id="notes"
-              placeholder="Medical history, allergies, special instructions..."
+              placeholder={t('createPatient.phNotes')}
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
               rows={3}
@@ -212,10 +215,10 @@ export function CreatePatientDialog({
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('createPatient.cancel')}
             </Button>
             <Button type="submit" className="bg-gradient-to-r from-accent to-accent-hover">
-              Add Patient
+              {t('createPatient.submit')}
             </Button>
           </div>
         </form>
