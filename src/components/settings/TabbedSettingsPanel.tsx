@@ -134,7 +134,7 @@ export function TabbedSettingsPanel() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="settings-page">
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center gap-2.5">
@@ -523,7 +523,7 @@ export function TabbedSettingsPanel() {
         </TabsContent>
 
         {/* Save Button - Always visible */}
-        <Button onClick={handleSave} className="w-full bg-gradient-to-r from-accent to-accent-hover">
+        <Button onClick={handleSave} data-testid="save-settings-btn" className="w-full bg-gradient-to-r from-accent to-accent-hover">
           <Save className="w-4 h-4 mr-2" />
           {t('settings.save')}
         </Button>

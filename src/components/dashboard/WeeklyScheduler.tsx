@@ -37,7 +37,6 @@ function appointmentTypeKey(type: Appointment['type']): 'consultation' | 'follow
 interface WeeklySchedulerProps {
   onCreateAppointment: (date: Date) => void;
   onAppointmentClick: (appointment: Appointment) => void;
-  /** Increment when appointments or related data change elsewhere (e.g. create dialog) */
   refreshTrigger?: number;
 }
 
@@ -149,7 +148,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     }
   };
 
-  // Convert appointments to scheduler events
   const appointmentEvents = appointments.map(apt => ({
     event_id: apt.id,
     title: t('dashboard.eventTitle', {
@@ -164,63 +162,60 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     appointment: apt
   }));
 
-  // Convert Google Calendar events to scheduler events
   const googleCalendarEvents = googleEvents.map(event => ({
     event_id: `google-${event.id}`,
     title: event.summary || t('dashboard.googleEventDefault'),
     start: new Date(event.start.dateTime || event.start.date),
     end: new Date(event.end.dateTime || event.end.date),
-    color: '#9333ea', // Purple for Google events
+    color: '#9333ea',
     editable: false,
     google: true
   }));
 
   const events = [...appointmentEvents, ...googleCalendarEvents];
 
-// Working hours
-const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
-const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
-const step = typeof settings.timeSlotMinutes === 'number' ? settings.timeSlotMinutes : 30;
+  const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
+  const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
+  const step = typeof settings.timeSlotMinutes === 'number' ? settings.timeSlotMinutes : 30;
 
-const handleEventClick = (event: any) => {
-  if (event.google) {
-    toast({
-      title: t('toast.googleEventTitle'),
-      description: t('toast.googleEventDesc'),
-    });
-    return;
-  }
-  if (event.appointment) {
-    onAppointmentClick(event.appointment);
-  }
-};
+  const handleEventClick = (event: any) => {
+    if (event.google) {
+      toast({
+        title: t('toast.googleEventTitle'),
+        description: t('toast.googleEventDesc'),
+      });
+      return;
+    }
+    if (event.appointment) {
+      onAppointmentClick(event.appointment);
+    }
+  };
 
-const handleCellClick = (start: Date, end: Date) => {
-  console.log('Calendar cell clicked:', start, end);
-  onCreateAppointment(start);
-};
+  const handleCellClick = (start: Date, end: Date) => {
+    console.log('Calendar cell clicked:', start, end);
+    onCreateAppointment(start);
+  };
 
-const handleEventDrop = async (
-  _dragEvent: React.DragEvent<HTMLButtonElement>,
-  _droppedOn: Date,
-  updatedEvent: any,
-  originalEvent: any
-) => {
-  const apt = originalEvent.appointment as Appointment;
-  const newDate = format(updatedEvent.start, 'yyyy-MM-dd');
-  const startTime = format(updatedEvent.start, 'HH:mm');
-  const endTime = format(updatedEvent.end, 'HH:mm');
-  try {
-    await appointmentsStorage.update(apt.id, { date: newDate, startTime, endTime });
-    // Reload data manually after successful update
-    const updatedAppointments = await appointmentsStorage.getAll().catch(() => appointments);
-    setAppointments(updatedAppointments);
-    return { ...updatedEvent, appointment: { ...apt, date: newDate, startTime, endTime } };
-  } catch (err) {
-    console.error('Failed to update appointment on drop', err);
-    return originalEvent; // Return original on error
-  }
-};
+  const handleEventDrop = async (
+    _dragEvent: React.DragEvent<HTMLButtonElement>,
+    _droppedOn: Date,
+    updatedEvent: any,
+    originalEvent: any
+  ) => {
+    const apt = originalEvent.appointment as Appointment;
+    const newDate = format(updatedEvent.start, 'yyyy-MM-dd');
+    const startTime = format(updatedEvent.start, 'HH:mm');
+    const endTime = format(updatedEvent.end, 'HH:mm');
+    try {
+      await appointmentsStorage.update(apt.id, { date: newDate, startTime, endTime });
+      const updatedAppointments = await appointmentsStorage.getAll().catch(() => appointments);
+      setAppointments(updatedAppointments);
+      return { ...updatedEvent, appointment: { ...apt, date: newDate, startTime, endTime } };
+    } catch (err) {
+      console.error('Failed to update appointment on drop', err);
+      return originalEvent;
+    }
+  };
 
   if (loading) {
     return (
@@ -236,7 +231,7 @@ const handleEventDrop = async (
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="scheduler-grid">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
@@ -257,6 +252,7 @@ const handleEventDrop = async (
         </div>
         <div className="flex shrink-0 flex-wrap gap-2 sm:pt-0.5">
           <Button
+            data-testid="sync-google-btn"
             onClick={() => setShowGoogleSync(!showGoogleSync)}
             variant="outline"
             className="h-10 border-border/80 bg-background/80 shadow-sm transition-colors hover:bg-muted/50"
@@ -265,6 +261,7 @@ const handleEventDrop = async (
             {t('dashboard.googleCalendar')}
           </Button>
           <Button
+            data-testid="new-appointment-btn"
             onClick={() => onCreateAppointment(new Date())}
             className="h-10 shadow-sm transition-shadow hover:shadow-md"
           >
@@ -344,31 +341,31 @@ const handleEventDrop = async (
               </Popover>
             </div>
           </div>
-            <div className="h-[600px] weekly-scheduler bg-muted/5">
-              <Scheduler
-                key={weekStart.toISOString()}
-                view="week"
-                events={events}
-               selectedDate={viewDate}
-               navigation={false}
-               disableViewNavigator
-                onSelectedDateChange={setViewDate}
-                onEventClick={handleEventClick}
-                onCellClick={handleCellClick}
-                hourFormat="24"
-                editable={false}
-                onEventDrop={handleEventDrop}
-                disableViewer
-                customEditor={() => null}
-                week={{
-                 weekDays: [0, 1, 2, 3, 4, 5, 6],
-                 weekStartOn: 1, // Monday
-                 startHour: startHour as any,
-                 endHour: endHour as any,
-                 step: step as any,
-                 navigation: false,
-                 disableGoToDay: true
-               }}
+          <div className="h-[600px] weekly-scheduler bg-muted/5">
+            <Scheduler
+              key={weekStart.toISOString()}
+              view="week"
+              events={events}
+              selectedDate={viewDate}
+              navigation={false}
+              disableViewNavigator
+              onSelectedDateChange={setViewDate}
+              onEventClick={handleEventClick}
+              onCellClick={handleCellClick}
+              hourFormat="24"
+              editable={false}
+              onEventDrop={handleEventDrop}
+              disableViewer
+              customEditor={() => null}
+              week={{
+                weekDays: [0, 1, 2, 3, 4, 5, 6],
+                weekStartOn: 1,
+                startHour: startHour as any,
+                endHour: endHour as any,
+                step: step as any,
+                navigation: false,
+                disableGoToDay: true
+              }}
               translations={{
                 navigation: {
                   month: t('scheduler.nav.month'),
@@ -386,7 +383,7 @@ const handleEventDrop = async (
                 },
                 event: {
                   title: t('scheduler.event.title'),
-                  subtitle: t('scheduler.event.subtitle'), 
+                  subtitle: t('scheduler.event.subtitle'),
                   start: t('scheduler.event.start'),
                   end: t('scheduler.event.end'),
                   allDay: t('scheduler.event.allDay')

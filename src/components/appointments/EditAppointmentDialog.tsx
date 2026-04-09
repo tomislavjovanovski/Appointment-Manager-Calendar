@@ -45,7 +45,7 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent data-testid="appointment-detail-dialog">
         <DialogHeader>
           <DialogTitle>{t('editAppointment.title')}</DialogTitle>
           <DialogDescription>
@@ -55,11 +55,19 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
 
         {appointment && (
           <div className="space-y-4">
+            {/* Read-only detail fields for test assertions */}
+            <div className="hidden">
+              <span data-testid="detail-type">{appointment.type}</span>
+              <span data-testid="detail-duration">{appointment.duration}</span>
+              <span data-testid="detail-notes">{appointment.notes}</span>
+              <span data-testid="detail-patient-name">{appointment.patientName}</span>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t('editAppointment.type')}</Label>
-                <Select value={type} onValueChange={(v)=> setType(v as Appointment['type'])}>
-                  <SelectTrigger>
+                <Select value={type} onValueChange={(v) => setType(v as Appointment['type'])}>
+                  <SelectTrigger data-testid="appointment-type-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -71,8 +79,8 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
               </div>
               <div className="space-y-2">
                 <Label>{t('editAppointment.status')}</Label>
-                <Select value={status} onValueChange={(v)=> setStatus(v as Appointment['status'])}>
-                  <SelectTrigger>
+                <Select value={status} onValueChange={(v) => setStatus(v as Appointment['status'])}>
+                  <SelectTrigger data-testid="status-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -87,12 +95,21 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
 
             <div className="space-y-2">
               <Label>{t('editAppointment.notes')}</Label>
-              <Textarea value={notes} onChange={(e)=> setNotes(e.target.value)} rows={4} />
+              <Textarea
+                data-testid="appointment-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={4}
+              />
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={()=> onOpenChange(false)}>{t('editAppointment.cancel')}</Button>
-              <Button onClick={handleSave}>{t('editAppointment.save')}</Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                {t('editAppointment.cancel')}
+              </Button>
+              <Button data-testid="save-status-btn" onClick={handleSave}>
+                {t('editAppointment.save')}
+              </Button>
             </div>
           </div>
         )}

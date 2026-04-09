@@ -28,7 +28,6 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
         const patientsData = await patientsStorage.getAll().catch(() => []);
         setPatients(patientsData);
         
-        // Load appointment data for each patient
         const counts: Record<string, number> = {};
         const lastDates: Record<string, string | null> = {};
         
@@ -74,7 +73,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="patients-page">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
@@ -87,6 +86,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
           <p className="max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground">{t('patients.subtitle')}</p>
         </div>
         <Button 
+          data-testid="add-patient-btn"
           onClick={onCreatePatient}
           className="h-10 shrink-0 shadow-sm transition-shadow hover:shadow-md"
         >
@@ -101,6 +101,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              data-testid="patient-search-input"
               placeholder={t('patients.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -113,7 +114,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
       {/* Patient List */}
       <div className="grid gap-4">
         {filteredPatients.length === 0 ? (
-          <Card className="border-border/80 py-12 text-center shadow-soft">
+          <Card className="border-border/80 py-12 text-center shadow-soft" data-testid="patients-empty-state">
             <CardContent>
               <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-medium mb-2">
@@ -140,7 +141,8 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
             
             return (
               <Card 
-                key={patient.id} 
+                key={patient.id}
+                data-testid="patient-row"
                 className="cursor-pointer border-border/80 shadow-soft transition-all duration-200 hover:border-primary/25 hover:shadow-medium"
                 onClick={() => onPatientClick(patient)}
               >

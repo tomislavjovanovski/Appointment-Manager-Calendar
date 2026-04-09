@@ -9,9 +9,9 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { id: 'dashboard', nameKey: 'sidebar.dashboard' as const, icon: Calendar },
-  { id: 'patients', nameKey: 'sidebar.patients' as const, icon: Users },
-  { id: 'settings', nameKey: 'sidebar.settings' as const, icon: Settings },
+  { id: 'dashboard', nameKey: 'sidebar.dashboard' as const, icon: Calendar, testId: 'nav-scheduler' },
+  { id: 'patients', nameKey: 'sidebar.patients' as const, icon: Users, testId: 'nav-patients' },
+  { id: 'settings', nameKey: 'sidebar.settings' as const, icon: Settings, testId: 'nav-settings' },
 ];
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
@@ -47,6 +47,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               <Button
                 key={item.id}
                 variant="ghost"
+                data-testid={item.testId}
                 className={cn(
                   'h-11 w-full justify-start rounded-xl text-left text-sm font-medium transition-all duration-200',
                   isActive

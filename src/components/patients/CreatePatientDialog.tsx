@@ -64,7 +64,6 @@ export function CreatePatientDialog({
       onPatientCreated?.();
       onOpenChange(false);
       
-      // Reset form
       setFormData({
         name: '',
         email: '',
@@ -90,7 +89,7 @@ export function CreatePatientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" data-testid="patient-form-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-primary" />
@@ -106,6 +105,7 @@ export function CreatePatientDialog({
             </Label>
             <Input
               id="name"
+              data-testid="patient-first-name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder={t('createPatient.phName')}
@@ -121,6 +121,7 @@ export function CreatePatientDialog({
               </Label>
               <Input
                 id="email"
+                data-testid="patient-email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
@@ -136,6 +137,7 @@ export function CreatePatientDialog({
               </Label>
               <Input
                 id="phone"
+                data-testid="patient-phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
@@ -151,6 +153,7 @@ export function CreatePatientDialog({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
+                  data-testid="patient-dob"
                   className={cn(
                     "w-full justify-start text-left font-normal",
                     !birthDate && "text-muted-foreground"
@@ -183,6 +186,7 @@ export function CreatePatientDialog({
             </Label>
             <Input
               id="address"
+              data-testid="patient-address"
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
               placeholder={t('createPatient.phAddress')}
@@ -196,6 +200,7 @@ export function CreatePatientDialog({
             </Label>
             <Input
               id="emergencyContact"
+              data-testid="patient-emergency-contact"
               value={formData.emergencyContact}
               onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
               placeholder={t('createPatient.phEmergency')}
@@ -206,6 +211,7 @@ export function CreatePatientDialog({
             <Label htmlFor="notes">{t('createPatient.notes')}</Label>
             <Textarea
               id="notes"
+              data-testid="patient-notes"
               placeholder={t('createPatient.phNotes')}
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
@@ -217,7 +223,11 @@ export function CreatePatientDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('createPatient.cancel')}
             </Button>
-            <Button type="submit" className="bg-gradient-to-r from-accent to-accent-hover">
+            <Button
+              type="submit"
+              data-testid="patient-form-submit"
+              className="bg-gradient-to-r from-accent to-accent-hover"
+            >
               {t('createPatient.submit')}
             </Button>
           </div>

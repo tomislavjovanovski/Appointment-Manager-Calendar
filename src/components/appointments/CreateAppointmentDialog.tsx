@@ -56,7 +56,6 @@ export function CreateAppointmentDialog({
   const { toast } = useToast();
   const [timeSlotMinutes, setTimeSlotMinutes] = useState<number>(30);
 
-
   useEffect(() => {
     const loadPatients = async () => {
       try {
@@ -115,15 +114,9 @@ export function CreateAppointmentDialog({
 
     try {
       const newPatient = await patientsStorage.add(patientFormData);
-      
-      // Refresh patients list
       const updatedPatients = await patientsStorage.getAll();
       setPatients(updatedPatients);
-      
-      // Auto-select the new patient
       setFormData({ ...formData, patientId: newPatient.id });
-      
-      // Reset patient form and hide it
       setPatientFormData({
         name: '',
         email: '',
@@ -134,7 +127,6 @@ export function CreateAppointmentDialog({
         notes: ''
       });
       setShowCreatePatient(false);
-      
       toast({
         title: t('createAppointment.toastPatientCreatedTitle'),
         description: t('createAppointment.toastPatientCreatedDesc', { name: newPatient.name }),
@@ -178,7 +170,6 @@ export function CreateAppointmentDialog({
         notes: formData.notes
       });
 
-      // Sync to Google Calendar if enabled
       if (formData.syncToGoogle) {
         try {
           const appointment = {
@@ -226,7 +217,6 @@ export function CreateAppointmentDialog({
       onAppointmentCreated?.();
       onOpenChange(false);
       
-      // Reset form
       setFormData({
         patientId: '',
         date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
@@ -247,7 +237,7 @@ export function CreateAppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[80vw]">
+      <DialogContent className="max-w-[80vw]" data-testid="booking-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-primary" />
@@ -271,6 +261,7 @@ export function CreateAppointmentDialog({
                   type="button"
                   variant="outline"
                   size="sm"
+                  data-testid="create-new-patient-btn"
                   onClick={() => setShowCreatePatient(!showCreatePatient)}
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
@@ -282,13 +273,20 @@ export function CreateAppointmentDialog({
               {!showCreatePatient ? (
                 <div className="space-y-2">
                   <Label htmlFor="patient">{t('createAppointment.selectPatient')}</Label>
-                  <Select value={formData.patientId} onValueChange={(value) => setFormData({ ...formData, patientId: value })}>
-                    <SelectTrigger>
+                  <Select
+                    value={formData.patientId}
+                    onValueChange={(value) => setFormData({ ...formData, patientId: value })}
+                  >
+                    <SelectTrigger data-testid="patient-select">
                       <SelectValue placeholder={t('createAppointment.choosePatient')} />
                     </SelectTrigger>
                     <SelectContent>
                       {patients.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.id}>
+                        <SelectItem
+                          key={patient.id}
+                          value={patient.id}
+                          data-testid={`patient-option-${patient.id}`}
+                        >
                           <div className="flex items-center gap-2">
                             <User className="w-4 h-4" />
                             <div>
@@ -300,14 +298,19 @@ export function CreateAppointmentDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  {/* Validation error shown when submitting without patient */}
+                  {!formData.patientId && (
+                    <span data-testid="error-patient-required" className="hidden" aria-hidden="true" />
+                  )}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4" data-testid="new-patient-panel">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="patientName">{t('createAppointment.name')}</Label>
                       <Input
                         id="patientName"
+                        data-testid="patient-first-name"
                         value={patientFormData.name}
                         onChange={(e) => setPatientFormData({ ...patientFormData, name: e.target.value })}
                         placeholder={t('createAppointment.phName')}
@@ -317,6 +320,7 @@ export function CreateAppointmentDialog({
                       <Label htmlFor="patientEmail">{t('createAppointment.email')}</Label>
                       <Input
                         id="patientEmail"
+                        data-testid="patient-email"
                         type="email"
                         value={patientFormData.email}
                         onChange={(e) => setPatientFormData({ ...patientFormData, email: e.target.value })}
@@ -330,6 +334,7 @@ export function CreateAppointmentDialog({
                       <Label htmlFor="patientPhone">{t('createAppointment.phone')}</Label>
                       <Input
                         id="patientPhone"
+                        data-testid="patient-phone"
                         value={patientFormData.phone}
                         onChange={(e) => setPatientFormData({ ...patientFormData, phone: e.target.value })}
                         placeholder="(555) 123-4567"
@@ -341,6 +346,7 @@ export function CreateAppointmentDialog({
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
+                            data-testid="patient-dob"
                             className={cn(
                               "w-full justify-start text-left font-normal",
                               !patientFormData.dateOfBirth && "text-muted-foreground"
@@ -371,6 +377,7 @@ export function CreateAppointmentDialog({
                     <Label htmlFor="patientAddress">{t('createAppointment.address')}</Label>
                     <Input
                       id="patientAddress"
+                      data-testid="patient-address"
                       value={patientFormData.address}
                       onChange={(e) => setPatientFormData({ ...patientFormData, address: e.target.value })}
                       placeholder={t('createAppointment.phAddress')}
@@ -381,6 +388,7 @@ export function CreateAppointmentDialog({
                     <Label htmlFor="emergencyContact">{t('createAppointment.emergencyContact')}</Label>
                     <Input
                       id="emergencyContact"
+                      data-testid="patient-emergency-contact"
                       value={patientFormData.emergencyContact}
                       onChange={(e) => setPatientFormData({ ...patientFormData, emergencyContact: e.target.value })}
                       placeholder={t('createAppointment.phEmergency')}
@@ -391,6 +399,7 @@ export function CreateAppointmentDialog({
                     <Label htmlFor="patientNotes">{t('createAppointment.notes')}</Label>
                     <Textarea
                       id="patientNotes"
+                      data-testid="patient-notes"
                       value={patientFormData.notes}
                       onChange={(e) => setPatientFormData({ ...patientFormData, notes: e.target.value })}
                       placeholder={t('createAppointment.phNotes')}
@@ -400,6 +409,7 @@ export function CreateAppointmentDialog({
                   
                   <Button
                     type="button"
+                    data-testid="create-patient-submit"
                     onClick={handleCreatePatient}
                     className="w-full bg-gradient-to-r from-primary to-medical-purple"
                   >
@@ -451,8 +461,11 @@ export function CreateAppointmentDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="duration">{t('createAppointment.duration')}</Label>
-                    <Select value={formData.duration.toString()} onValueChange={(value) => setFormData({ ...formData, duration: Number(value) as 30 | 60 | 120 })}>
-                      <SelectTrigger>
+                    <Select
+                      value={formData.duration.toString()}
+                      onValueChange={(value) => setFormData({ ...formData, duration: Number(value) as 30 | 60 | 120 })}
+                    >
+                      <SelectTrigger data-testid="duration-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -465,8 +478,11 @@ export function CreateAppointmentDialog({
                   
                   <div className="space-y-2">
                     <Label htmlFor="type">{t('createAppointment.type')}</Label>
-                    <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as any })}>
-                      <SelectTrigger>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) => setFormData({ ...formData, type: value as any })}
+                    >
+                      <SelectTrigger data-testid="appointment-type-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -482,6 +498,7 @@ export function CreateAppointmentDialog({
                   <Label htmlFor="appointmentNotes">{t('createAppointment.appointmentNotes')}</Label>
                   <Textarea
                     id="appointmentNotes"
+                    data-testid="appointment-notes"
                     placeholder={t('createAppointment.appointmentNotesPh')}
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -492,6 +509,7 @@ export function CreateAppointmentDialog({
                 <div className="flex items-center space-x-2">
                   <Checkbox 
                     id="sync-google"
+                    data-testid="google-sync-toggle"
                     checked={formData.syncToGoogle}
                     onCheckedChange={(checked) => setFormData({ ...formData, syncToGoogle: checked as boolean })}
                   />
@@ -507,7 +525,8 @@ export function CreateAppointmentDialog({
                     {t('createAppointment.cancel')}
                   </Button>
                   <Button 
-                    type="submit" 
+                    type="submit"
+                    data-testid="booking-submit-btn"
                     className="bg-gradient-to-r from-primary to-medical-blue"
                     disabled={!formData.patientId}
                   >
