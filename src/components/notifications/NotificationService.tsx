@@ -25,12 +25,12 @@ export class NotificationService {
     const emailData = {
       to: patient.email,
       subject: isReminderType === 'day-before' 
-        ? `Appointment Reminder - Tomorrow at ${appointment.startTime}`
-        : `Appointment Today - ${appointment.startTime}`,
+        ? `Appointment Reminder - Tomorrow at ${new Date(appointment.startTime).toLocaleTimeString()}`
+        : `Appointment Today - ${new Date(appointment.startTime).toLocaleTimeString()}`,
       appointmentDetails: {
-        patientName: patient.name,
-        date: appointment.date,
-        time: appointment.startTime,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        date: appointment.startTime.split('T')[0],
+        time: new Date(appointment.startTime).toLocaleTimeString(),
         type: appointment.type,
         duration: appointment.duration,
         notes: appointment.notes
@@ -52,13 +52,13 @@ export class NotificationService {
 
       this.toast({
         title: translate(locale, 'notifications.emailSentTitle'),
-        description: translate(locale, 'notifications.emailSentDesc', { name: patient.name }),
+        description: translate(locale, 'notifications.emailSentDesc', { name: `${patient.firstName} ${patient.lastName}` }),
       });
     } catch (error) {
       console.error('Failed to send email notification:', error);
       this.toast({
         title: translate(locale, 'notifications.emailFailedTitle'),
-        description: translate(locale, 'notifications.emailFailedDesc', { name: patient.name }),
+        description: translate(locale, 'notifications.emailFailedDesc', { name: `${patient.firstName} ${patient.lastName}` }),
         variant: "destructive",
       });
     }
@@ -79,9 +79,9 @@ export class NotificationService {
       to: patient.phone,
       message: this.generateSMSMessage(appointment, patient, settings.smsTemplate),
       appointmentDetails: {
-        patientName: patient.name,
-        date: appointment.date,
-        time: appointment.startTime,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        date: appointment.startTime.split('T')[0],
+        time: new Date(appointment.startTime).toLocaleTimeString(),
         type: appointment.type
       },
       timestamp: new Date().toISOString(),
@@ -100,13 +100,13 @@ export class NotificationService {
 
       this.toast({
         title: translate(locale, 'notifications.smsSentTitle'),
-        description: translate(locale, 'notifications.smsSentDesc', { name: patient.name }),
+        description: translate(locale, 'notifications.smsSentDesc', { name: `${patient.firstName} ${patient.lastName}` }),
       });
     } catch (error) {
       console.error('Failed to send SMS notification:', error);
       this.toast({
         title: translate(locale, 'notifications.smsFailedTitle'),
-        description: translate(locale, 'notifications.smsFailedDesc', { name: patient.name }),
+        description: translate(locale, 'notifications.smsFailedDesc', { name: `${patient.firstName} ${patient.lastName}` }),
         variant: "destructive",
       });
     }
@@ -163,9 +163,9 @@ export class NotificationService {
 
     return template
       .replace(/{{REMINDER_TITLE}}/g, reminderTitle)
-      .replace(/{{PATIENT_NAME}}/g, patient.name)
-      .replace(/{{DATE}}/g, new Date(appointment.date).toLocaleDateString())
-      .replace(/{{TIME}}/g, appointment.startTime)
+      .replace(/{{PATIENT_NAME}}/g, `${patient.firstName} ${patient.lastName}`)
+      .replace(/{{DATE}}/g, new Date(appointment.startTime).toLocaleDateString())
+      .replace(/{{TIME}}/g, new Date(appointment.startTime).toLocaleTimeString())
       .replace(/{{TYPE}}/g, appointment.type.charAt(0).toUpperCase() + appointment.type.slice(1))
       .replace(/{{DURATION}}/g, appointment.duration.toString())
       .replace(/{{NOTES}}/g, appointment.notes || '')
@@ -178,9 +178,9 @@ export class NotificationService {
     }
 
     return template
-      .replace(/{{PATIENT_NAME}}/g, patient.name)
-      .replace(/{{DATE}}/g, new Date(appointment.date).toLocaleDateString())
-      .replace(/{{TIME}}/g, appointment.startTime)
+      .replace(/{{PATIENT_NAME}}/g, `${patient.firstName} ${patient.lastName}`)
+      .replace(/{{DATE}}/g, new Date(appointment.startTime).toLocaleDateString())
+      .replace(/{{TIME}}/g, new Date(appointment.startTime).toLocaleTimeString())
       .replace(/{{TYPE}}/g, appointment.type);
   }
 
@@ -204,8 +204,10 @@ export class NotificationService {
       const patient = patients.find(p => p.id === appointment.patientId);
       if (!patient) continue;
 
+      const apptDate = appointment.startTime.split('T')[0];
+
       // Same day notifications
-      if (appointment.date === todayStr) {
+      if (apptDate === todayStr) {
         if (settings.enableSameDayEmail) {
           await this.sendEmailNotification(appointment, patient, settings, 'same-day', locale);
         }
@@ -215,7 +217,7 @@ export class NotificationService {
       }
 
       // Day before notifications
-      if (appointment.date === tomorrowStr && settings.enableDayBeforeEmail) {
+      if (apptDate === tomorrowStr && settings.enableDayBeforeEmail) {
         await this.sendEmailNotification(appointment, patient, settings, 'day-before', locale);
       }
     }

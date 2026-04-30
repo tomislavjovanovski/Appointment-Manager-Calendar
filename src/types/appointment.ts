@@ -2,7 +2,8 @@ import type { AppLocale } from '@/i18n/types';
 
 export interface Patient {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
   dateOfBirth: string;
@@ -16,8 +17,9 @@ export interface Appointment {
   id: string;
   patientId: string;
   patientName: string;
-  date: string;
+  /** ISO timestamp */
   startTime: string;
+  /** ISO timestamp */
   endTime: string;
   duration: 30 | 60 | 120; // in minutes
   type: 'consultation' | 'follow-up' | 'procedure';
@@ -41,6 +43,7 @@ export interface NotificationSettings {
 export interface AppointmentSettings {
   /** UI language; persisted with other settings */
   locale?: AppLocale;
+  practiceName?: string;
   workingDays: number[]; // 0 = Sunday, 1 = Monday, etc.
   startTime: string;
   endTime: string;

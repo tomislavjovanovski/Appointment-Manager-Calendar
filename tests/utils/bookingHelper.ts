@@ -22,6 +22,11 @@ export interface BookingOptions {
 }
 
 export const bookingHelper = {
+  async selectRadixOption(page: Page, triggerTestId: string, optionTestId: string): Promise<void> {
+    await page.getByTestId(triggerTestId).click();
+    await page.getByTestId(optionTestId).click();
+  },
+
   // ── Navigate ──────────────────────────────────────────────────────────────
 
   async goToScheduler(page: Page): Promise<void> {
@@ -61,10 +66,18 @@ export const bookingHelper = {
     }
 
     // Appointment type
-    await dialog.getByTestId('appointment-type-select').selectOption(options.type);
+    await this.selectRadixOption(
+      page,
+      'appointment-type-select',
+      `appointment-type-option-${options.type}`,
+    );
 
     // Duration
-    await dialog.getByTestId('duration-select').selectOption(String(options.duration));
+    await this.selectRadixOption(
+      page,
+      'duration-select',
+      `duration-option-${options.duration}`,
+    );
 
     // Notes
     if (options.notes) {
@@ -129,7 +142,7 @@ export const bookingHelper = {
   ): Promise<void> {
     await page.getByTestId(appointmentTestId).click();
     await expect(page.getByTestId('appointment-detail-dialog')).toBeVisible();
-    await page.getByTestId('status-select').selectOption(newStatus);
+    await this.selectRadixOption(page, 'status-select', `status-option-${newStatus}`);
     await page.getByTestId('save-status-btn').click();
     await expect(page.getByTestId('appointment-detail-dialog')).not.toBeVisible();
   },

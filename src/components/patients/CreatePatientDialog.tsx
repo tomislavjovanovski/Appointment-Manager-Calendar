@@ -4,14 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserPlus, User, Mail, Phone, MapPin, Contact, CalendarIcon } from 'lucide-react';
 import { Patient } from '@/types/appointment';
 import { patientsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 
 interface CreatePatientDialogProps {
@@ -27,7 +24,8 @@ export function CreatePatientDialog({
 }: CreatePatientDialogProps) {
   const { t, dateFnsLocale } = useI18n();
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     dateOfBirth: '',
@@ -35,13 +33,21 @@ export function CreatePatientDialog({
     emergencyContact: '',
     notes: ''
   });
-  const [birthDate, setBirthDate] = useState<Date>();
   const { toast } = useToast();
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.email || !formData.phone) {
+
+    const nextErrors: Record<string, boolean> = {};
+    if (!formData.firstName) nextErrors.firstName = true;
+    if (!formData.lastName) nextErrors.lastName = true;
+    if (!formData.email) nextErrors.emailRequired = true;
+    if (!formData.phone) nextErrors.phone = true;
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) nextErrors.emailInvalid = true;
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
       toast({
         title: t('common.error'),
         description: t('createPatient.toastRequired'),
@@ -51,21 +57,34 @@ export function CreatePatientDialog({
     }
 
     try {
+      // Duplicate email check (offline mode / API failure paths)
+      const existing = await patientsStorage.getAll().catch(() => []);
+      if (existing.some((p) => p.email?.toLowerCase?.() === formData.email.toLowerCase())) {
+        setErrors((e) => ({ ...e, emailDuplicate: true }));
+        toast({
+          title: t('common.error'),
+          description: t('createPatient.toastFailed'),
+          variant: "destructive",
+        });
+        return;
+      }
+
       await patientsStorage.add({
         ...formData,
-        dateOfBirth: birthDate ? format(birthDate, 'yyyy-MM-dd') : ''
+        dateOfBirth: formData.dateOfBirth ?? ''
       });
 
       toast({
         title: t('createPatient.toastCreatedTitle'),
-        description: t('createPatient.toastCreatedDesc', { name: formData.name }),
+        description: t('createPatient.toastCreatedDesc', { name: `${formData.firstName} ${formData.lastName}` }),
       });
 
       onPatientCreated?.();
       onOpenChange(false);
       
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         phone: '',
         dateOfBirth: '',
@@ -73,7 +92,7 @@ export function CreatePatientDialog({
         emergencyContact: '',
         notes: ''
       });
-      setBirthDate(undefined);
+      setErrors({});
     } catch (error) {
       toast({
         title: t('common.error'),
@@ -85,6 +104,7 @@ export function CreatePatientDialog({
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
+    setErrors((e) => ({ ...e, [field]: false }));
   };
 
   return (
@@ -98,19 +118,34 @@ export function CreatePatientDialog({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              {t('createPatient.fullName')}
-            </Label>
-            <Input
-              id="name"
-              data-testid="patient-first-name"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder={t('createPatient.phName')}
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName" className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                {t('createPatient.fullName')}
+              </Label>
+              <Input
+                id="firstName"
+                data-testid="patient-first-name"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                placeholder={t('createPatient.phName')}
+              />
+              {errors.firstName && <div data-testid="error-first-name-required" className="text-xs text-destructive">{t('common.error')}</div>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName" className="flex items-center gap-2">
+                <span className="sr-only">{t('createPatient.fullName')}</span>
+              </Label>
+              <Input
+                id="lastName"
+                data-testid="patient-last-name"
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                placeholder={t('createPatient.phName')}
+              />
+              {errors.lastName && <div data-testid="error-last-name-required" className="text-xs text-destructive">{t('common.error')}</div>}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -126,8 +161,10 @@ export function CreatePatientDialog({
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder={t('createPatient.phEmail')}
-                required
               />
+              {errors.emailRequired && <div data-testid="error-email-required" className="text-xs text-destructive">{t('common.error')}</div>}
+              {errors.emailInvalid && <div data-testid="error-email-invalid" className="text-xs text-destructive">{t('common.error')}</div>}
+              {errors.emailDuplicate && <div data-testid="error-email-duplicate" className="text-xs text-destructive">{t('common.error')}</div>}
             </div>
             
             <div className="space-y-2">
@@ -142,41 +179,19 @@ export function CreatePatientDialog({
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 placeholder={t('createPatient.phPhone')}
-                required
               />
+              {errors.phone && <div data-testid="error-phone-required" className="text-xs text-destructive">{t('common.error')}</div>}
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>{t('createPatient.dob')}</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  data-testid="patient-dob"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !birthDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {birthDate ? format(birthDate, "PPP", { locale: dateFnsLocale }) : <span>{t('createPatient.pickDate')}</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  locale={dateFnsLocale}
-                  selected={birthDate}
-                  onSelect={setBirthDate}
-                  disabled={(date) =>
-                    date > new Date() || date < new Date("1900-01-01")
-                  }
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              type="date"
+              data-testid="patient-dob"
+              value={formData.dateOfBirth}
+              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">

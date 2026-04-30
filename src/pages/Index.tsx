@@ -7,6 +7,7 @@ import { CreateAppointmentDialog } from '@/components/appointments/CreateAppoint
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
 import { EditAppointmentDialog } from '@/components/appointments/EditAppointmentDialog';
 import { Patient, Appointment } from '@/types/appointment';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -16,6 +17,8 @@ const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [patientProfileOpen, setPatientProfileOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
   const handleCreateAppointment = (date: Date) => {
     console.log('handleCreateAppointment called with:', date);
@@ -29,8 +32,8 @@ const Index = () => {
   };
   
   const handlePatientClick = (patient: Patient) => {
-    // TODO: Open patient details dialog
-    console.log('Patient clicked:', patient);
+    setSelectedPatient(patient);
+    setPatientProfileOpen(true);
   };
 
   const handleCreatePatient = () => {
@@ -92,6 +95,32 @@ const Index = () => {
         appointment={selectedAppointment}
         onUpdated={handleRefresh}
       />
+
+      <Dialog
+        open={patientProfileOpen}
+        onOpenChange={(o) => {
+          setPatientProfileOpen(o);
+          if (!o) setSelectedPatient(null);
+        }}
+      >
+        <DialogContent data-testid="patient-profile-panel">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'Patient'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPatient && (
+            <div className="space-y-2 text-sm">
+              <div><strong>Email:</strong> {selectedPatient.email}</div>
+              <div><strong>Phone:</strong> {selectedPatient.phone}</div>
+              <div><strong>DOB:</strong> {selectedPatient.dateOfBirth}</div>
+              <div><strong>Address:</strong> {selectedPatient.address}</div>
+              <div><strong>Emergency contact:</strong> {selectedPatient.emergencyContact}</div>
+              <div><strong>Notes:</strong> {selectedPatient.notes}</div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

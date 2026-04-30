@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { appointmentsStorage } from '@/lib/storage';
 import { Appointment } from '@/types/appointment';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +44,18 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
     }
   };
 
+  const handleDelete = async () => {
+    if (!appointment) return;
+    try {
+      await appointmentsStorage.delete(appointment.id);
+      toast({ title: t('editAppointment.toastUpdated') });
+      onUpdated?.();
+      onOpenChange(false);
+    } catch {
+      toast({ title: t('editAppointment.toastFailed'), variant: 'destructive' });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-testid="appointment-detail-dialog">
@@ -71,9 +84,15 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="consultation">{t('appointment.types.consultation')}</SelectItem>
-                    <SelectItem value="follow-up">{t('appointment.types.followUp')}</SelectItem>
-                    <SelectItem value="procedure">{t('appointment.types.procedure')}</SelectItem>
+                    <SelectItem value="consultation" data-testid="appointment-type-option-consultation">
+                      {t('appointment.types.consultation')}
+                    </SelectItem>
+                    <SelectItem value="follow-up" data-testid="appointment-type-option-follow-up">
+                      {t('appointment.types.followUp')}
+                    </SelectItem>
+                    <SelectItem value="procedure" data-testid="appointment-type-option-procedure">
+                      {t('appointment.types.procedure')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -84,10 +103,18 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="scheduled">{t('appointment.status.scheduled')}</SelectItem>
-                    <SelectItem value="completed">{t('appointment.status.completed')}</SelectItem>
-                    <SelectItem value="cancelled">{t('appointment.status.cancelled')}</SelectItem>
-                    <SelectItem value="no-show">{t('appointment.status.noShow')}</SelectItem>
+                    <SelectItem value="scheduled" data-testid="status-option-scheduled">
+                      {t('appointment.status.scheduled')}
+                    </SelectItem>
+                    <SelectItem value="completed" data-testid="status-option-completed">
+                      {t('appointment.status.completed')}
+                    </SelectItem>
+                    <SelectItem value="cancelled" data-testid="status-option-cancelled">
+                      {t('appointment.status.cancelled')}
+                    </SelectItem>
+                    <SelectItem value="no-show" data-testid="status-option-no-show">
+                      {t('appointment.status.noShow')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -104,6 +131,24 @@ export function EditAppointmentDialog({ open, onOpenChange, appointment, onUpdat
             </div>
 
             <div className="flex justify-end gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" data-testid="delete-appointment-btn">
+                    {t('editAppointment.delete') ?? 'Delete'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('editAppointment.confirmDelete') ?? 'Confirm delete'}</AlertDialogTitle>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('editAppointment.cancel') ?? 'Cancel'}</AlertDialogCancel>
+                    <AlertDialogAction data-testid="confirm-delete-btn" onClick={handleDelete}>
+                      {t('editAppointment.delete') ?? 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 {t('editAppointment.cancel')}
               </Button>

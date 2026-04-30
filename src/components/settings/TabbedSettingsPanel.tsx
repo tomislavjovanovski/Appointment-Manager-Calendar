@@ -200,6 +200,17 @@ export function TabbedSettingsPanel() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="practiceName">{t('settings.practiceName') ?? 'Practice name'}</Label>
+                <Input
+                  id="practiceName"
+                  data-testid="practice-name-input"
+                  value={settings.practiceName ?? ''}
+                  onChange={(e) => setSettings({ ...settings, practiceName: e.target.value })}
+                  placeholder="Clinic name"
+                  className="max-w-xl"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="startTime">{t('settings.startTime')}</Label>

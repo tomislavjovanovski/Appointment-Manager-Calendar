@@ -23,11 +23,12 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 };
 
 // Local fallback helpers (used when API is unavailable)
+// Keep these keys stable: Playwright E2E tests depend on them.
 const LS_KEYS = {
-  patients: 'ls_patients',
-  appointments: 'ls_appointments',
-  settings: 'ls_settings',
-};
+  patients: 'medical-patients',
+  appointments: 'medical-appointments',
+  settings: 'medical-settings',
+} as const;
 
 const readLS = <T,>(key: string, defaultValue: T): T => {
   try {
@@ -57,8 +58,8 @@ const generateId = () => {
 const DEFAULT_SETTINGS: AppointmentSettings = {
   locale: 'en',
   workingDays: [1, 2, 3, 4, 5],
-  startTime: '09:00',
-  endTime: '17:00',
+  startTime: '08:00',
+  endTime: '18:00',
   appointmentSizes: {
     half: { duration: 30, label: 'Half Hour' },
     full: { duration: 60, label: 'Full Hour' },

@@ -29,16 +29,20 @@ export default defineConfig({
       testMatch: /e2e\/.+\.spec\.ts/,
     },
     // ── Cross-browser smoke (CI only) ──────────────────────────────────────────
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-      testMatch: /e2e\/smoke\.spec\.ts/,
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-      testMatch: /e2e\/smoke\.spec\.ts/,
-    },
+    ...(process.env.CI
+      ? ([
+          {
+            name: 'firefox',
+            use: { ...devices['Desktop Firefox'] },
+            testMatch: /e2e\/smoke\.spec\.ts/,
+          },
+          {
+            name: 'webkit',
+            use: { ...devices['Desktop Safari'] },
+            testMatch: /e2e\/smoke\.spec\.ts/,
+          },
+        ] as const)
+      : []),
     // ── Concurrency / race-condition tests (isolated project) ──────────────────
     {
       name: 'concurrency',
