@@ -205,14 +205,14 @@ The API server will run on `http://localhost:3000`
 // E2E Testing with Playwright
 tests/e2e/
 ├── appointment-booking.spec.ts    # User flow testing
-└── google-calendar.spec.ts       # Integration testing
+├── google-calendar.spec.ts       # Integration testing
+└── fixtures/                     # Test fixtures and helpers
 ```
 
-**Testing Philosophy:**
-- **E2E First**: Critical user paths tested end-to-end
-- **Integration Testing**: API contracts validated
-- **Component Testing**: UI components tested in isolation
-- **Accessibility Testing**: WCAG compliance verified
+**Test Coverage:**
+- **Appointment Booking**: Core flow, validation, status lifecycle, refresh resilience
+- **Google Calendar Integration**: Happy path, failure scenarios, read-only enforcement
+- **Cross-browser**: Chromium (primary), Firefox & WebKit (smoke tests in CI)
 
 ### Running Tests
 
@@ -220,8 +220,67 @@ tests/e2e/
 # Run E2E tests
 npm run test:e2e
 
+# Run with UI mode
+npm run test:e2e:ui
+
 # Run with headed mode for debugging
 npm run test:e2e:headed
+
+# Debug specific test
+npm run test:e2e:debug
+
+# View test report
+npm run test:e2e:report
+```
+
+## 🚀 CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+The project includes a comprehensive CI/CD pipeline that runs on every push and pull request:
+
+```yaml
+# .github/workflows/ci.yml
+├── Lint & Type Check    # ESLint + TypeScript strict mode
+├── Build                # Production build verification
+├── E2E Tests            # Playwright tests in CI environment
+└── Deploy               # Automatic deployment on main branch
+```
+
+**Pipeline Stages:**
+
+1. **Lint & Type Check**
+   - ESLint with React hooks rules
+   - TypeScript strict mode validation
+   - Fails fast on type errors
+
+2. **Build Verification**
+   - Production build with Vite
+   - Artifact upload for deployment
+
+3. **E2E Testing**
+   - Playwright tests in CI environment
+   - Automatic retries on failure
+   - Test reports and screenshots on failure
+
+4. **Deployment**
+   - Automatic deployment on main branch
+   - Configured for Vercel/Netlify (add your provider)
+
+### Pre-commit Hooks
+
+```bash
+# Pre-commit hook runs lint before every commit
+npm run lint
+```
+
+### Local Development with CI
+
+```bash
+# Run full CI pipeline locally
+npm run lint
+npm run build
+npm run test:e2e
 ```
 
 ## 📊 Performance Considerations
@@ -257,22 +316,6 @@ npm run test:e2e:headed
 - **Audit Logging**: Track all data access and modifications
 - **Backup Strategy**: Regular encrypted backups with retention policies
 
-## 🌐 Browser Support
-
-- Chrome/Edge (recommended): Latest 2 versions
-- Firefox: Latest 2 versions
-- Safari: Latest 2 versions
-- Mobile browsers: iOS Safari 14+, Chrome Mobile
-
-## 🤝 Contributing
-
-This project demonstrates professional development practices. For contributions:
-
-1. Follow the established code structure and patterns
-2. Ensure TypeScript strict mode compliance
-3. Add tests for new features
-4. Update documentation as needed
-5. Follow conventional commit messages
 
 ## 📝 License
 
