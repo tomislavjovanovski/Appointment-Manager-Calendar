@@ -1,11 +1,17 @@
-import { Calendar, Users, Settings, Stethoscope } from 'lucide-react';
+import { Calendar, Users, Settings, Stethoscope, Activity, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n';
 
+interface SidebarStat {
+  label: string;
+  value: number;
+}
+
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  stats?: SidebarStat[];
 }
 
 const navigation = [
@@ -14,7 +20,7 @@ const navigation = [
   { id: 'settings', nameKey: 'sidebar.settings' as const, icon: Settings, testId: 'nav-settings' },
 ];
 
-export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, stats = [] }: SidebarProps) {
   const { t } = useI18n();
   return (
     <div className="flex w-64 flex-col border-r border-sidebar-border/80 bg-sidebar shadow-soft">
@@ -62,6 +68,37 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             );
           })}
         </div>
+
+        {stats.length > 0 && (
+          <div className="mt-6 space-y-2.5 px-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              {t('sidebar.snapshot')}
+            </p>
+            <div className="space-y-2">
+              {stats.map((stat, index) => {
+                const Icon = index === 0 ? Users : index === 1 ? Activity : CalendarRange;
+                return (
+                  <div
+                    key={stat.label}
+                    className="rounded-2xl border border-sidebar-border/60 bg-sidebar-accent/35 px-3 py-3 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-medium text-muted-foreground">{stat.label}</p>
+                        <p className="mt-1 text-xl font-semibold tracking-tight text-sidebar-foreground">
+                          {stat.value}
+                        </p>
+                      </div>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/80 text-primary shadow-sm">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Footer */}

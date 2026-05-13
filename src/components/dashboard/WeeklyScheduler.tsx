@@ -35,6 +35,19 @@ function appointmentTypeKey(type: Appointment['type']): 'consultation' | 'follow
   return type;
 }
 
+function appointmentTypeColor(type: Appointment['type'] | undefined): string {
+  switch (type) {
+    case 'consultation':
+      return '#2563eb';
+    case 'follow-up':
+      return '#0f766e';
+    case 'procedure':
+      return '#c2410c';
+    default:
+      return '#64748b';
+  }
+}
+
 interface WeeklySchedulerProps {
   onCreateAppointment: (date: Date) => void;
   onAppointmentClick: (appointment: Appointment) => void;
@@ -89,14 +102,14 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       const showFullLoading = !initialLoadDoneRef.current;
       try {
         if (showFullLoading) setLoading(true);
-        const [appointmentsData, settingsData] = await Promise.all([
-          appointmentsStorage.getAll().catch(() => []),
-          settingsStorage.get().catch(() => ({
-            startTime: '08:00',
-            endTime: '18:00',
-            timeSlotMinutes: 30
-          }))
-        ]);
+        const appointmentsData = await appointmentsStorage.getAll().catch(() => []);
+        const settingsData = await settingsStorage.get().catch(() => ({
+          startTime: '08:00',
+          endTime: '18:00',
+          timeSlotMinutes: 30
+        }));
+
+        console.log('Loaded appointments:', appointmentsData);
 
         if (isMounted) {
           setAppointments(appointmentsData);
@@ -151,19 +164,48 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     }
   };
 
-  const appointmentEvents = appointments.map(apt => ({
-    event_id: apt.id,
-    title: t('dashboard.eventTitle', {
-      name: apt.patientName,
-      type: t(`appointment.types.${appointmentTypeKey(apt.type)}`),
-    }),
-    start: new Date(apt.startTime),
-    end: new Date(apt.endTime),
-    color: apt.status === 'scheduled' ? '#3b82f6' : 
-           apt.status === 'completed' ? '#10b981' :
-           apt.status === 'cancelled' ? '#ef4444' : '#f59e0b',
-    appointment: apt
-  }));
+  const appointmentEvents = appointments
+    .map((apt: any) => {
+      try {
+        // Handle both startTime/endTime (new) and start/end (old) field names
+        const startStr = apt.startTime || apt.start;
+        const endStr = apt.endTime || apt.end;
+        
+        if (!startStr || !endStr) {
+          console.warn('Skipping appointment with missing dates:', apt);
+          return null;
+        }
+        
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        
+        // Validate dates are finite before creating event
+        if (!isFinite(start.getTime()) || !isFinite(end.getTime())) {
+          console.warn('Skipping appointment with invalid dates:', apt);
+          return null;
+        }
+        
+        const patientName = apt.patientName || 'Unknown Patient';
+        const typeTranslation = t(`appointment.types.${appointmentTypeKey(apt.type)}`);
+        const title = t('dashboard.eventTitle', {
+          name: patientName,
+          type: typeTranslation,
+        });
+        
+        return {
+          event_id: apt.id,
+          title: title || `${patientName} — ${typeTranslation}`,
+          start: start,
+          end: end,
+          color: appointmentTypeColor(apt.type),
+          appointment: apt
+        };
+      } catch (e) {
+        console.warn('Failed to map appointment:', apt, e);
+        return null;
+      }
+    })
+    .filter((e: any) => e !== null);
 
   const googleCalendarEvents = googleEvents.map(event => ({
     event_id: `google-${event.id}`,
@@ -396,22 +438,36 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       data-testid="gcal-event-block"
                       data-source="google"
                       className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-white"
+                      style={{ backgroundColor: event.color || '#9333ea' }}
                     >
-                      {event.title}
+                      {event.title || 'Google Event'}
                     </div>
                   );
                 }
 
                 const apt: Appointment | undefined = event?.appointment;
+                // Debug: log the appointment data
+                console.log('Event renderer appointment:', apt);
+                
+                const patientName = apt?.patientName || apt?.patientId || 'Unknown';
+                const typeLabel = apt?.type || 'consultation';
+                const displayTitle = `${patientName} — ${typeLabel}`;
+                const bgColor = event?.color || '#3b82f6';
+                
                 return (
                   <div
                     data-testid="appointment-block"
                     data-status={apt?.status ?? 'scheduled'}
                     data-source="local"
-                    className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-white"
-                    title={event.title}
+                    className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-white cursor-pointer"
+                    style={{ backgroundColor: bgColor }}
+                    title={displayTitle}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEventClick(event);
+                    }}
                   >
-                    {event.title}
+                    {displayTitle}
                   </div>
                 );
               }}
@@ -502,26 +558,22 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       <Card className="border-border/80 shadow-soft">
         <CardHeader className="pb-3 pt-4">
           <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {t('dashboard.statusLegend')}
+            Appointment Types
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-4 pt-0">
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-blue-500 shadow-sm ring-2 ring-blue-500/20" />
-              {t('dashboard.scheduled')}
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm shadow-sm" style={{ backgroundColor: appointmentTypeColor('consultation'), boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.2)' }} />
+              {t('appointment.types.consultation')}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-emerald-500 shadow-sm ring-2 ring-emerald-500/20" />
-              {t('dashboard.completed')}
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm shadow-sm" style={{ backgroundColor: appointmentTypeColor('follow-up'), boxShadow: '0 0 0 4px rgba(15, 118, 110, 0.2)' }} />
+              {t('appointment.types.followUp')}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-red-500 shadow-sm ring-2 ring-red-500/20" />
-              {t('dashboard.cancelled')}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-amber-400 shadow-sm ring-2 ring-amber-400/25" />
-              {t('dashboard.noShow')}
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm shadow-sm" style={{ backgroundColor: appointmentTypeColor('procedure'), boxShadow: '0 0 0 4px rgba(194, 65, 12, 0.2)' }} />
+              {t('appointment.types.procedure')}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
               <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-violet-500 shadow-sm ring-2 ring-violet-500/20" />

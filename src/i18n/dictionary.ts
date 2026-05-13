@@ -7,6 +7,10 @@ const en: Record<string, string> = {
   'sidebar.settings': 'Settings',
   'sidebar.appName': 'MediCal',
   'sidebar.appSubtitle': 'Appointment Manager',
+  'sidebar.snapshot': 'Snapshot',
+  'sidebar.totalPatients': 'Total Patients',
+  'sidebar.totalVisits': 'Total Visits',
+  'sidebar.visitsThisMonth': 'Visits This Month',
   'sidebar.footer1': 'Standalone • Flexible',
   'sidebar.footer2': 'Data stored locally',
 
@@ -302,6 +306,10 @@ const mk: Record<string, string> = {
   'sidebar.settings': 'Поставки',
   'sidebar.appName': 'MediCal',
   'sidebar.appSubtitle': 'Менаџер за термини',
+  'sidebar.snapshot': 'Преглед',
+  'sidebar.totalPatients': 'Вкупно пациенти',
+  'sidebar.totalVisits': 'Вкупно посети',
+  'sidebar.visitsThisMonth': 'Посети овој месец',
   'sidebar.footer1': 'Самостоен • Флексибилен',
   'sidebar.footer2': 'Податоците се локално зачувани',
 

@@ -1,29 +1,33 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useEffect, useMemo, useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { UserPlus, User, Mail, Phone, MapPin, Contact, CalendarIcon } from 'lucide-react';
-import { Patient } from '@/types/appointment';
+import { Separator } from '@/components/ui/separator';
+import { UserPlus, User, Mail, Phone, MapPin, CalendarDays, ShieldPlus } from 'lucide-react';
 import { patientsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
 import { useI18n } from '@/i18n';
+import { Patient } from '@/types/appointment';
 
 interface CreatePatientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPatientCreated?: () => void;
+  onPatientUpdated?: () => void;
+  patient?: Patient | null;
 }
 
 export function CreatePatientDialog({ 
   open, 
   onOpenChange, 
-  onPatientCreated 
+  onPatientCreated,
+  onPatientUpdated,
+  patient
 }: CreatePatientDialogProps) {
-  const { t, dateFnsLocale } = useI18n();
-  const [formData, setFormData] = useState({
+  const { t } = useI18n();
+  const emptyForm = useMemo(() => ({
     firstName: '',
     lastName: '',
     email: '',
@@ -32,9 +36,32 @@ export function CreatePatientDialog({
     address: '',
     emergencyContact: '',
     notes: ''
-  });
+  }), []);
+  const [formData, setFormData] = useState(emptyForm);
   const { toast } = useToast();
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const isEditMode = Boolean(patient?.id);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (patient) {
+      setFormData({
+        firstName: patient.firstName ?? '',
+        lastName: patient.lastName ?? '',
+        email: patient.email ?? '',
+        phone: patient.phone ?? '',
+        dateOfBirth: patient.dateOfBirth ?? '',
+        address: patient.address ?? '',
+        emergencyContact: patient.emergencyContact ?? '',
+        notes: patient.notes ?? '',
+      });
+    } else {
+      setFormData(emptyForm);
+    }
+
+    setErrors({});
+  }, [open, patient, emptyForm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +86,7 @@ export function CreatePatientDialog({
     try {
       // Duplicate email check (offline mode / API failure paths)
       const existing = await patientsStorage.getAll().catch(() => []);
-      if (existing.some((p) => p.email?.toLowerCase?.() === formData.email.toLowerCase())) {
+      if (existing.some((p) => p.email?.toLowerCase?.() === formData.email.toLowerCase() && p.id !== patient?.id)) {
         setErrors((e) => ({ ...e, emailDuplicate: true }));
         toast({
           title: t('common.error'),
@@ -69,29 +96,35 @@ export function CreatePatientDialog({
         return;
       }
 
-      await patientsStorage.add({
-        ...formData,
-        dateOfBirth: formData.dateOfBirth ?? ''
-      });
+      if (patient?.id) {
+        await patientsStorage.update(patient.id, {
+          ...formData,
+          dateOfBirth: formData.dateOfBirth ?? ''
+        });
 
-      toast({
-        title: t('createPatient.toastCreatedTitle'),
-        description: t('createPatient.toastCreatedDesc', { name: `${formData.firstName} ${formData.lastName}` }),
-      });
+        toast({
+          title: 'Patient updated',
+          description: `${formData.firstName} ${formData.lastName} has been updated successfully`,
+        });
 
-      onPatientCreated?.();
+        onPatientUpdated?.();
+      } else {
+        await patientsStorage.add({
+          ...formData,
+          dateOfBirth: formData.dateOfBirth ?? ''
+        });
+
+        toast({
+          title: t('createPatient.toastCreatedTitle'),
+          description: t('createPatient.toastCreatedDesc', { name: `${formData.firstName} ${formData.lastName}` }),
+        });
+
+        onPatientCreated?.();
+      }
+
       onOpenChange(false);
       
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        dateOfBirth: '',
-        address: '',
-        emergencyContact: '',
-        notes: ''
-      });
+      setFormData(emptyForm);
       setErrors({});
     } catch (error) {
       toast({
@@ -109,144 +142,166 @@ export function CreatePatientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" data-testid="patient-form-dialog">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-primary" />
-            {t('createPatient.title')}
-          </DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName" className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                {t('createPatient.fullName')}
-              </Label>
-              <Input
-                id="firstName"
-                data-testid="patient-first-name"
-                value={formData.firstName}
-                onChange={(e) => handleInputChange('firstName', e.target.value)}
-                placeholder={t('createPatient.phName')}
-              />
-              {errors.firstName && <div data-testid="error-first-name-required" className="text-xs text-destructive">{t('common.error')}</div>}
+      <DialogContent className="overflow-hidden border-border/70 p-0 shadow-2xl sm:max-w-4xl" data-testid="patient-form-dialog">
+        <div className="max-h-[70vh] overflow-y-auto">
+          <div className="border-b border-border/60 bg-gradient-to-br from-primary/10 via-background to-background px-5 py-4 sm:px-6">
+            <DialogHeader className="space-y-2 text-left">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                  {isEditMode ? <User className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                </div>
+                <div className="space-y-1">
+                  <DialogTitle className="text-lg font-semibold tracking-tight">
+                    {isEditMode ? 'Edit Patient' : t('createPatient.title')}
+                  </DialogTitle>
+                  <DialogDescription className="max-w-2xl text-xs leading-relaxed">
+                    {isEditMode
+                      ? 'Update contact details, birth date, and patient notes in one place.'
+                      : 'Create a patient profile with contact details, birth date, and care notes.'}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-3 px-5 py-4 sm:px-6">
+              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
+                <div className="grid gap-3 md:grid-cols-12">
+                  <div className="space-y-1.5 md:col-span-3">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      data-testid="patient-first-name"
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                      placeholder="Ava"
+                      className="h-9 border-border/70 bg-background/80"
+                    />
+                    {errors.firstName && <div data-testid="error-first-name-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                  </div>
+                  <div className="space-y-1.5 md:col-span-3">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      data-testid="patient-last-name"
+                      value={formData.lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                      placeholder="Petrova"
+                      className="h-9 border-border/70 bg-background/80"
+                    />
+                    {errors.lastName && <div data-testid="error-last-name-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                  </div>
+                  <div className="space-y-1.5 md:col-span-3">
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t('createPatient.email')}
+                    </Label>
+                    <Input
+                      id="email"
+                      data-testid="patient-email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder={t('createPatient.phEmail')}
+                      className="h-9 border-border/70 bg-background/80"
+                    />
+                    {errors.emailRequired && <div data-testid="error-email-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                    {errors.emailInvalid && <div data-testid="error-email-invalid" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                    {errors.emailDuplicate && <div data-testid="error-email-duplicate" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                  </div>
+                  <div className="space-y-1.5 md:col-span-3">
+                    <Label htmlFor="phone" className="flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t('createPatient.phone')}
+                    </Label>
+                    <Input
+                      id="phone"
+                      data-testid="patient-phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      placeholder={t('createPatient.phPhone')}
+                      className="h-9 border-border/70 bg-background/80"
+                    />
+                    {errors.phone && <div data-testid="error-phone-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                  </div>
+                  <div className="space-y-1.5 md:col-span-3">
+                    <Label htmlFor="patient-dob" className="flex items-center gap-2">
+                      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t('createPatient.dob')}
+                    </Label>
+                    <Input
+                      id="patient-dob"
+                      type="date"
+                      data-testid="patient-dob"
+                      value={formData.dateOfBirth}
+                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                      className="h-9 border-border/70 bg-background/80"
+                    />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-5">
+                    <Label htmlFor="address" className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t('createPatient.address')}
+                    </Label>
+                    <Input
+                      id="address"
+                      data-testid="patient-address"
+                      value={formData.address}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      placeholder={t('createPatient.phAddress')}
+                      className="h-9 border-border/70 bg-background/80"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-4">
+                    <Label htmlFor="emergencyContact" className="flex items-center gap-2">
+                      <ShieldPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t('createPatient.emergencyContact')}
+                    </Label>
+                    <Input
+                      id="emergencyContact"
+                      data-testid="patient-emergency-contact"
+                      value={formData.emergencyContact}
+                      onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
+                      placeholder={t('createPatient.phEmergency')}
+                      className="h-9 border-border/70 bg-background/80"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-12">
+                  <Label htmlFor="notes">{t('createPatient.notes')}</Label>
+                  <Textarea
+                    id="notes"
+                    data-testid="patient-notes"
+                    placeholder={t('createPatient.phNotes')}
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    rows={3}
+                    className="min-h-[72px] border-border/70 bg-background/80"
+                  />
+                </div>
+                </div>
+              </section>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName" className="flex items-center gap-2">
-                <span className="sr-only">{t('createPatient.fullName')}</span>
-              </Label>
-              <Input
-                id="lastName"
-                data-testid="patient-last-name"
-                value={formData.lastName}
-                onChange={(e) => handleInputChange('lastName', e.target.value)}
-                placeholder={t('createPatient.phName')}
-              />
-              {errors.lastName && <div data-testid="error-last-name-required" className="text-xs text-destructive">{t('common.error')}</div>}
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                {t('createPatient.email')}
-              </Label>
-              <Input
-                id="email"
-                data-testid="patient-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder={t('createPatient.phEmail')}
-              />
-              {errors.emailRequired && <div data-testid="error-email-required" className="text-xs text-destructive">{t('common.error')}</div>}
-              {errors.emailInvalid && <div data-testid="error-email-invalid" className="text-xs text-destructive">{t('common.error')}</div>}
-              {errors.emailDuplicate && <div data-testid="error-email-duplicate" className="text-xs text-destructive">{t('common.error')}</div>}
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                {t('createPatient.phone')}
-              </Label>
-              <Input
-                id="phone"
-                data-testid="patient-phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder={t('createPatient.phPhone')}
-              />
-              {errors.phone && <div data-testid="error-phone-required" className="text-xs text-destructive">{t('common.error')}</div>}
-            </div>
-          </div>
+            <Separator />
 
-          <div className="space-y-2">
-            <Label>{t('createPatient.dob')}</Label>
-            <Input
-              type="date"
-              data-testid="patient-dob"
-              value={formData.dateOfBirth}
-              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              {t('createPatient.address')}
-            </Label>
-            <Input
-              id="address"
-              data-testid="patient-address"
-              value={formData.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder={t('createPatient.phAddress')}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="emergencyContact" className="flex items-center gap-2">
-              <Contact className="w-4 h-4" />
-              {t('createPatient.emergencyContact')}
-            </Label>
-            <Input
-              id="emergencyContact"
-              data-testid="patient-emergency-contact"
-              value={formData.emergencyContact}
-              onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-              placeholder={t('createPatient.phEmergency')}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">{t('createPatient.notes')}</Label>
-            <Textarea
-              id="notes"
-              data-testid="patient-notes"
-              placeholder={t('createPatient.phNotes')}
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('createPatient.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              data-testid="patient-form-submit"
-              className="bg-gradient-to-r from-accent to-accent-hover"
-            >
-              {t('createPatient.submit')}
-            </Button>
-          </div>
-        </form>
+            <DialogFooter className="gap-3 px-5 py-3 sm:px-6">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-9 border-border/70">
+                {t('createPatient.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                data-testid="patient-form-submit"
+                className="h-9 bg-primary px-5 text-primary-foreground shadow-sm hover:bg-primary/90"
+              >
+                {isEditMode ? 'Save Changes' : t('createPatient.submit')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
