@@ -276,12 +276,3 @@ This project demonstrates professional development practices. For contributions:
 
 ## 📝 License
 
-[Your License Here]
-
-## 👨‍💻 About the Developer
-
-Senior Frontend Engineer with 12+ years of experience building scalable web applications. Expert in React ecosystem, TypeScript, and modern frontend architecture. Passionate about clean code, performance optimization, and developer experience.
-
----
-
-**Built with ❤️ using modern web technologies and best practices.**
