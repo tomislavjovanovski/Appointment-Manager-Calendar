@@ -166,9 +166,10 @@ export function CreatePatientDialog({
 
           <form onSubmit={handleSubmit}>
             <div className="space-y-3 px-5 py-4 sm:px-6">
+              {/* Box 1: First name and Last name */}
               <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
-                <div className="grid gap-3 md:grid-cols-12">
-                  <div className="space-y-1.5 md:col-span-3">
+                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
+                  <div className="space-y-1.5">
                     <Label htmlFor="firstName">First Name</Label>
                     <Input
                       id="firstName"
@@ -180,7 +181,7 @@ export function CreatePatientDialog({
                     />
                     {errors.firstName && <div data-testid="error-first-name-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                   </div>
-                  <div className="space-y-1.5 md:col-span-3">
+                  <div className="space-y-1.5 pr-3">
                     <Label htmlFor="lastName">Last Name</Label>
                     <Input
                       id="lastName"
@@ -192,7 +193,13 @@ export function CreatePatientDialog({
                     />
                     {errors.lastName && <div data-testid="error-last-name-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                   </div>
-                  <div className="space-y-1.5 md:col-span-3">
+                </div>
+              </section>
+
+              {/* Box 2: Email and Phone/Emergency Contact */}
+              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
+                  <div className="space-y-1.5">
                     <Label htmlFor="email" className="flex items-center gap-2">
                       <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                       {t('createPatient.email')}
@@ -210,78 +217,86 @@ export function CreatePatientDialog({
                     {errors.emailInvalid && <div data-testid="error-email-invalid" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                     {errors.emailDuplicate && <div data-testid="error-email-duplicate" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                   </div>
-                  <div className="space-y-1.5 md:col-span-3">
-                    <Label htmlFor="phone" className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                      {t('createPatient.phone')}
-                    </Label>
-                    <Input
-                      id="phone"
-                      data-testid="patient-phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder={t('createPatient.phPhone')}
-                      className="h-9 border-border/70 bg-background/80"
-                    />
-                    {errors.phone && <div data-testid="error-phone-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                  <div className="space-y-3 pr-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone" className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                        {t('createPatient.phone')}
+                      </Label>
+                      <Input
+                        id="phone"
+                        data-testid="patient-phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        placeholder={t('createPatient.phPhone')}
+                        className="h-9 border-border/70 bg-background/80"
+                      />
+                      {errors.phone && <div data-testid="error-phone-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="emergencyContact" className="flex items-center gap-2">
+                        <ShieldPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                        {t('createPatient.emergencyContact')}
+                      </Label>
+                      <Input
+                        id="emergencyContact"
+                        data-testid="patient-emergency-contact"
+                        value={formData.emergencyContact}
+                        onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
+                        placeholder={t('createPatient.phEmergency')}
+                        className="h-9 border-border/70 bg-background/80"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1.5 md:col-span-3">
-                    <Label htmlFor="patient-dob" className="flex items-center gap-2">
-                      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                      {t('createPatient.dob')}
-                    </Label>
-                    <Input
-                      id="patient-dob"
-                      type="date"
-                      data-testid="patient-dob"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                      className="h-9 border-border/70 bg-background/80"
-                    />
-                  </div>
-                  <div className="space-y-1.5 md:col-span-5">
-                    <Label htmlFor="address" className="flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      {t('createPatient.address')}
-                    </Label>
-                    <Input
-                      id="address"
-                      data-testid="patient-address"
-                      value={formData.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                      placeholder={t('createPatient.phAddress')}
-                      className="h-9 border-border/70 bg-background/80"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-4">
-                    <Label htmlFor="emergencyContact" className="flex items-center gap-2">
-                      <ShieldPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                      {t('createPatient.emergencyContact')}
-                    </Label>
-                    <Input
-                      id="emergencyContact"
-                      data-testid="patient-emergency-contact"
-                      value={formData.emergencyContact}
-                      onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-                      placeholder={t('createPatient.phEmergency')}
-                      className="h-9 border-border/70 bg-background/80"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-12">
-                  <Label htmlFor="notes">{t('createPatient.notes')}</Label>
-                  <Textarea
-                    id="notes"
-                    data-testid="patient-notes"
-                    placeholder={t('createPatient.phNotes')}
-                    value={formData.notes}
-                    onChange={(e) => handleInputChange('notes', e.target.value)}
-                    rows={3}
-                    className="min-h-[72px] border-border/70 bg-background/80"
-                  />
                 </div>
+              </section>
+
+              {/* Box 3: Date/Address and Notes */}
+              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="patient-dob" className="flex items-center gap-2">
+                        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                        {t('createPatient.dob')}
+                      </Label>
+                      <Input
+                        id="patient-dob"
+                        type="date"
+                        data-testid="patient-dob"
+                        value={formData.dateOfBirth}
+                        onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                        className="h-9 border-border/70 bg-background/80"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="address" className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                        {t('createPatient.address')}
+                      </Label>
+                      <Input
+                        id="address"
+                        data-testid="patient-address"
+                        value={formData.address}
+                        onChange={(e) => handleInputChange('address', e.target.value)}
+                        placeholder={t('createPatient.phAddress')}
+                        className="h-9 border-border/70 bg-background/80"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 pr-3">
+                    <Label htmlFor="notes">{t('createPatient.notes')}</Label>
+                    <Textarea
+                      id="notes"
+                      data-testid="patient-notes"
+                      placeholder={t('createPatient.phNotes')}
+                      value={formData.notes}
+                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      rows={3}
+                      className="min-h-[72px] border-border/70 bg-background/80"
+                    />
+                  </div>
                 </div>
               </section>
             </div>
