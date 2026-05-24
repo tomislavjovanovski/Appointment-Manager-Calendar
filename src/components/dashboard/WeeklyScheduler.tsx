@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, ChevronLeft, ChevronRight, Clock, Plus, RotateCcw } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, Clock, GripVertical, Plus, RotateCcw } from 'lucide-react';
 import { addWeeks, endOfWeek, format, startOfWeek } from 'date-fns';
 import { Appointment } from '@/types/appointment';
 import { appointmentsStorage, settingsStorage } from '@/lib/storage';
@@ -57,6 +57,7 @@ interface WeeklySchedulerProps {
 export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0 }: WeeklySchedulerProps) {
   const initialLoadDoneRef = useRef(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
   const [settings, setSettings] = useState<any>({
     startTime: '08:00',
     endTime: '18:00',
@@ -193,6 +194,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
         });
         
         return {
+          ...apt,
           event_id: apt.id,
           title: title || `${patientName} — ${typeTranslation}`,
           start: start,
@@ -228,8 +230,9 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       setGoogleDetailEvent(event);
       return;
     }
-    if (event.appointment) {
-      onAppointmentClick(event.appointment);
+    const appointment = event?.appointment ?? event;
+    if (appointment?.id) {
+      onAppointmentClick(appointment);
     }
   };
 
@@ -244,10 +247,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     updatedEvent: any,
     originalEvent: any
   ) => {
-    const apt = originalEvent.appointment as Appointment;
-    const newDate = format(updatedEvent.start, 'yyyy-MM-dd');
-    const startTime = format(updatedEvent.start, 'HH:mm');
-    const endTime = format(updatedEvent.end, 'HH:mm');
+    const apt = (originalEvent?.appointment ?? originalEvent) as Appointment;
     try {
       const newStartISO = updatedEvent.start.toISOString();
       const newEndISO = updatedEvent.end.toISOString();
@@ -267,9 +267,11 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       await appointmentsStorage.update(apt.id, { startTime: newStartISO, endTime: newEndISO });
       const updatedAppointments = await appointmentsStorage.getAll().catch(() => appointments);
       setAppointments(updatedAppointments);
+      setDraggingEventId(null);
       toast({ title: t('settings.savedTitle') ?? 'Saved' });
       return { ...updatedEvent, appointment: { ...apt, startTime: newStartISO, endTime: newEndISO } };
     } catch (err) {
+      setDraggingEventId(null);
       console.error('Failed to update appointment on drop', err);
       toast({
         title: 'Unable to reschedule',
@@ -428,46 +430,83 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
               onCellClick={handleCellClick}
               hourFormat="24"
               editable={false}
+              draggable
               onEventDrop={handleEventDrop}
               disableViewer
               customEditor={() => null}
-              eventRenderer={(event: any) => {
-                if (event?.google) {
+              eventRenderer={(props: any) => {
+                const schedulerEvent = props?.event ?? props;
+
+                if (schedulerEvent?.google) {
                   return (
                     <div
                       data-testid="gcal-event-block"
                       data-source="google"
                       className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-white"
-                      style={{ backgroundColor: event.color || '#9333ea' }}
+                      style={{ backgroundColor: schedulerEvent.color || '#9333ea' }}
                     >
-                      {event.title || 'Google Event'}
+                      {schedulerEvent.title || 'Google Event'}
                     </div>
                   );
                 }
 
-                const apt: Appointment | undefined = event?.appointment;
-                // Debug: log the appointment data
-                console.log('Event renderer appointment:', apt);
-                
-                const patientName = apt?.patientName || apt?.patientId || 'Unknown';
-                const typeLabel = apt?.type || 'consultation';
-                const displayTitle = `${patientName} — ${typeLabel}`;
-                const bgColor = event?.color || '#3b82f6';
+                const apt: Appointment | undefined = schedulerEvent?.appointment ?? schedulerEvent;
+                const patientName =
+                  apt?.patientName ||
+                  (typeof schedulerEvent?.title === 'string' && schedulerEvent.title.includes('—')
+                    ? schedulerEvent.title.split('—')[0].trim()
+                    : undefined) ||
+                  apt?.patientId ||
+                  'Unknown';
+                const displayTitle = patientName;
+                const appointmentTitle = apt?.title?.trim();
+                const appointmentNotes = apt?.notes?.trim();
+                const bgColor = schedulerEvent?.color || '#3b82f6';
+                const isDragging = draggingEventId === apt?.id;
                 
                 return (
                   <div
                     data-testid="appointment-block"
                     data-status={apt?.status ?? 'scheduled'}
                     data-source="local"
-                    className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-white cursor-pointer"
+                    className={`h-full w-full overflow-hidden rounded-md text-white shadow-sm ${isDragging ? 'pointer-events-none opacity-35' : 'cursor-pointer'}`}
                     style={{ backgroundColor: bgColor }}
                     title={displayTitle}
+                    draggable={props?.draggable}
+                    onDragStart={(event) => {
+                      setDraggingEventId(apt?.id ?? null);
+                      props?.onDragStart?.(event);
+                    }}
+                    onDragEnd={(event) => {
+                      setDraggingEventId(null);
+                      props?.onDragEnd?.(event);
+                    }}
+                    onDragOver={props?.onDragOver}
+                    onDragEnter={props?.onDragEnter}
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
-                      handleEventClick(event);
+                      handleEventClick(schedulerEvent);
                     }}
                   >
-                    {displayTitle}
+                    <div className="flex h-full flex-col px-2 py-1">
+                      <div className="flex items-center justify-between gap-2 rounded-sm bg-black/20 px-1.5 py-0.5">
+                        <div className="truncate text-xs font-semibold leading-tight tracking-[0.01em]">
+                          {displayTitle}
+                        </div>
+                        <GripVertical className="h-3.5 w-3.5 shrink-0 text-white/70" />
+                      </div>
+                      {appointmentTitle && (
+                        <div className="mt-1 truncate text-[11px] font-medium leading-tight text-white/95">
+                          {appointmentTitle}
+                        </div>
+                      )}
+                      {appointmentNotes && (
+                        <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/80">
+                          {appointmentNotes}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               }}
@@ -484,20 +523,36 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   const start: Date | undefined = props?.start;
                   const end: Date | undefined = props?.end;
                   const onClick: ((s: Date, e: Date) => void) | undefined = props?.onClick;
+                  const onDrop = props?.onDrop;
+                  const onDragOver = props?.onDragOver;
+                  const onDragEnter = props?.onDragEnter;
+                  const onDragLeave = props?.onDragLeave;
 
                   const label = start ? format(start, 'H:mm') : 'unknown';
                   const testId = `time-slot-${label}`;
                   const isEnabled = Boolean(start && end && onClick);
 
                   return (
-                    <button
-                      type="button"
+                    <div
                       data-testid={testId}
                       aria-disabled={isEnabled ? undefined : 'true'}
+                      onDrop={onDrop}
+                      onDragOver={(event) => {
+                        onDragOver?.(event);
+                        event.currentTarget.classList.add('bg-primary/10');
+                      }}
+                      onDragEnter={(event) => {
+                        onDragEnter?.(event);
+                        event.currentTarget.classList.add('bg-primary/10');
+                      }}
+                      onDragLeave={(event) => {
+                        onDragLeave?.(event);
+                        event.currentTarget.classList.remove('bg-primary/10');
+                      }}
                       onClick={() => {
                         if (start && end && onClick) onClick(start, end);
                       }}
-                      className="h-full w-full cursor-pointer bg-transparent"
+                      className="h-full w-full cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-primary/5"
                     />
                   );
                 }

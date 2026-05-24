@@ -1,1 +1,67 @@
-[]
+[
+  {
+    "id": "9e5baf44-3315-4db2-8c7b-c6b563899c48",
+    "createdAt": "2026-05-24T19:17:00.936Z",
+    "title": "sastanak",
+    "patientId": "f20d5832-9e32-4e8d-9a92-f6d9aff52be3",
+    "patientName": "123 123",
+    "startTime": "2026-05-24T19:30:00.000Z",
+    "endTime": "2026-05-24T20:00:00.000Z",
+    "duration": 30,
+    "type": "consultation",
+    "status": "scheduled",
+    "notes": ""
+  },
+  {
+    "id": "1030b7ac-5614-4f2b-917e-dd73b2cb3a01",
+    "createdAt": "2026-05-24T19:17:38.736Z",
+    "title": "sastanak ",
+    "patientId": "f20d5832-9e32-4e8d-9a92-f6d9aff52be3",
+    "patientName": "123 123",
+    "startTime": "2026-05-24T07:15:00.000Z",
+    "endTime": "2026-05-24T07:45:00.000Z",
+    "duration": 30,
+    "type": "consultation",
+    "status": "scheduled",
+    "notes": "lorem ipsum"
+  },
+  {
+    "id": "6e089982-2404-4cb1-b56e-61ecd25126e3",
+    "createdAt": "2026-05-24T19:20:34.945Z",
+    "title": "sastanak",
+    "patientId": "f20d5832-9e32-4e8d-9a92-f6d9aff52be3",
+    "patientName": "123 123",
+    "startTime": "2026-05-24T08:00:00.000Z",
+    "endTime": "2026-05-24T08:30:00.000Z",
+    "duration": 30,
+    "type": "consultation",
+    "status": "scheduled",
+    "notes": "rt hghdsfg dfg dfgdsf gfsdgdsfgdfs gsadfg sfd d"
+  },
+  {
+    "id": "e6339103-a5be-4067-8468-f7b0d0841c28",
+    "createdAt": "2026-05-24T19:23:09.484Z",
+    "title": "sastanak",
+    "patientId": "f20d5832-9e32-4e8d-9a92-f6d9aff52be3",
+    "patientName": "123 123",
+    "startTime": "2026-05-24T08:30:00.000Z",
+    "endTime": "2026-05-24T09:00:00.000Z",
+    "duration": 30,
+    "type": "consultation",
+    "status": "scheduled",
+    "notes": ""
+  },
+  {
+    "id": "3b3a0fa4-a872-4f6c-8c93-8ab13356dd01",
+    "createdAt": "2026-05-24T19:42:40.445Z",
+    "title": "Tomche",
+    "patientId": "f20d5832-9e32-4e8d-9a92-f6d9aff52be3",
+    "patientName": "123 123",
+    "startTime": "2026-05-27T07:00:00.000Z",
+    "endTime": "2026-05-27T08:00:00.000Z",
+    "duration": 60,
+    "type": "follow-up",
+    "status": "scheduled",
+    "notes": "sdf asdf sadf sdaf sdafsa df sadf"
+  }
+]

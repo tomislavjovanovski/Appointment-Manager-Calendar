@@ -1,9 +1,31 @@
 import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
 import type { AppLocale } from '@/i18n/types';
 
-// API base URL
-// Use relative path to work in preview; will fail if backend isn't running
-const API_BASE_URL = '/api';
+const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+
+const resolveApiBaseUrl = () => {
+  const configuredBaseUrl = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL ?? '');
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.endsWith('/api') ? configuredBaseUrl : `${configuredBaseUrl}/api`;
+  }
+
+  return '/api';
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+class ApiResponseError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiResponseError';
+    this.status = status;
+  }
+}
+
+const isJsonResponse = (response: Response) =>
+  response.headers.get('content-type')?.includes('application/json');
 
 // API helper functions
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
@@ -16,10 +38,59 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   });
   
   if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
+    let message = `API call failed: ${response.statusText}`;
+
+    try {
+      if (isJsonResponse(response)) {
+        const data = await response.json();
+        message = data?.error || data?.message || message;
+      } else {
+        const text = await response.text();
+        if (text.trim()) {
+          message = text.trim();
+        }
+      }
+    } catch {
+      // Keep the default message if the error body is unreadable.
+    }
+
+    throw new ApiResponseError(response.status, message);
   }
   
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  if (isJsonResponse(response)) {
+    return response.json();
+  }
+
+  return response.text();
+};
+
+let hasWarnedAboutOfflineFallback = false;
+
+const logOfflineFallback = (entity: string, error: unknown) => {
+  if (hasWarnedAboutOfflineFallback) {
+    return;
+  }
+
+  hasWarnedAboutOfflineFallback = true;
+  console.warn(`API unavailable for ${entity}; falling back to browser storage.`, error);
+};
+
+const shouldUseOfflineFallback = (error: unknown) => {
+  if (error instanceof ApiResponseError) {
+    return false;
+  }
+
+  if (error instanceof TypeError) {
+    return true;
+  }
+
+  return error instanceof Error
+    ? /Failed to fetch|NetworkError|Load failed/i.test(error.message)
+    : false;
 };
 
 // Local fallback helpers (used when API is unavailable)
@@ -45,15 +116,18 @@ const writeLS = (key: string, data: unknown) => {
   } catch {}
 };
 
-const generateId = () => {
-  try {
-    // @ts-ignore
-    const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : null;
-    return uuid ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  }
+const syncCollectionCache = <T,>(key: string, data: T[]) => {
+  writeLS(key, data);
+  return data;
 };
+
+const syncSettingsCache = (settings: AppointmentSettings) => {
+  writeLS(LS_KEYS.settings, settings);
+  return settings;
+};
+
+const buildPatientName = (patient: Partial<Patient>) =>
+  `${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim();
 
 const DEFAULT_SETTINGS: AppointmentSettings = {
   locale: 'en',
@@ -107,60 +181,72 @@ export const initializeData = async () => {
 export const patientsStorage = {
   getAll: async (): Promise<Patient[]> => {
     try {
-      return await apiCall('/patients');
-    } catch {
+      const patients = await apiCall('/patients') as Patient[];
+      return syncCollectionCache(LS_KEYS.patients, patients);
+    } catch (error) {
+      if (!shouldUseOfflineFallback(error)) {
+        throw error;
+      }
+      logOfflineFallback('patients', error);
       return readLS<Patient[]>(LS_KEYS.patients, []);
     }
   },
   
   add: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> => {
-    try {
-      return await apiCall('/patients', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...patient,
-          createdAt: new Date().toISOString()
-        }),
-      });
-    } catch {
-      const all = readLS<Patient[]>(LS_KEYS.patients, []);
-      const newPatient: Patient = {
-        id: generateId(),
-        createdAt: new Date().toISOString(),
-        ...(patient as any),
-      } as Patient;
-      all.push(newPatient);
-      writeLS(LS_KEYS.patients, all);
-      return newPatient;
-    }
+    const createdPatient = await apiCall('/patients', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...patient,
+        createdAt: new Date().toISOString()
+      }),
+    }) as Patient;
+
+    const all = readLS<Patient[]>(LS_KEYS.patients, []);
+    syncCollectionCache(LS_KEYS.patients, [...all, createdPatient]);
+    return createdPatient;
   },
   
   update: async (id: string, updates: Partial<Patient>): Promise<Patient> => {
-    try {
-      return await apiCall(`/patients/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      });
-    } catch {
-      const all = readLS<Patient[]>(LS_KEYS.patients, []);
-      const idx = all.findIndex(p => p.id === id);
-      if (idx === -1) throw new Error('Patient not found (offline)');
-      all[idx] = { ...all[idx], ...updates } as Patient;
-      writeLS(LS_KEYS.patients, all);
-      return all[idx];
-    }
+    const updatedPatient = await apiCall(`/patients/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }) as Patient;
+
+    const all = readLS<Patient[]>(LS_KEYS.patients, []);
+    syncCollectionCache(
+      LS_KEYS.patients,
+      all.map((patient) => patient.id === id ? updatedPatient : patient)
+    );
+
+    const appointmentCache = readLS<Appointment[]>(LS_KEYS.appointments, []);
+    syncCollectionCache(
+      LS_KEYS.appointments,
+      appointmentCache.map((appointment) =>
+        appointment.patientId === id
+          ? { ...appointment, patientName: buildPatientName(updatedPatient) }
+          : appointment
+      )
+    );
+
+    return updatedPatient;
   },
   
   delete: async (id: string): Promise<void> => {
-    try {
-      await apiCall(`/patients/${id}`, {
-        method: 'DELETE',
-      });
-    } catch {
-      const all = readLS<Patient[]>(LS_KEYS.patients, []);
-      const next = all.filter(p => p.id !== id);
-      writeLS(LS_KEYS.patients, next);
-    }
+    await apiCall(`/patients/${id}`, {
+      method: 'DELETE',
+    });
+
+    const all = readLS<Patient[]>(LS_KEYS.patients, []);
+    syncCollectionCache(
+      LS_KEYS.patients,
+      all.filter((patient) => patient.id !== id)
+    );
+
+    const appointmentCache = readLS<Appointment[]>(LS_KEYS.appointments, []);
+    syncCollectionCache(
+      LS_KEYS.appointments,
+      appointmentCache.filter((appointment) => appointment.patientId !== id)
+    );
   }
 };
 
@@ -168,80 +254,71 @@ export const patientsStorage = {
 export const appointmentsStorage = {
   getAll: async (): Promise<Appointment[]> => {
     try {
-      return await apiCall('/appointments');
-    } catch {
+      const appointments = await apiCall('/appointments') as Appointment[];
+      return syncCollectionCache(LS_KEYS.appointments, appointments);
+    } catch (error) {
+      if (!shouldUseOfflineFallback(error)) {
+        throw error;
+      }
+      logOfflineFallback('appointments', error);
       return readLS<Appointment[]>(LS_KEYS.appointments, []);
     }
   },
   
   add: async (appointment: Omit<Appointment, 'id' | 'createdAt'>): Promise<Appointment> => {
-    try {
-      return await apiCall('/appointments', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...appointment,
-          createdAt: new Date().toISOString()
-        }),
-      });
-    } catch {
-      const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
-      const newApt: Appointment = {
-        id: generateId(),
-        createdAt: new Date().toISOString(),
-        ...(appointment as any),
-      } as Appointment;
-      all.push(newApt);
-      writeLS(LS_KEYS.appointments, all);
-      return newApt;
-    }
+    const createdAppointment = await apiCall('/appointments', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...appointment,
+        createdAt: new Date().toISOString()
+      }),
+    }) as Appointment;
+
+    const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
+    syncCollectionCache(LS_KEYS.appointments, [...all, createdAppointment]);
+    return createdAppointment;
   },
   
   update: async (id: string, updates: Partial<Appointment>): Promise<Appointment> => {
-    try {
-      return await apiCall(`/appointments/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      });
-    } catch {
-      const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
-      const idx = all.findIndex(a => a.id === id);
-      if (idx === -1) throw new Error('Appointment not found (offline)');
-      all[idx] = { ...all[idx], ...updates } as Appointment;
-      writeLS(LS_KEYS.appointments, all);
-      return all[idx];
-    }
+    const updatedAppointment = await apiCall(`/appointments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }) as Appointment;
+
+    const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
+    syncCollectionCache(
+      LS_KEYS.appointments,
+      all.map((appointment) => appointment.id === id ? updatedAppointment : appointment)
+    );
+    return updatedAppointment;
   },
   
   delete: async (id: string): Promise<void> => {
-    try {
-      await apiCall(`/appointments/${id}`, {
-        method: 'DELETE',
-      });
-    } catch {
-      const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
-      const next = all.filter(a => a.id !== id);
-      writeLS(LS_KEYS.appointments, next);
-    }
+    await apiCall(`/appointments/${id}`, {
+      method: 'DELETE',
+    });
+
+    const all = readLS<Appointment[]>(LS_KEYS.appointments, []);
+    syncCollectionCache(
+      LS_KEYS.appointments,
+      all.filter((appointment) => appointment.id !== id)
+    );
   },
   
   getByPatient: async (patientId: string): Promise<Appointment[]> => {
-    try {
-      const appointments = await apiCall('/appointments');
-      return appointments.filter((a: any) => a.patientId === patientId);
-    } catch {
-      const appointments = readLS<Appointment[]>(LS_KEYS.appointments, []);
-      return appointments.filter((a) => a.patientId === patientId);
-    }
+    const appointments = await appointmentsStorage.getAll();
+    return appointments.filter((appointment) => appointment.patientId === patientId);
   },
   
   getByDate: async (date: string): Promise<Appointment[]> => {
-    try {
-      const appointments = await apiCall('/appointments');
-      return appointments.filter((a: any) => a.date === date);
-    } catch {
-      const appointments = readLS<Appointment[]>(LS_KEYS.appointments, []);
-      return appointments.filter((a) => a.date === date);
-    }
+    const appointments = await appointmentsStorage.getAll();
+    return appointments.filter((appointment) => {
+      const start = appointment.startTime || (appointment as any).start;
+      if (!start) {
+        return false;
+      }
+      return new Date(start).toISOString().slice(0, 10) === date;
+    });
   }
 };
 
@@ -249,39 +326,33 @@ export const appointmentsStorage = {
 export const settingsStorage = {
   get: async (): Promise<AppointmentSettings> => {
     try {
-      const data = await apiCall('/settings');
-      return normalizeSettings(data);
-    } catch {
+      const data = normalizeSettings(await apiCall('/settings'));
+      return syncSettingsCache(data);
+    } catch (error) {
+      if (!shouldUseOfflineFallback(error)) {
+        throw error;
+      }
+      logOfflineFallback('settings', error);
       return normalizeSettings(readLS<Partial<AppointmentSettings>>(LS_KEYS.settings, {}));
     }
   },
   
   save: async (settings: AppointmentSettings): Promise<AppointmentSettings> => {
-    try {
-      const data = await apiCall('/settings', {
-        method: 'PUT',
-        body: JSON.stringify(settings),
-      });
-      return normalizeSettings(data);
-    } catch {
-      writeLS(LS_KEYS.settings, settings);
-      return normalizeSettings(settings);
-    }
+    const data = normalizeSettings(await apiCall('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    }));
+
+    return syncSettingsCache(data);
   },
   
   update: async (updates: Partial<AppointmentSettings>): Promise<AppointmentSettings> => {
-    try {
-      const data = await apiCall('/settings', {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      });
-      return normalizeSettings(data);
-    } catch {
-      const current = normalizeSettings(readLS<Partial<AppointmentSettings>>(LS_KEYS.settings, {}));
-      const next = { ...current, ...updates } as AppointmentSettings;
-      writeLS(LS_KEYS.settings, next);
-      return normalizeSettings(next);
-    }
+    const data = normalizeSettings(await apiCall('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }));
+
+    return syncSettingsCache(data);
   }
 };
 

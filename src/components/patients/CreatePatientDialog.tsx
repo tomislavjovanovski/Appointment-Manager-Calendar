@@ -85,7 +85,7 @@ export function CreatePatientDialog({
 
     try {
       // Duplicate email check (offline mode / API failure paths)
-      const existing = await patientsStorage.getAll().catch(() => []);
+      const existing = await patientsStorage.getAll();
       if (existing.some((p) => p.email?.toLowerCase?.() === formData.email.toLowerCase() && p.id !== patient?.id)) {
         setErrors((e) => ({ ...e, emailDuplicate: true }));
         toast({
@@ -129,7 +129,7 @@ export function CreatePatientDialog({
     } catch (error) {
       toast({
         title: t('common.error'),
-        description: t('createPatient.toastFailed'),
+        description: error instanceof Error ? error.message : t('createPatient.toastFailed'),
         variant: "destructive",
       });
     }

@@ -8,15 +8,16 @@ import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
 import { Patient, Appointment } from '@/types/appointment';
 import { appointmentsStorage, patientsStorage } from '@/lib/storage';
 import { useI18n } from '@/i18n';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const { t } = useI18n();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [sidebarStats, setSidebarStats] = useState({
@@ -27,13 +28,15 @@ const Index = () => {
 
   const handleCreateAppointment = (date: Date) => {
     console.log('handleCreateAppointment called with:', date);
+    setSelectedAppointment(null);
     setSelectedDate(date);
     setAppointmentDialogOpen(true);
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
-    setEditDialogOpen(true);
+    setSelectedDate(undefined);
+    setAppointmentDialogOpen(true);
   };
   
   const handlePatientClick = (patient: Patient) => {
@@ -135,19 +138,15 @@ const Index = () => {
   // Save new or updated appointment to appointmentsStorage
   const handleSaveAppointment = async (data: any) => {
     try {
-      // Resolve patient name from localStorage patients safely
-      const rawPatients = localStorage.getItem('medical-patients') || '[]';
-      const patientsArr = Array.isArray(JSON.parse(rawPatients)) ? JSON.parse(rawPatients) : [];
+      const patientsArr = await patientsStorage.getAll().catch(() => []);
       const patientObj = patientsArr.find((p: any) => {
         const id = p.id ?? p._id ?? p.patientId ?? String(p.email ?? p.name ?? '');
         return id === data.patientId;
       });
-      let patientName: string | undefined;
+      let patientName: string | undefined = data.patientName;
       if (patientObj) {
         const fullName = `${patientObj.firstName ?? ''} ${patientObj.lastName ?? ''}`.trim();
         patientName = (patientObj.name ?? fullName) || patientObj.email;
-      } else {
-        patientName = undefined;
       }
 
       // normalize dates to ISO strings
@@ -176,7 +175,7 @@ const Index = () => {
         await appointmentsStorage.update(selectedAppointment.id, updatedAppt);
         console.log('Updated appointment:', updatedAppt);
         setSelectedAppointment(null);
-        setEditDialogOpen(false);
+        setAppointmentDialogOpen(false);
       } else {
         // create
         const id = Date.now().toString();
@@ -202,6 +201,11 @@ const Index = () => {
       handleRefresh();
     } catch (e) {
       console.error('Failed to save appointment', e);
+      toast({
+        title: t('common.error'),
+        description: e instanceof Error ? e.message : 'Failed to save appointment',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -239,10 +243,19 @@ const Index = () => {
       
       <AppointmentDialog
         open={appointmentDialogOpen}
-        onOpenChange={setAppointmentDialogOpen}
+        onOpenChange={(open) => {
+          setAppointmentDialogOpen(open);
+          if (!open) {
+            setSelectedAppointment(null);
+            setSelectedDate(undefined);
+          }
+        }}
         selectedDate={selectedDate}
+        appointment={selectedAppointment}
         onAppointmentCreated={handleRefresh}
         onSubmit={handleSaveAppointment}
+        onUpdated={handleRefresh}
+        refreshTrigger={refreshTrigger}
       />
       
       <CreatePatientDialog
@@ -254,15 +267,6 @@ const Index = () => {
         patient={selectedPatient}
         onPatientCreated={handleRefresh}
         onPatientUpdated={handleRefresh}
-      />
-
-      {/* Edit dialog uses same component but with appointment prop */}
-      <AppointmentDialog
-        open={editDialogOpen}
-        onOpenChange={(o)=>{ setEditDialogOpen(o); if(!o) setSelectedAppointment(null);} }
-        appointment={selectedAppointment}
-        onSubmit={handleSaveAppointment}
-        onUpdated={handleRefresh}
       />
     </div>
   );

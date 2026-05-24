@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell, Puzzle, Database } from 'lucide-react';
+import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server } from 'lucide-react';
 import { AppointmentSettings } from '@/types/appointment';
 import { settingsStorage, dataManagement } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,13 @@ const DAYS_OF_WEEK = [
   { id: 5, shortKey: 'fri' as const },
   { id: 6, shortKey: 'sat' as const },
 ];
+
+type ApiHealthResponse = {
+  ok: boolean;
+  dataDir: string;
+  patientsCount: number;
+  appointmentsCount: number;
+};
 
 export function TabbedSettingsPanel() {
   const { t, setLocale } = useI18n();
@@ -53,7 +60,36 @@ export function TabbedSettingsPanel() {
       smsTemplate: ''
     }
   });
+  const [apiHealth, setApiHealth] = useState<ApiHealthResponse | null>(null);
+  const [apiHealthLoading, setApiHealthLoading] = useState(false);
+  const [apiHealthError, setApiHealthError] = useState<string | null>(null);
+  const [lastHealthCheck, setLastHealthCheck] = useState<string | null>(null);
   const { toast } = useToast();
+  const apiHealthUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/health`
+    : '/api/health';
+
+  const loadApiHealth = async () => {
+    setApiHealthLoading(true);
+    setApiHealthError(null);
+
+    try {
+      const response = await fetch('/api/health');
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || t('settings.apiHealthLoadFailed'));
+      }
+
+      setApiHealth(payload as ApiHealthResponse);
+      setLastHealthCheck(new Date().toISOString());
+    } catch (error) {
+      setApiHealth(null);
+      setApiHealthError(error instanceof Error ? error.message : t('settings.apiHealthLoadFailed'));
+    } finally {
+      setApiHealthLoading(false);
+    }
+  };
   
   useEffect(() => {
     const loadSettings = async () => {
@@ -61,6 +97,7 @@ export function TabbedSettingsPanel() {
       setSettings(data);
     };
     loadSettings();
+    loadApiHealth();
   }, []);
 
   const handleSave = async () => {
@@ -147,7 +184,7 @@ export function TabbedSettingsPanel() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid h-11 w-full grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 shadow-sm">
+        <TabsList className="grid h-11 w-full grid-cols-4 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 shadow-sm">
           <TabsTrigger value="general" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
             <Settings className="w-4 h-4" />
             {t('settings.tabGeneral')}
@@ -159,6 +196,10 @@ export function TabbedSettingsPanel() {
           <TabsTrigger value="data" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
             <Database className="w-4 h-4" />
             {t('settings.tabData')}
+          </TabsTrigger>
+          <TabsTrigger value="api-health" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
+            <Activity className="w-4 h-4" />
+            {t('settings.tabApiHealth')}
           </TabsTrigger>
         </TabsList>
 
@@ -528,6 +569,95 @@ export function TabbedSettingsPanel() {
               <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
                 <p><strong>{t('settings.exportHelp')}</strong> {t('settings.exportHelpText')}</p>
                 <p><strong>{t('settings.importHelp')}</strong> {t('settings.importHelpText')}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="api-health" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2">
+                    <Server className="w-5 h-5 text-primary" />
+                    {t('settings.apiHealthTitle')}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">{t('settings.apiHealthSubtitle')}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={loadApiHealth}
+                  disabled={apiHealthLoading}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${apiHealthLoading ? 'animate-spin' : ''}`} />
+                  {t('settings.apiHealthRefresh')}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {t('settings.apiHealthStatus')}
+                  </div>
+                  <div className="mt-2">
+                    <Badge variant={apiHealth?.ok ? 'default' : 'destructive'}>
+                      {apiHealth?.ok ? t('settings.apiHealthOnline') : t('settings.apiHealthOffline')}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {t('settings.apiHealthPatients')}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-foreground">
+                    {apiHealth?.patientsCount ?? '—'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {t('settings.apiHealthAppointments')}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-foreground">
+                    {apiHealth?.appointmentsCount ?? '—'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {t('settings.apiHealthLastChecked')}
+                  </div>
+                  <div className="mt-2 text-sm font-medium text-foreground break-words">
+                    {lastHealthCheck ? new Date(lastHealthCheck).toLocaleString() : '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-border/70 bg-background p-4">
+                  <Label>{t('settings.apiHealthEndpoint')}</Label>
+                  <p className="mt-2 break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-sm text-foreground">
+                    {apiHealthUrl}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background p-4">
+                  <Label>{t('settings.apiHealthDataDir')}</Label>
+                  <p className="mt-2 break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-sm text-foreground">
+                    {apiHealth?.dataDir ?? '—'}
+                  </p>
+                </div>
+              </div>
+
+              {apiHealthError && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                  <strong>{t('settings.apiHealthErrorLabel')}</strong> {apiHealthError}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
+                <p><strong>{t('settings.apiHealthHowItWorks')}</strong></p>
+                <p>{t('settings.apiHealthHowItWorksText')}</p>
               </div>
             </CardContent>
           </Card>

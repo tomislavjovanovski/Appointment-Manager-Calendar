@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { CalendarDays, Clock3, ClipboardList, FileText, UserRound } from "lucide-react";
+import { patientsStorage } from "@/lib/storage";
 
 const appointmentSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -56,6 +57,7 @@ type Props = {
   onUpdated?: (data: any) => void;
   // if provided, dialog acts as edit form
   appointment?: any;
+  refreshTrigger?: number;
 };
 
 // helper to convert Date/ISO to datetime-local string (YYYY-MM-DDTHH:mm)
@@ -89,6 +91,7 @@ export default function AppointmentDialog({
   onAppointmentCreated,
   onUpdated,
   appointment,
+  refreshTrigger = 0,
 }: Props) {
   // Determine effective mode: explicit mode wins, otherwise presence of `appointment` means edit
   const effectiveMode: "create" | "edit" = mode ?? (appointment ? "edit" : "create");
@@ -139,6 +142,9 @@ export default function AppointmentDialog({
   const startValue = watch("start");
   const durationValue = watch("duration");
   const endValue = watch("end");
+  const patientIdValue = watch("patientId");
+  // local patients state: prefer prop but fall back to the configured storage source
+  const [localPatients, setLocalPatients] = useState<Patient[]>(patients ?? []);
 
   useEffect(() => {
     if (startValue && durationValue) {
@@ -159,33 +165,56 @@ export default function AppointmentDialog({
     }
   }, [open, reset, defaultValues]);
 
-  // local patients state: prefer prop but fall back to localStorage
-  const [localPatients, setLocalPatients] = useState<Patient[]>(patients ?? []);
+  useEffect(() => {
+    const selectedPatientId = mergedInitial?.patientId ?? null;
+    if (!open || !selectedPatientId || !localPatients.length) {
+      return;
+    }
+
+    const hasMatchingPatient = localPatients.some((patient) => patient.id === selectedPatientId);
+    if (hasMatchingPatient && patientIdValue !== selectedPatientId) {
+      setValue("patientId", selectedPatientId, { shouldDirty: false, shouldValidate: true });
+    }
+  }, [open, mergedInitial?.patientId, localPatients, patientIdValue, setValue]);
 
   useEffect(() => {
     if (patients && patients.length) {
-      // Only set when a real patients prop is provided
       setLocalPatients(patients);
       return;
     }
-    try {
-      const raw = localStorage.getItem("medical-patients");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const mapped = Array.isArray(parsed)
-          ? parsed.map((p: any) => {
-              const id = p.id ?? p._id ?? p.patientId ?? String(p.email ?? p.name ?? Math.random());
-              const fullName = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
-              const name = (p.name ?? fullName) || p.email || "Unknown";
-              return { id, name };
-            })
-          : [];
-        setLocalPatients(mapped);
-      }
-    } catch (e) {
-      // ignore parse errors
+
+    if (!open) {
+      return;
     }
-  }, [patients]);
+
+    let isMounted = true;
+
+    const loadPatients = async () => {
+      try {
+        const storedPatients = await patientsStorage.getAll();
+        const mapped = storedPatients.map((p: any) => {
+          const id = p.id ?? p._id ?? p.patientId ?? String(p.email ?? p.name ?? Math.random());
+          const fullName = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+          const name = (p.name ?? fullName) || p.email || "Unknown";
+          return { id, name };
+        });
+
+        if (isMounted) {
+          setLocalPatients(mapped);
+        }
+      } catch {
+        if (isMounted) {
+          setLocalPatients([]);
+        }
+      }
+    };
+
+    loadPatients();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [patients, open, refreshTrigger]);
 
   const submit = async (data: FormData) => {
     // enrich with patientName if available
@@ -203,7 +232,7 @@ export default function AppointmentDialog({
     }
 
     if (onSubmit) {
-      await onSubmit(data);
+      await onSubmit(enriched);
     }
 
     try {
@@ -225,7 +254,7 @@ export default function AppointmentDialog({
                 </div>
                 <div className="space-y-1">
                   <DialogTitle className="text-lg font-semibold tracking-tight">
-                    {effectiveMode === "create" ? "Create Appointment" : "Edit Appointment"}
+                    Create Appointment
                   </DialogTitle>
                   <DialogDescription className="max-w-2xl text-xs leading-relaxed">
                     Book a patient, choose the visit type and duration, and keep the schedule aligned automatically.
