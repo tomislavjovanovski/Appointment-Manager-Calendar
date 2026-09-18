@@ -17,8 +17,20 @@ export const storageHelper = {
 
   async getAll(page: Page, key: StorageKey): Promise<unknown[]> {
     return page.evaluate(
-      (k) => JSON.parse(localStorage.getItem(k) ?? '[]'),
-      KEYS[key],
+      async ({ key: storageKey, endpoint }) => {
+        try {
+          const response = await fetch(endpoint);
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data)) return data;
+          }
+        } catch {
+          // Fall back to legacy browser storage for isolated tests.
+        }
+
+        return JSON.parse(localStorage.getItem(storageKey) ?? '[]');
+      },
+      { key: KEYS[key], endpoint: `/api/${key}` },
     );
   },
 

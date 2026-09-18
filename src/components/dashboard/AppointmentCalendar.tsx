@@ -8,6 +8,7 @@ import { format, isSameDay } from 'date-fns';
 import { Appointment } from '@/types/appointment';
 import { appointmentsStorage } from '@/lib/storage';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n';
 
 interface AppointmentCalendarProps {
   onCreateAppointment: (date: Date) => void;
@@ -15,6 +16,7 @@ interface AppointmentCalendarProps {
 }
 
 export function AppointmentCalendar({ onCreateAppointment, onAppointmentClick }: AppointmentCalendarProps) {
+  const { t, dateFnsLocale } = useI18n();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   
@@ -60,7 +62,7 @@ export function AppointmentCalendar({ onCreateAppointment, onAppointmentClick }:
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            Calendar
+            {t('calendar.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -85,7 +87,7 @@ export function AppointmentCalendar({ onCreateAppointment, onAppointmentClick }:
             className="w-full mt-4 bg-gradient-to-r from-primary to-medical-purple hover:opacity-90 transition-opacity"
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Appointment
+            {t('dashboard.newAppointment')}
           </Button>
         </CardContent>
       </Card>
@@ -94,9 +96,9 @@ export function AppointmentCalendar({ onCreateAppointment, onAppointmentClick }:
       <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>{format(selectedDate, 'EEEE, MMMM d, yyyy')}</span>
+            <span>{format(selectedDate, 'EEEE, MMMM d, yyyy', { locale: dateFnsLocale })}</span>
             <Badge variant="outline" className="text-xs">
-              {selectedDateAppointments.length} appointments
+              {selectedDateAppointments.length === 1 ? t('calendar.appointmentsOne') : t('calendar.appointments', { count: selectedDateAppointments.length })}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -105,8 +107,8 @@ export function AppointmentCalendar({ onCreateAppointment, onAppointmentClick }:
             {selectedDateAppointments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No appointments scheduled</p>
-                <p className="text-sm">Click "New Appointment" to add one</p>
+                <p>{t('calendar.noAppointments')}</p>
+                <p className="text-sm">{t('calendar.addAppointmentHint')}</p>
               </div>
             ) : (
               selectedDateAppointments.map((appointment) => (
@@ -126,7 +128,7 @@ export function AppointmentCalendar({ onCreateAppointment, onAppointmentClick }:
                         getStatusColor(appointment.status)
                       )}
                     >
-                      {appointment.status}
+                      {t(`appointment.status.${appointment.status === 'no-show' ? 'noShow' : appointment.status}`)}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-sm">

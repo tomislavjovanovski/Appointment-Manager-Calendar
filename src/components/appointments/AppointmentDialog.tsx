@@ -40,16 +40,17 @@ import { patientsStorage } from "@/lib/storage";
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
 import type { Appointment, Patient as StoredPatient } from "@/types/appointment";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from '@/i18n';
 
 const appointmentSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1),
   patientId: z.string().nullable(),
   syncToGoogle: z.boolean().optional(),
   type: z.enum(["consultation", "follow-up", "procedure"]).optional(),
   status: z.enum(["scheduled", "completed", "cancelled", "no-show"]).optional(),
   duration: z.enum(["30", "60", "120"]).optional(),
-  start: z.string().min(1, "Start is required"),
-  end: z.string().min(1, "End is required"),
+  start: z.string().min(1),
+  end: z.string().min(1),
   notes: z.string().optional(),
 });
 
@@ -122,6 +123,7 @@ export default function AppointmentDialog({
   appointment,
   refreshTrigger = 0,
 }: Props) {
+  const { t } = useI18n();
   // Determine effective mode: explicit mode wins, otherwise presence of `appointment` means edit
   const effectiveMode: "create" | "edit" = mode ?? (appointment ? "edit" : "create");
 
@@ -196,7 +198,7 @@ export default function AppointmentDialog({
 
   const buildPatientOption = (patient: StoredPatient): PatientOption => ({
     id: patient.id,
-    name: `${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim() || patient.email || 'Unknown',
+    name: `${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim() || patient.email || t('common.unknown'),
     searchValue: [patient.firstName, patient.lastName, patient.email, patient.phone].filter(Boolean).join(' '),
   });
 
@@ -260,7 +262,7 @@ export default function AppointmentDialog({
         const mapped = storedPatients.map((p: StoredPatient & { _id?: string; patientId?: string; name?: string }) => {
           const id = p.id ?? p._id ?? p.patientId ?? String(p.email ?? p.name ?? Math.random());
           const fullName = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
-          const name = (p.name ?? fullName) || p.email || "Unknown";
+          const name = (p.name ?? fullName) || p.email || t('common.unknown');
           return { id, name, searchValue: [p.firstName, p.lastName, p.email, p.phone].filter(Boolean).join(' ') };
         });
 
@@ -279,7 +281,7 @@ export default function AppointmentDialog({
     return () => {
       isMounted = false;
     };
-  }, [patients, open, refreshTrigger]);
+  }, [patients, open, refreshTrigger, t]);
 
   const saveNewPatient = async () => {
     const patientForm = normalizePatientForm(newPatientForm);
@@ -287,8 +289,8 @@ export default function AppointmentDialog({
 
     if (Object.keys(validationErrors).length > 0) {
       setSubmissionError(validationErrors.emailInvalid
-        ? 'Please enter a valid email address for the new patient.'
-        : 'First name and last name are required.');
+        ? t('appointment.validEmail')
+        : t('appointment.requiredName'));
       setSubmissionErrorId('new-patient-panel');
       return null;
     }
@@ -312,13 +314,13 @@ export default function AppointmentDialog({
       resetNewPatientForm();
 
       toast({
-        title: 'Patient created',
-        description: `${created.name} is ready to be booked.`,
+        title: t('appointment.patientCreated'),
+        description: t('appointment.patientReady', { name: created.name }),
       });
 
       return created;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to create patient.';
+      const message = error instanceof Error ? error.message : t('appointment.createFailed');
       setSubmissionError(message);
       setSubmissionErrorId('new-patient-panel');
       return null;
@@ -377,8 +379,8 @@ export default function AppointmentDialog({
       setDeleteConfirmOpen(false);
     } catch (error) {
       toast({
-        title: "Delete failed",
-        description: error instanceof Error ? error.message : "Unable to delete appointment",
+        title: t('appointment.deleteFailed'),
+        description: error instanceof Error ? error.message : t('appointment.unableToDelete'),
         variant: "destructive",
       });
     }
@@ -387,8 +389,8 @@ export default function AppointmentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden border-border/70 p-0 shadow-2xl sm:max-w-[800px]">
-        <div className="max-h-[600px] overflow-y-auto" data-testid="booking-dialog">
-          <div className="border-b border-border/60 bg-gradient-to-br from-primary/10 via-background to-background px-5 py-4 sm:px-6">
+        <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-h-[calc(100vh-2rem)]" data-testid="booking-dialog">
+          <div className="border-b border-border/60 bg-gradient-to-br from-primary/10 via-background to-background px-5 py-3 sm:px-6">
             <DialogHeader className="space-y-2 text-left">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
@@ -396,10 +398,10 @@ export default function AppointmentDialog({
                 </div>
                 <div className="space-y-1">
                   <DialogTitle className="text-lg font-semibold tracking-tight">
-                    {effectiveMode === "create" ? "Create Appointment" : "Edit Appointment"}
+                    {effectiveMode === "create" ? t('createAppointment.title') : t('editAppointment.title')}
                   </DialogTitle>
                   <DialogDescription className="max-w-2xl text-xs leading-relaxed">
-                    Book a patient, choose the visit type and duration, and keep the schedule aligned automatically.
+                    {t('createAppointment.description')}
                   </DialogDescription>
                 </div>
               </div>
@@ -409,23 +411,23 @@ export default function AppointmentDialog({
           {/* Read-only detail panel used by E2E tests to assert appointment display values */}
           {appointment && (
             <div className="px-5 py-4" data-testid="appointment-detail-dialog">
-              <div className="mb-2 text-sm text-muted-foreground">Appointment Details</div>
+              <div className="mb-2 text-sm text-muted-foreground">{t('appointment.details')}</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs text-muted-foreground">Type</div>
-                  <div data-testid="detail-type" className="font-medium">{(mergedInitial?.type ?? appointment.type) || 'Unknown'}</div>
+                  <div className="text-xs text-muted-foreground">{t('createAppointment.type')}</div>
+                  <div data-testid="detail-type" className="font-medium">{(mergedInitial?.type ?? appointment.type) || t('common.unknown')}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Duration</div>
+                  <div className="text-xs text-muted-foreground">{t('createAppointment.duration')}</div>
                   <div data-testid="detail-duration" className="font-medium">{String(mergedInitial?.duration ?? appointment.duration ?? '')}</div>
                 </div>
                 <div className="col-span-2">
-                  <div className="text-xs text-muted-foreground">Notes</div>
+                  <div className="text-xs text-muted-foreground">{t('editAppointment.notes')}</div>
                   <div data-testid="detail-notes" className="font-medium">{mergedInitial?.notes ?? appointment.notes ?? ''}</div>
                 </div>
                 <div className="col-span-2">
-                  <div className="text-xs text-muted-foreground">Patient</div>
-                  <div data-testid="detail-patient-name" className="font-medium">{mergedInitial?.patientId ? (localPatients.find(p => p.id === mergedInitial?.patientId)?.name) : (appointment.patientName ?? 'Unknown')}</div>
+                  <div className="text-xs text-muted-foreground">{t('appointment.patient')}</div>
+                  <div data-testid="detail-patient-name" className="font-medium">{mergedInitial?.patientId ? (localPatients.find(p => p.id === mergedInitial?.patientId)?.name) : (appointment.patientName ?? t('common.unknown'))}</div>
                 </div>
               </div>
               <hr className="my-3" />
@@ -433,22 +435,22 @@ export default function AppointmentDialog({
           )}
 
           <form onSubmit={handleSubmit(submit)}>
-            <div className="space-y-4 px-5 py-5 sm:px-6">
+            <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: Title and Patient */}
-              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
-                <div className="grid gap-4 sm:grid-cols-[60%_40%]">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
                   <div className="space-y-1.5">
                     <Label htmlFor="title" className="flex items-center gap-2">
                       <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" />
-                      Title
+                      {t('appointment.title')}
                     </Label>
-                    <Input id="title" {...register("title")} className="h-10 border-border/70 bg-background/80" />
+                    <Input id="title" data-testid="appointment-title-input" {...register("title")} className="h-10 border-border bg-background shadow-sm" />
                   </div>
 
                   <div className="space-y-1.5 pr-3">
                     <Label htmlFor="patientId" className="flex items-center gap-2">
                       <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
-                      Patient
+                      {t('appointment.patient')}
                     </Label>
                     <Popover open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
                       <PopoverTrigger asChild>
@@ -459,17 +461,17 @@ export default function AppointmentDialog({
                           role="combobox"
                           aria-expanded={patientPickerOpen}
                           data-testid="patient-select"
-                          className="h-10 w-full justify-between border-border/70 bg-background/80 font-normal hover:bg-background/80"
+                          className="h-10 w-full justify-between border-border bg-background font-normal shadow-sm hover:bg-background"
                         >
-                          <span className="truncate">{selectedPatient?.name ?? 'Select patient'}</span>
+                          <span className="truncate">{selectedPatient?.name ?? t('appointment.selectPatient')}</span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
                         <Command>
-                          <CommandInput data-testid="patient-search-input" placeholder="Search patients..." />
+                          <CommandInput data-testid="patient-search-input" placeholder={t('appointment.searchPatients')} />
                           <CommandList>
-                            <CommandEmpty>No patients found.</CommandEmpty>
+                            <CommandEmpty>{t('appointment.noPatients')}</CommandEmpty>
                             <CommandGroup>
                               {localPatients.map((patient) => (
                                 <CommandItem
@@ -494,24 +496,31 @@ export default function AppointmentDialog({
                       type="button"
                       variant="outline"
                       data-testid="create-new-patient-btn"
-                      className="mt-3 h-9 w-full border-border/70 text-sm"
-                      onClick={() => setShowNewPatientPanel(true)}
+                      className="mt-2 h-8 w-full border-border bg-background text-sm shadow-sm"
+                      onClick={() => {
+                        setShowNewPatientPanel((current) => !current);
+                        setSubmissionError(null);
+                        setSubmissionErrorId(null);
+                      }}
                     >
-                      Add new patient
+                      {showNewPatientPanel ? t('appointment.cancelNewPatient') : t('appointment.addNewPatient')}
                     </Button>
-                      {showNewPatientPanel && (
-                        <div data-testid="new-patient-panel" className="mt-3 space-y-2">
+                  </div>
+                </div>
+                {showNewPatientPanel && (
+                  <div data-testid="new-patient-panel" className="mt-3 space-y-2 rounded-xl border border-border/80 bg-background p-2.5 shadow-sm">
+                    <div className="grid gap-2 sm:grid-cols-3">
                           <Input
                             id="patient-first-name"
                             data-testid="patient-first-name"
-                            placeholder="First name *"
+                            placeholder={t('appointment.firstName')}
                             value={newPatientForm.firstName}
                             onChange={(e) => setNewPatientForm(f => ({ ...f, firstName: e.target.value }))}
                           />
                           <Input
                             id="patient-last-name"
                             data-testid="patient-last-name"
-                            placeholder="Last name *"
+                            placeholder={t('appointment.lastName')}
                             value={newPatientForm.lastName}
                             onChange={(e) => setNewPatientForm(f => ({ ...f, lastName: e.target.value }))}
                           />
@@ -523,6 +532,8 @@ export default function AppointmentDialog({
                             value={newPatientForm.email}
                             onChange={(e) => setNewPatientForm(f => ({ ...f, email: e.target.value }))}
                           />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                           <Input
                             id="patient-phone"
                             data-testid="patient-phone"
@@ -539,6 +550,16 @@ export default function AppointmentDialog({
                             value={newPatientForm.dateOfBirth}
                             onChange={(e) => setNewPatientForm(f => ({ ...f, dateOfBirth: e.target.value }))}
                           />
+                          <Button
+                            type="button"
+                            data-testid="new-patient-save"
+                            disabled={savingNewPatient}
+                            onClick={() => void saveNewPatient()}
+                            className="h-10 sm:self-stretch"
+                          >
+                            {savingNewPatient ? t('appointment.saving') : t('appointment.savePatient')}
+                          </Button>
+                    </div>
                           {submissionError && submissionErrorId === 'new-patient-panel' && (
                             <div
                               data-testid="new-patient-inline-error"
@@ -548,39 +569,15 @@ export default function AppointmentDialog({
                               {submissionError}
                             </div>
                           )}
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              data-testid="new-patient-save"
-                              disabled={savingNewPatient}
-                              onClick={() => void saveNewPatient()}
-                            >
-                              {savingNewPatient ? 'Saving patient...' : 'Save patient'}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              data-testid="new-patient-cancel"
-                              onClick={() => {
-                                setShowNewPatientPanel(false);
-                                setSubmissionError(null);
-                                setSubmissionErrorId(null);
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
                   </div>
-                </div>
+                )}
               </section>
 
               {/* Box 2: Type and Duration */}
-              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
-                <div className="grid gap-4 sm:grid-cols-[60%_40%]">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
                   <div className="space-y-1.5">
-                    <Label htmlFor="type">Type</Label>
+                    <Label htmlFor="type">{t('createAppointment.type')}</Label>
                     <Select
                       onValueChange={(val) =>
                         setValue("type", (val ?? "consultation") as AppointmentType, {
@@ -593,20 +590,20 @@ export default function AppointmentDialog({
                       <SelectTrigger
                         id="type"
                         data-testid="appointment-type-select"
-                        className="h-10 border-border/70 bg-background/80"
+                        className="h-10 border-border bg-background shadow-sm"
                       >
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder={t('appointment.selectType')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="consultation" data-testid="appointment-type-option-consultation">Consultation</SelectItem>
-                        <SelectItem value="follow-up" data-testid="appointment-type-option-follow-up">Follow-up</SelectItem>
-                        <SelectItem value="procedure" data-testid="appointment-type-option-procedure">Procedure</SelectItem>
+                        <SelectItem value="consultation" data-testid="appointment-type-option-consultation">{t('appointment.types.consultation')}</SelectItem>
+                        <SelectItem value="follow-up" data-testid="appointment-type-option-follow-up">{t('appointment.types.followUp')}</SelectItem>
+                        <SelectItem value="procedure" data-testid="appointment-type-option-procedure">{t('appointment.types.procedure')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-1.5 pr-3">
-                    <Label htmlFor="duration">Duration</Label>
+                    <Label htmlFor="duration">{t('createAppointment.duration')}</Label>
                     <Select
                       onValueChange={(val) =>
                         setValue("duration", (val ?? "30") as AppointmentDuration, {
@@ -619,14 +616,14 @@ export default function AppointmentDialog({
                       <SelectTrigger
                         id="duration"
                         data-testid="duration-select"
-                        className="h-10 border-border/70 bg-background/80"
+                        className="h-10 border-border bg-background shadow-sm"
                       >
-                        <SelectValue placeholder="Select duration" />
+                        <SelectValue placeholder={t('appointment.selectDuration')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="30" data-testid="duration-option-30">Half Hour (30 min)</SelectItem>
-                        <SelectItem value="60" data-testid="duration-option-60">Full Hour (60 min)</SelectItem>
-                        <SelectItem value="120" data-testid="duration-option-120">Double Hour (120 min)</SelectItem>
+                        <SelectItem value="30" data-testid="duration-option-30">{t('appointment.halfHour')}</SelectItem>
+                        <SelectItem value="60" data-testid="duration-option-60">{t('appointment.fullHour')}</SelectItem>
+                        <SelectItem value="120" data-testid="duration-option-120">{t('appointment.doubleHour')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -634,9 +631,9 @@ export default function AppointmentDialog({
               </section>
 
               {effectiveMode === "edit" && (
-                <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
+                <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
                   <div className="space-y-1.5 pr-3">
-                    <Label htmlFor="status">Status</Label>
+                    <Label htmlFor="status">{t('editAppointment.status')}</Label>
                     <Select
                       onValueChange={(val) =>
                         setValue("status", (val ?? "scheduled") as FormData["status"], {
@@ -649,15 +646,15 @@ export default function AppointmentDialog({
                       <SelectTrigger
                         id="status"
                         data-testid="appointment-status-select"
-                        className="h-10 border-border/70 bg-background/80"
+                        className="h-10 border-border bg-background shadow-sm"
                       >
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder={t('appointment.selectStatus')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="scheduled" data-testid="appointment-status-option-scheduled">Scheduled</SelectItem>
-                        <SelectItem value="completed" data-testid="appointment-status-option-completed">Completed</SelectItem>
-                        <SelectItem value="cancelled" data-testid="appointment-status-option-cancelled">Cancelled</SelectItem>
-                        <SelectItem value="no-show" data-testid="appointment-status-option-no-show">No-show</SelectItem>
+                        <SelectItem value="scheduled" data-testid="appointment-status-option-scheduled">{t('appointment.status.scheduled')}</SelectItem>
+                        <SelectItem value="completed" data-testid="appointment-status-option-completed">{t('appointment.status.completed')}</SelectItem>
+                        <SelectItem value="cancelled" data-testid="appointment-status-option-cancelled">{t('appointment.status.cancelled')}</SelectItem>
+                        <SelectItem value="no-show" data-testid="appointment-status-option-no-show">{t('appointment.status.noShow')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -665,34 +662,34 @@ export default function AppointmentDialog({
               )}
 
               {/* Box 3: Date (start/end) and Note */}
-              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
-                <div className="grid gap-4 sm:grid-cols-[60%_40%]">
-                  <div className="space-y-3">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
+                  <div className="space-y-2.5">
                     <div className="space-y-1.5">
                       <Label htmlFor="start" className="flex items-center gap-2">
                         <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                        Start
+                        {t('appointment.start')}
                       </Label>
                       <Input
                         id="start"
                         data-testid="appointment-start-input"
                         type="datetime-local"
                         {...register("start")}
-                        className="h-10 border-border/70 bg-background/80"
+                        className="h-10 border-border bg-background shadow-sm"
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <Label htmlFor="end" className="flex items-center gap-2">
                         <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
-                        End
+                        {t('appointment.end')}
                       </Label>
                       <Input
                         id="end"
                         data-testid="appointment-end-input"
                         type="datetime-local"
                         {...register("end")}
-                        className="h-10 border-border/70 bg-background/80"
+                        className="h-10 border-border bg-background shadow-sm"
                       />
                     </div>
                   </div>
@@ -700,21 +697,21 @@ export default function AppointmentDialog({
                   <div className="space-y-1.5 pr-3">
                     <Label htmlFor="notes" className="flex items-center gap-2">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      Notes
+                      {t('editAppointment.notes')}
                     </Label>
                     <Textarea
                       id="notes"
                       data-testid="appointment-notes"
                       {...register("notes")}
-                      rows={4}
-                      className="min-h-[110px] border-border/70 bg-background/80"
+                      rows={3}
+                      className="min-h-[88px] border-border bg-background shadow-sm"
                     />
                   </div>
                 </div>
               </section>
 
               {/* Google sync toggle and submission errors */}
-              <div className="px-5">
+              <div className="px-3">
                 <div className="flex items-center gap-3">
                   <input
                     id="google-sync-toggle"
@@ -723,7 +720,7 @@ export default function AppointmentDialog({
                     checked={!!syncToGoogleValue}
                     onChange={(e) => setValue('syncToGoogle', e.target.checked as any, { shouldDirty: true })}
                   />
-                  <label htmlFor="google-sync-toggle" className="text-sm text-muted-foreground">Sync to Google Calendar</label>
+                  <label htmlFor="google-sync-toggle" className="text-sm text-muted-foreground">{t('appointment.syncGoogle')}</label>
                 </div>
                 {submissionError && submissionErrorId === 'error-slot-conflict' && (
                   <div data-testid="error-slot-conflict" role="alert" className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive-foreground">
@@ -735,7 +732,7 @@ export default function AppointmentDialog({
 
             <Separator />
 
-            <DialogFooter className="gap-3 px-5 py-3 sm:px-6">
+            <DialogFooter className="gap-3 px-5 py-2 sm:px-6">
               {effectiveMode === "edit" && onDelete && (
                 <Button
                   type="button"
@@ -744,11 +741,11 @@ export default function AppointmentDialog({
                   onClick={() => setDeleteConfirmOpen(true)}
                   className="h-10"
                 >
-                  Delete
+                  {t('appointment.delete')}
                 </Button>
               )}
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-10 border-border/70">
-                Cancel
+                {t('editAppointment.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -756,7 +753,7 @@ export default function AppointmentDialog({
                 disabled={saving || !formState.isValid}
                 className="h-10 px-5 shadow-sm"
               >
-                {saving ? "Saving..." : effectiveMode === "create" ? "Create" : "Save"}
+                {saving ? t('appointment.saving') : effectiveMode === "create" ? t('appointment.create') : t('appointment.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -765,15 +762,15 @@ export default function AppointmentDialog({
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent data-testid="delete-appointment-confirm-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete appointment?</AlertDialogTitle>
+            <AlertDialogTitle>{t('appointment.deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The appointment will be removed from the schedule.
+              {t('appointment.deleteConfirmDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="cancel-delete-btn">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="cancel-delete-btn">{t('editAppointment.cancel')}</AlertDialogCancel>
             <AlertDialogAction data-testid="confirm-delete-btn" onClick={() => void handleDelete()}>
-              Delete
+              {t('appointment.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

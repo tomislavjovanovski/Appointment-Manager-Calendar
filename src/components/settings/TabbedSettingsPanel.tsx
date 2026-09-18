@@ -241,13 +241,13 @@ export function TabbedSettingsPanel() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="practiceName">{t('settings.practiceName') ?? 'Practice name'}</Label>
+                <Label htmlFor="practiceName">{t('settings.practiceName')}</Label>
                 <Input
                   id="practiceName"
                   data-testid="practice-name-input"
                   value={settings.practiceName ?? ''}
                   onChange={(e) => setSettings({ ...settings, practiceName: e.target.value })}
-                  placeholder="Clinic name"
+                  placeholder={t('settings.clinicName')}
                   className="max-w-xl"
                 />
               </div>

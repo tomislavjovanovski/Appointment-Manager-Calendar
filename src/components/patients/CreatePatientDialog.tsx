@@ -138,43 +138,43 @@ export function CreatePatientDialog({
                 </div>
                 <div className="space-y-1">
                   <DialogTitle className="text-lg font-semibold tracking-tight">
-                    {isEditMode ? 'Edit Patient' : t('createPatient.title')}
+                    {isEditMode ? t('createPatient.editTitle') : t('createPatient.title')}
                   </DialogTitle>
                   <DialogDescription className="max-w-2xl text-xs leading-relaxed">
                     {isEditMode
-                      ? 'Update contact details, birth date, and patient notes in one place.'
-                      : 'Create a patient profile with contact details, birth date, and care notes.'}
+                      ? t('createPatient.editDescription')
+                      : t('createPatient.description')}
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: First name and Last name */}
-              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-3 shadow-sm">
                 <div className="grid gap-3 sm:grid-cols-[60%_40%]">
                   <div className="space-y-1.5">
-                    <Label htmlFor="firstName">First Name *</Label>
+                    <Label htmlFor="firstName">{t('createPatient.firstName')}</Label>
                     <Input
                       id="firstName"
                       data-testid="patient-first-name"
                       value={formData.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      placeholder="Ava"
+                      placeholder={t('createPatient.phName')}
                       className="h-9 border-border/70 bg-background/80"
                     />
                     {errors.firstName && <div data-testid="error-first-name-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                   </div>
                   <div className="space-y-1.5 pr-3">
-                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Label htmlFor="lastName">{t('createPatient.lastName')}</Label>
                     <Input
                       id="lastName"
                       data-testid="patient-last-name"
                       value={formData.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      placeholder="Petrova"
+                      placeholder={t('createPatient.phName')}
                       className="h-9 border-border/70 bg-background/80"
                     />
                     {errors.lastName && <div data-testid="error-last-name-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
@@ -183,7 +183,7 @@ export function CreatePatientDialog({
               </section>
 
               {/* Box 2: Email and Phone/Emergency Contact */}
-              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-3 shadow-sm">
                 <div className="grid gap-3 sm:grid-cols-[60%_40%]">
                   <div className="space-y-1.5">
                     <Label htmlFor="email" className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export function CreatePatientDialog({
               </section>
 
               {/* Box 3: Date/Address and Notes */}
-              <section className="rounded-2xl border border-border/60 bg-muted/20 p-3 shadow-sm">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-3 shadow-sm">
                 <div className="grid gap-3 sm:grid-cols-[60%_40%]">
                   <div className="space-y-3">
                     <div className="space-y-1.5">
@@ -296,7 +296,7 @@ export function CreatePatientDialog({
                 data-testid="patient-form-submit"
                 className="h-9 bg-primary px-5 text-primary-foreground shadow-sm hover:bg-primary/90"
               >
-                {isEditMode ? 'Save Changes' : t('createPatient.submit')}
+                {isEditMode ? t('createPatient.saveChanges') : t('createPatient.submit')}
               </Button>
             </DialogFooter>
           </form>

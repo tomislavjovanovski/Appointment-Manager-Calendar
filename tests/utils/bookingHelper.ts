@@ -122,13 +122,11 @@ export const bookingHelper = {
     } else if (options.newPatient) {
       await dialog.getByTestId('create-new-patient-btn').click();
       await this.fillNewPatientForm(page, options.newPatient);
-        const titleInput = dialog.getByLabel('Title');
-        try {
-          const current = await titleInput.inputValue();
-          if (!current) await titleInput.fill(`${options.type ?? 'Visit'} ${Date.now()}`);
-        } catch {
-          // ignore missing or timing-sensitive title label in the dialog
-        }
+    }
+
+    const titleInput = dialog.getByTestId('appointment-title-input');
+    if (!(await titleInput.inputValue())) {
+      await titleInput.fill(`${options.type ?? 'Visit'} ${Date.now()}`);
     }
 
     // Appointment type

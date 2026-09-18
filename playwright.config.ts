@@ -33,7 +33,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /e2e\/.+\.spec\.ts/,
+      testMatch: /e2e\/smoke\.spec\.ts/,
     },
     // ── Cross-browser smoke (CI only) ──────────────────────────────────────────
     ...(process.env.CI
@@ -50,14 +50,6 @@ export default defineConfig({
           },
         ] as const)
       : []),
-    // ── Concurrency / race-condition tests (isolated project) ──────────────────
-    {
-      name: 'concurrency',
-      use: { ...devices['Desktop Chrome'] },
-      testMatch: /e2e\/concurrency\.spec\.ts/,
-      // Force sequential to make race-condition assertions deterministic
-      fullyParallel: false,
-    },
   ],
 
   webServer: {

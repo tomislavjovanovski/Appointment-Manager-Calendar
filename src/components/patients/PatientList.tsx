@@ -123,7 +123,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Patients</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('patients.title')}</div>
               <div className="text-2xl font-semibold text-foreground">{filteredPatients.length}</div>
             </div>
           </CardContent>
@@ -134,7 +134,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
               <Activity className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">With Visits</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('patients.withVisits')}</div>
               <div className="text-2xl font-semibold text-foreground">{patientsWithVisits}</div>
             </div>
           </CardContent>
@@ -145,7 +145,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Appointments</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('createAppointment.appointmentDetails')}</div>
               <div className="text-2xl font-semibold text-foreground">{totalAppointments}</div>
             </div>
           </CardContent>
@@ -156,9 +156,9 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
         <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-lg font-semibold tracking-tight">Patient Directory</CardTitle>
+              <CardTitle className="text-lg font-semibold tracking-tight">{t('patients.directory')}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Browse, search, and open patient records for quick updates.
+                {t('patients.directoryDescription')}
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -173,7 +173,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
                 />
               </div>
               <Badge variant="outline" className="h-11 rounded-xl px-4 text-sm font-medium">
-                {filteredPatients.length} shown
+                {t('patients.shown', { count: filteredPatients.length })}
               </Badge>
             </div>
           </div>
@@ -289,11 +289,11 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="pl-6">Patient</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Last Visit</TableHead>
-                    <TableHead>Activity</TableHead>
-                    <TableHead className="pr-6">Notes</TableHead>
+                    <TableHead className="pl-6">{t('appointment.patient')}</TableHead>
+                    <TableHead>{t('patients.contact')}</TableHead>
+                    <TableHead>{t('patients.lastVisit')}</TableHead>
+                    <TableHead>{t('patients.activity')}</TableHead>
+                    <TableHead className="pr-6">{t('patients.notesColumn')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -348,7 +348,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
                               </div>
                             </div>
                           ) : (
-                            <span className="text-sm text-muted-foreground">No visits yet</span>
+                            <span className="text-sm text-muted-foreground">{t('patients.noVisits')}</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -361,7 +361,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
                         <TableCell className="pr-6">
                           <div className="flex items-start justify-between gap-3">
                             <p className="max-w-[18rem] truncate text-sm text-muted-foreground">
-                              {patient.notes || 'No notes added'}
+                              {patient.notes || t('patients.noNotes')}
                             </p>
                             <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           </div>

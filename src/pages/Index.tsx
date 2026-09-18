@@ -305,7 +305,7 @@ const Index = () => {
       case 'settings':
         return <TabbedSettingsPanel />;
       default:
-        return <div>Page not found</div>;
+        return <div>{t('notFound.message')}</div>;
     }
   };
 
@@ -336,7 +336,7 @@ const Index = () => {
           <Button
             type="button"
             size="icon"
-            aria-label="Create appointment"
+            aria-label={t('dashboard.newAppointment')}
             onClick={() => handleCreateAppointment(new Date())}
             className="h-10 w-10 rounded-xl shadow-sm"
           >

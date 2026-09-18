@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, ChevronLeft, ChevronRight, Clock, GripVertical, Plus, RotateCcw } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, Clock, GripVertical, Plus, RotateCcw, UserRound } from 'lucide-react';
 import { addDays, addWeeks, endOfWeek, format, startOfWeek } from 'date-fns';
 import { Appointment } from '@/types/appointment';
 import { appointmentsStorage, buildApiUrl, settingsStorage } from '@/lib/storage';
@@ -473,6 +473,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 const displayTitle = patientName;
                 const appointmentTitle = apt?.title?.trim();
                 const appointmentNotes = apt?.notes?.trim();
+                const appointmentDetail = appointmentTitle || appointmentNotes || t(`appointment.types.${appointmentTypeKey(apt?.type ?? 'consultation')}`);
                 const bgColor = schedulerEvent?.color || '#3b82f6';
                 const isDragging = draggingEventId === apt?.id;
                 
@@ -501,23 +502,19 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       handleEventClick(schedulerEvent);
                     }}
                   >
-                    <div className="flex h-full flex-col px-2 py-1">
-                      <div className="flex items-center justify-between gap-2 rounded-sm bg-black/20 px-1.5 py-0.5">
-                        <div className="truncate text-xs font-semibold leading-tight tracking-[0.01em]">
-                          {displayTitle}
+                    <div className="flex h-full flex-col px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2 rounded-sm bg-black/20 px-1.5 py-1">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <UserRound className="h-3 w-3 shrink-0 text-white/75" />
+                          <div className="truncate text-xs font-semibold leading-tight tracking-[0.01em]">
+                            {displayTitle}
+                          </div>
                         </div>
                         <GripVertical className="h-3.5 w-3.5 shrink-0 text-white/70" />
                       </div>
-                      {appointmentTitle && (
-                        <div className="mt-1 truncate text-[11px] font-medium leading-tight text-white/95">
-                          {appointmentTitle}
-                        </div>
-                      )}
-                      {appointmentNotes && (
-                        <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/80">
-                          {appointmentNotes}
-                        </div>
-                      )}
+                      <div className="mt-1 line-clamp-2 px-1.5 text-[11px] font-medium leading-snug text-white/90">
+                        {appointmentDetail}
+                      </div>
                     </div>
                   </div>
                 );

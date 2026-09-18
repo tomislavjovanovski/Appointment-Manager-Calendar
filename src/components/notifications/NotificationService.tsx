@@ -35,7 +35,7 @@ export class NotificationService {
         duration: appointment.duration,
         notes: appointment.notes
       },
-      htmlTemplate: this.generateEmailTemplate(appointment, patient, settings.emailTemplate, isReminderType),
+      htmlTemplate: this.generateEmailTemplate(appointment, patient, settings.emailTemplate, isReminderType, locale),
       timestamp: new Date().toISOString(),
       reminderType: isReminderType
     };
@@ -77,7 +77,7 @@ export class NotificationService {
 
     const smsData = {
       to: patient.phone,
-      message: this.generateSMSMessage(appointment, patient, settings.smsTemplate),
+      message: this.generateSMSMessage(appointment, patient, settings.smsTemplate, locale),
       appointmentDetails: {
         patientName: `${patient.firstName} ${patient.lastName}`,
         date: appointment.startTime.split('T')[0],
@@ -116,7 +116,8 @@ export class NotificationService {
     appointment: Appointment,
     patient: Patient,
     template: string,
-    reminderType: 'day-before' | 'same-day'
+    reminderType: 'day-before' | 'same-day',
+    locale: AppLocale
   ): string {
     if (!template) {
       // Default HTML template
@@ -138,18 +139,18 @@ export class NotificationService {
             <div class="header">
               <h1>{{REMINDER_TITLE}}</h1>
             </div>
-            <p>Dear {{PATIENT_NAME}},</p>
-            <p>This is a reminder about your upcoming appointment:</p>
+              <p>{{EMAIL_DEAR}}</p>
+            <p>{{EMAIL_INTRO}}</p>
             <div class="appointment-details">
-              <div class="detail-row"><strong>Date:</strong> <span>{{DATE}}</span></div>
-              <div class="detail-row"><strong>Time:</strong> <span>{{TIME}}</span></div>
-              <div class="detail-row"><strong>Type:</strong> <span>{{TYPE}}</span></div>
-              <div class="detail-row"><strong>Duration:</strong> <span>{{DURATION}} minutes</span></div>
-              {{#NOTES}}<div class="detail-row"><strong>Notes:</strong> <span>{{NOTES}}</span></div>{{/NOTES}}
+              <div class="detail-row"><strong>{{EMAIL_DATE}}</strong> <span>{{DATE}}</span></div>
+              <div class="detail-row"><strong>{{EMAIL_TIME}}</strong> <span>{{TIME}}</span></div>
+              <div class="detail-row"><strong>{{EMAIL_TYPE}}</strong> <span>{{TYPE}}</span></div>
+              <div class="detail-row"><strong>{{EMAIL_DURATION}}</strong> <span>{{DURATION}} minutes</span></div>
+              {{#NOTES}}<div class="detail-row"><strong>{{EMAIL_NOTES}}</strong> <span>{{NOTES}}</span></div>{{/NOTES}}
             </div>
-            <p>Please arrive 10 minutes early for your appointment.</p>
+            <p>{{EMAIL_ARRIVE_EARLY}}</p>
             <div class="footer">
-              <p>If you need to reschedule or cancel, please contact us as soon as possible.</p>
+              <p>{{EMAIL_FOOTER}}</p>
             </div>
           </div>
         </body>
@@ -157,12 +158,21 @@ export class NotificationService {
       `;
     }
 
-    const reminderTitle = reminderType === 'day-before' 
-      ? 'Appointment Reminder - Tomorrow'
-      : 'Appointment Reminder - Today';
+    const reminderTitle = reminderType === 'day-before'
+      ? translate(locale, 'notifications.emailReminderTomorrow')
+      : translate(locale, 'notifications.emailReminderToday');
 
     return template
       .replace(/{{REMINDER_TITLE}}/g, reminderTitle)
+      .replace(/{{EMAIL_DEAR}}/g, translate(locale, 'notifications.emailDear', { name: `${patient.firstName} ${patient.lastName}` }))
+      .replace(/{{EMAIL_INTRO}}/g, translate(locale, 'notifications.emailIntro'))
+      .replace(/{{EMAIL_DATE}}/g, translate(locale, 'notifications.emailDate'))
+      .replace(/{{EMAIL_TIME}}/g, translate(locale, 'notifications.emailTime'))
+      .replace(/{{EMAIL_TYPE}}/g, translate(locale, 'notifications.emailType'))
+      .replace(/{{EMAIL_DURATION}}/g, translate(locale, 'notifications.emailDuration'))
+      .replace(/{{EMAIL_NOTES}}/g, translate(locale, 'notifications.emailNotes'))
+      .replace(/{{EMAIL_ARRIVE_EARLY}}/g, translate(locale, 'notifications.emailArriveEarly'))
+      .replace(/{{EMAIL_FOOTER}}/g, translate(locale, 'notifications.emailFooter'))
       .replace(/{{PATIENT_NAME}}/g, `${patient.firstName} ${patient.lastName}`)
       .replace(/{{DATE}}/g, new Date(appointment.startTime).toLocaleDateString())
       .replace(/{{TIME}}/g, new Date(appointment.startTime).toLocaleTimeString())
@@ -172,9 +182,13 @@ export class NotificationService {
       .replace(/{{#NOTES}}.*?{{\/NOTES}}/g, appointment.notes ? '$&' : '');
   }
 
-  private generateSMSMessage(appointment: Appointment, patient: Patient, template: string): string {
+  private generateSMSMessage(appointment: Appointment, patient: Patient, template: string, locale: AppLocale): string {
     if (!template) {
-      template = `Hi {{PATIENT_NAME}}, reminder: You have a {{TYPE}} appointment today at {{TIME}}. Please arrive 10 minutes early. Thank you!`;
+      template = translate(locale, 'notifications.smsDefault', {
+        name: '{{PATIENT_NAME}}',
+        type: '{{TYPE}}',
+        time: '{{TIME}}',
+      });
     }
 
     return template

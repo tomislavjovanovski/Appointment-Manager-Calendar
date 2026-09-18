@@ -136,8 +136,12 @@ test.describe('Patient Management — Inline Creation During Booking', () => {
     });
 
     await test.step('Complete rest of booking form', async () => {
-      await page.getByTestId('appointment-type-select').selectOption('consultation');
-      await page.getByTestId('duration-select').selectOption('30');
+      await booking.selectRadixOption(
+        page,
+        'appointment-type-select',
+        'appointment-type-option-consultation',
+      );
+      await booking.selectRadixOption(page, 'duration-select', 'duration-option-30');
     });
 
     await test.step('Submit booking', async () => {
@@ -190,7 +194,7 @@ test.describe('Patient Management — Search', () => {
     await patients.goToPatients(page);
     await patients.searchPatient(page, 'nonexistent-patient-xyz');
 
-    await expect(page.getByTestId('patients-empty-state')).toBeVisible();
+    await expect(page.getByTestId('patients-empty-state').first()).toBeVisible();
     expect(await patients.getVisiblePatientCount(page)).toBe(0);
   });
 });

@@ -11,6 +11,7 @@
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:e2e:backend": "playwright test --config=playwright.backend.config.ts",
     "test:e2e:auto-port": "node ./scripts/run-e2e-with-free-port.js 8081",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

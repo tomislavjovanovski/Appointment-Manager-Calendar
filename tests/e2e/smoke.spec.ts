@@ -3,7 +3,9 @@
 // Each test is self-contained and completes in < 10 seconds.
 
 import { test, expect } from '../fixtures/base';
-import { PATIENTS } from '../test-data/seed';
+import { bookingHelper } from '../utils/bookingHelper';
+import { patientHelper } from '../utils/patientHelper';
+import { PATIENTS, nextWorkingSlot } from '../test-data/seed';
 
 test.describe('Smoke — Application Loads', () => {
   test('app renders without console errors', async ({ page }) => {
@@ -72,5 +74,34 @@ test.describe('Smoke — Application Loads', () => {
     await page.reload();
     await page.getByTestId('nav-settings').click();
     await expect(nameInput).toHaveValue('Test Clinic QA');
+  });
+
+  test('patients page allows adding a patient', async ({
+    pageClean: page,
+  }) => {
+    await patientHelper.goToPatients(page);
+    await patientHelper.createPatient(page, {
+      firstName: 'Smoke',
+      lastName: 'Patient',
+      email: `smoke-${Date.now()}@test.medical`,
+      phone: '555-0100',
+      dateOfBirth: '1990-01-01',
+    });
+
+    await expect(page.getByTestId('patient-row').filter({ hasText: 'Smoke Patient' })).toBeVisible();
+  });
+
+  test('scheduler allows creating an appointment for an existing patient', async ({
+    pageWithPatients: page,
+  }) => {
+    await bookingHelper.goToScheduler(page);
+    await bookingHelper.book(page, {
+      patientId: PATIENTS.alice.id,
+      type: 'consultation',
+      duration: 30,
+      slotDate: nextWorkingSlot(1, 10),
+    });
+
+    await expect(page.getByTestId('appointment-block').filter({ hasText: PATIENTS.alice.firstName })).toBeVisible();
   });
 });
