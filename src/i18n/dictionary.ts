@@ -40,6 +40,9 @@ const en: Record<string, string> = {
   'dashboard.noShow': 'No Show',
   'dashboard.googleCalendarLegend': 'Google Calendar',
   'dashboard.googleEventDefault': 'Google Calendar Event',
+  'dashboard.noPhone': 'No phone number',
+  'dashboard.phoneUnavailable': 'Phone unavailable',
+  'dashboard.dragAppointment': 'Drag to reschedule',
   'dashboard.eventTitle': '{{name}} — {{type}}',
 
   'scheduler.nav.month': 'Month',
@@ -455,6 +458,9 @@ const mk: Record<string, string> = {
   'dashboard.noShow': 'Не се појавил',
   'dashboard.googleCalendarLegend': 'Google Календар',
   'dashboard.googleEventDefault': 'Настан од Google Календар',
+  'dashboard.noPhone': 'Нема телефонски број',
+  'dashboard.phoneUnavailable': 'Телефонот не е достапен',
+  'dashboard.dragAppointment': 'Повлечете за презакажување',
   'dashboard.eventTitle': '{{name}} — {{type}}',
 
   'scheduler.nav.month': 'Месец',

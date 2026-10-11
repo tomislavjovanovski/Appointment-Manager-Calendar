@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, ChevronLeft, ChevronRight, Clock, GripVertical, Plus, RotateCcw, UserRound } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, Clock, Phone, Plus, RotateCcw, UserRound } from 'lucide-react';
 import { addDays, addWeeks, endOfWeek, format, startOfWeek } from 'date-fns';
-import { Appointment } from '@/types/appointment';
-import { appointmentsStorage, buildApiUrl, settingsStorage } from '@/lib/storage';
+import { Appointment, Patient } from '@/types/appointment';
+import { appointmentsStorage, buildApiUrl, patientsStorage, settingsStorage } from '@/lib/storage';
 import { GoogleCalendarSync } from './GoogleCalendarSync';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
@@ -43,6 +43,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
   const { t, dateFnsLocale, initialSettings } = useI18n();
   const initialLoadDoneRef = useRef(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Patient[] | null>(null);
   const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
   const [settings, setSettings] = useState<any>(settingsStorage.getCached() ?? initialSettings ?? {
     startTime: '08:00',
@@ -99,19 +100,21 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       const showFullLoading = !initialLoadDoneRef.current;
       try {
         if (showFullLoading) setLoading(true);
-        const [appointmentsData, settingsData] = await Promise.all([
+        const [appointmentsData, settingsData, patientsData] = await Promise.all([
           appointmentsStorage.getAll().catch(() => []),
           settingsStorage.get().catch(() => settingsStorage.getCached() ?? initialSettings ?? ({
             startTime: '08:00',
             endTime: '18:00',
             timeSlotMinutes: 30
           })),
+          patientsStorage.getAll().catch(() => null),
         ]);
 
         console.log('Loaded appointments:', appointmentsData);
 
         if (isMounted) {
           setAppointments(appointmentsData);
+          setPatients(patientsData);
           setSettings(settingsData);
           initialLoadDoneRef.current = true;
         }
@@ -474,8 +477,11 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   );
                 }
 
-                const apt: Appointment | undefined = schedulerEvent?.appointment ?? schedulerEvent;
+                const apt: Appointment | undefined = appointments.find((record) => record.id === String(schedulerEvent?.event_id ?? schedulerEvent?.appointment?.id ?? schedulerEvent?.id))
+                  ?? schedulerEvent?.appointment ?? schedulerEvent;
+                const patient = patients?.find((record) => record.id === apt?.patientId);
                 const patientName =
+                  (patient ? `${patient.firstName} ${patient.lastName}`.trim() : undefined) ||
                   apt?.patientName ||
                   (typeof schedulerEvent?.title === 'string' && schedulerEvent.title.includes('—')
                     ? schedulerEvent.title.split('—')[0].trim()
@@ -483,9 +489,10 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   apt?.patientId ||
                   'Unknown';
                 const displayTitle = patientName;
-                const appointmentTitle = apt?.title?.trim();
-                const appointmentNotes = apt?.notes?.trim();
-                const appointmentDetail = appointmentTitle || appointmentNotes || t(`appointment.types.${appointmentTypeKey(apt?.type ?? 'consultation')}`);
+                const firstName = patient?.firstName?.trim() || displayTitle;
+                const lastName = patient?.lastName?.trim();
+                const appointmentTitle = apt?.title?.trim() || t(`appointment.types.${appointmentTypeKey(apt?.type ?? 'consultation')}`);
+                const patientPhone = patient?.phone?.trim() || t(patients === null ? 'dashboard.phoneUnavailable' : 'dashboard.noPhone');
                 const bgColor = schedulerEvent?.color || '#3b82f6';
                 const isDragging = draggingEventId === apt?.id;
                 
@@ -496,7 +503,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     data-source="local"
                     className={`h-full w-full overflow-hidden rounded-md text-white shadow-sm ${isDragging ? 'pointer-events-none opacity-35' : 'cursor-pointer'}`}
                     style={{ backgroundColor: bgColor }}
-                    title={displayTitle}
+                    title={`${displayTitle}\n${patientPhone}\n${appointmentTitle}\n${t('dashboard.dragAppointment')}`}
                     draggable={props?.draggable}
                     onDragStart={(event) => {
                       setDraggingEventId(apt?.id ?? null);
@@ -514,18 +521,20 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       handleEventClick(schedulerEvent);
                     }}
                   >
-                    <div className="flex h-full flex-col px-2 py-1.5">
-                      <div className="flex items-center justify-between gap-2 rounded-sm bg-black/20 px-1.5 py-1">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <UserRound className="h-3 w-3 shrink-0 text-white/75" />
-                          <div className="truncate text-xs font-semibold leading-tight tracking-[0.01em]">
-                            {displayTitle}
-                          </div>
+                    <div className={`flex h-full flex-col ${apt?.duration && apt.duration <= step ? 'gap-0.5 p-0.5' : 'gap-1 p-1'}`}>
+                      <div className="flex min-w-0 shrink-0 items-start gap-1.5 rounded-sm bg-black/20 px-1.5 py-1">
+                        <UserRound className="h-5 w-5 shrink-0 text-white/75" />
+                        <div className="min-w-0 whitespace-normal text-[17.5px] font-semibold leading-tight [overflow-wrap:anywhere]">
+                          <div>{firstName}</div>
+                          {lastName && <div>{lastName}</div>}
                         </div>
-                        <GripVertical className="h-3.5 w-3.5 shrink-0 text-white/70" />
                       </div>
-                      <div className="mt-1 line-clamp-2 px-1.5 text-[11px] font-medium leading-snug text-white/90">
-                        {appointmentDetail}
+                      <div className="flex min-w-0 shrink-0 items-center gap-1.5 text-[17.5px] font-medium leading-tight text-white/90">
+                        <Phone className="h-5 w-5 shrink-0" />
+                        <span className="truncate" data-testid="appointment-phone">{patientPhone}</span>
+                      </div>
+                      <div className="shrink-0 truncate border-t border-white/30 pt-0.5 text-[15px] leading-tight text-white/90" data-testid="appointment-title" title={appointmentTitle}>
+                        {appointmentTitle}
                       </div>
                     </div>
                   </div>

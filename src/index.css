@@ -135,6 +135,20 @@ All colors MUST be HSL.
     min-width: 0 !important;
   }
 
+  .weekly-scheduler .rs__event__item {
+    box-sizing: border-box;
+    padding: 3px;
+  }
+
+  .weekly-scheduler .rs__event__item:not([style*="calc("]) {
+    width: 100% !important;
+  }
+
+  .weekly-scheduler .rs__event__item > div {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
   .weekly-scheduler .rs__header:not(.rs__time) > div:first-child {
     display: flex;
     height: 100%;
