@@ -29,6 +29,18 @@ export const DEFAULT_SETTINGS = {
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
+const validateBrandLogo = (settings) => {
+  const logo = settings.logoDataUrl;
+  if (logo === undefined || logo === '') return;
+  if (typeof logo !== 'string' || logo.length > 180_000 ||
+      !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(logo) ||
+      Buffer.from(logo.slice(logo.indexOf(',') + 1), 'base64').length > 128 * 1024) {
+    const error = new Error('Logo must be a PNG, JPEG, or WebP image up to 128 KB.');
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
 const mergeSettings = (partial = {}) => ({
   ...DEFAULT_SETTINGS,
   ...partial,
@@ -164,8 +176,8 @@ export function createDataStore({
       error.statusCode = 400;
       throw error;
     }
-    if (![30, 60, 120].includes(duration)) {
-      const error = new Error('Appointment duration must be 30, 60, or 120 minutes.');
+    if (![30, 45, 60, 90, 120].includes(duration)) {
+      const error = new Error('Appointment duration must be 30, 45, 60, 90, or 120 minutes.');
       error.statusCode = 400;
       throw error;
     }
@@ -366,12 +378,14 @@ export function createDataStore({
     },
 
     async saveSettings(nextSettings) {
+      validateBrandLogo(nextSettings);
       const settings = mergeSettings(nextSettings);
       await writeJsonFile(settingsFile, settings);
       return settings;
     },
 
     async updateSettings(partialSettings) {
+      validateBrandLogo(partialSettings);
       const current = await readSettings();
       const next = mergeSettings({
         ...current,

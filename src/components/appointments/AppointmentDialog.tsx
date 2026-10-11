@@ -1,8 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { addMinutes } from "date-fns";
+import { addMinutes, format, isValid } from "date-fns";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import type { DateTimePickerProps } from "@mui/x-date-pickers/DateTimePicker";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import type { DialogProps as MuiDialogProps } from "@mui/material/Dialog";
+import { PickersLayout, usePickerLayout } from "@mui/x-date-pickers/PickersLayout";
+import type { PickersLayoutProps } from "@mui/x-date-pickers/PickersLayout";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,10 +41,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, Check, ChevronsUpDown, Clock3, ClipboardList, FileText, UserRound } from "lucide-react";
-import { patientsStorage } from "@/lib/storage";
+import { CalendarDays, Check, ChevronsUpDown, Clock3, ClipboardList, FileText, X } from "lucide-react";
+import { appointmentsStorage, patientsStorage, settingsStorage } from "@/lib/storage";
+import { getAvailableStarts, getAvailableStartDurations, getWorkingTimeSlots } from "@/lib/appointmentAvailability";
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
-import type { Appointment, Patient as StoredPatient } from "@/types/appointment";
+import type { Appointment, AppointmentSettings, Patient as StoredPatient } from "@/types/appointment";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from '@/i18n';
 
@@ -48,7 +55,7 @@ const appointmentSchema = z.object({
   syncToGoogle: z.boolean().optional(),
   type: z.enum(["consultation", "follow-up", "procedure"]).optional(),
   status: z.enum(["scheduled", "completed", "cancelled", "no-show"]).optional(),
-  duration: z.enum(["30", "60", "120"]).optional(),
+  duration: z.enum(["30", "45", "60", "90", "120"]).optional(),
   start: z.string().min(1),
   end: z.string().min(1),
   notes: z.string().optional(),
@@ -58,6 +65,114 @@ type FormData = z.infer<typeof appointmentSchema>;
 type AppointmentDuration = NonNullable<FormData["duration"]>;
 type AppointmentType = NonNullable<FormData["type"]>;
 type AppointmentStatus = NonNullable<FormData["status"]>;
+
+const PickerAvailabilityContext = createContext<(day: Date) => Date[]>(() => []);
+
+function FreeStartTimes({ day, slots, duration, availableDurations, onSelect }: Readonly<{
+  day: Date;
+  slots: Date[];
+  duration: number;
+  availableDurations: Map<number, number>;
+  onSelect: (date: Date, duration: number) => void;
+}>) {
+  const getStarts = useContext(PickerAvailabilityContext);
+  const { t } = useI18n();
+  const starts = getStarts(day);
+  const selectedIsAvailable = starts.some((start) => start.getTime() === day.getTime());
+  const selectedEnd = addMinutes(day, duration);
+  return (
+    <div className="w-full space-y-2 border-t border-border py-2" data-testid="available-starts">
+      <p className="text-sm font-medium">{t('appointment.availableTimes')}</p>
+      <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(3.25rem,1fr))] gap-1.5">
+        {slots.map((start) => {
+          const fittingDuration = availableDurations.get(start.getTime());
+          const isAvailable = fittingDuration !== undefined;
+          const isSelected = selectedIsAvailable && start >= day && start < selectedEnd;
+          return (
+          <Button
+            key={start.getTime()}
+            type="button"
+            size="sm"
+            variant={isSelected ? 'default' : 'outline'}
+            aria-pressed={isSelected}
+            disabled={!isAvailable && !isSelected}
+            className="h-10 w-full min-w-0 px-1 text-xs tabular-nums sm:h-8"
+            title={fittingDuration === undefined ? undefined : t('settings.minutes', { n: fittingDuration })}
+            aria-label={fittingDuration === undefined ? format(start, 'HH:mm') : `${format(start, 'HH:mm')}, ${t('settings.minutes', { n: fittingDuration })}`}
+            onClick={() => { if (fittingDuration !== undefined) onSelect(start, fittingDuration); }}
+          >
+            {format(start, 'HH:mm')}
+          </Button>
+          );
+        })}
+        {availableDurations.size === 0 && <p className="col-span-full text-sm text-muted-foreground">{t('appointment.noAvailableTimes')}</p>}
+      </div>
+    </div>
+  );
+}
+
+function AppointmentPickerDialog({ open, onClose, children }: Readonly<MuiDialogProps>) {
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) onClose?.({}, "backdropClick");
+    }}>
+      <DialogContent className="z-[2101] w-[calc(100%-2rem)] max-w-[320px] gap-0 overflow-y-auto p-0 max-h-[calc(100dvh-2rem)] [&>button]:hidden">
+        <DialogTitle className="sr-only">Date and time</DialogTitle>
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AppointmentPickerLayout(props: Readonly<PickersLayoutProps<Date | null, Date, NonNullable<DateTimePickerProps<Date>["view"]>>>) {
+  const { content, actionBar } = usePickerLayout(props);
+  const getStarts = useContext(PickerAvailabilityContext);
+  const selectedDate = props.value && isValid(props.value) ? props.value : new Date();
+  const available = getStarts(selectedDate);
+  if (props.wrapperVariant === "desktop") return <PickersLayout {...props} />;
+
+  const changeTime = (part: "hours" | "minutes", value: string) => {
+    const date = available.find((start) => part === 'hours'
+      ? start.getHours() === Number(value)
+      : start.getHours() === selectedDate.getHours() && start.getMinutes() === Number(value));
+    if (date) props.onChange(date);
+  };
+
+  return (
+    <div className="flex w-[320px] max-w-full flex-col bg-background" data-testid="mobile-appointment-picker">
+      {content}
+      <div className="grid grid-cols-2 gap-3 border-t border-border px-4 py-3">
+        <label className="space-y-1 text-sm font-medium">
+          <span>HH</span>
+          <select
+            aria-label="Hour"
+            value={selectedDate.getHours()}
+            onChange={(event) => changeTime("hours", event.target.value)}
+            className="h-11 w-full rounded-md border border-input bg-background px-3 text-base"
+          >
+            {Array.from({ length: 24 }, (_, hour) => (
+              <option key={hour} value={hour} disabled={!available.some((start) => start.getHours() === hour)}>{String(hour).padStart(2, "0")}</option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-sm font-medium">
+          <span>mm</span>
+          <select
+            aria-label="Minute"
+            value={selectedDate.getMinutes()}
+            onChange={(event) => changeTime("minutes", event.target.value)}
+            className="h-11 w-full rounded-md border border-input bg-background px-3 text-base"
+          >
+            {[0, 15, 30, 45].map((minute) => (
+              <option key={minute} value={minute} disabled={!available.some((start) => start.getHours() === selectedDate.getHours() && start.getMinutes() === minute)}>{String(minute).padStart(2, "0")}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {actionBar}
+    </div>
+  );
+}
 
 type PatientOption = { id: string; name: string; searchValue?: string };
 type AppointmentDialogAppointment = Partial<Appointment> & {
@@ -124,13 +239,14 @@ export default function AppointmentDialog({
   refreshTrigger = 0,
 }: Props) {
   const { t } = useI18n();
+  const isMobilePicker = useMediaQuery("(max-width: 639px)");
   // Determine effective mode: explicit mode wins, otherwise presence of `appointment` means edit
   const effectiveMode: "create" | "edit" = mode ?? (appointment ? "edit" : "create");
 
   const mergedInitial = useMemo<Partial<FormData> | undefined>(() => {
     if (!appointment) return initialValues;
 
-    const normalizedDuration = String(appointment.duration ?? "30") as AppointmentDuration;
+    const normalizedDuration = String(appointment.duration ?? "60") as AppointmentDuration;
 
     return {
       title: appointment.title,
@@ -147,10 +263,10 @@ export default function AppointmentDialog({
   const defaultValues = useMemo<FormData>(() => {
     const rawDefaultStart =
       selectedDate ?? (mergedInitial?.start ? new Date(mergedInitial.start) : new Date());
-    const defaultStart = appointment
+    const defaultStart = appointment || selectedDate
       ? new Date(mergedInitial?.start ?? rawDefaultStart)
       : roundToInterval(rawDefaultStart, 15);
-    const duration = String(mergedInitial?.duration ?? "30") as AppointmentDuration;
+    const duration = String(mergedInitial?.duration ?? "60") as AppointmentDuration;
 
     return {
       title: mergedInitial?.title ?? "",
@@ -179,18 +295,47 @@ export default function AppointmentDialog({
   const durationValue = watch("duration");
   const endValue = watch("end");
   const statusValue = watch("status");
-  const syncToGoogleValue = watch("syncToGoogle");
   const patientIdValue = watch("patientId");
   // local patients state: prefer prop but fall back to the configured storage source
   const [localPatients, setLocalPatients] = useState<PatientOption[]>(patients ?? []);
   const [patientPickerOpen, setPatientPickerOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [showNewPatientPanel, setShowNewPatientPanel] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState(createEmptyPatientForm);
   const [savingNewPatient, setSavingNewPatient] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionErrorId, setSubmissionErrorId] = useState<string | null>(null);
+  const pickerContainerRef = useRef<HTMLDivElement>(null);
+  const [openTimePicker, setOpenTimePicker] = useState<"start" | null>(null);
+  const [availabilitySettings, setAvailabilitySettings] = useState<AppointmentSettings | null>(null);
+  const [occupiedAppointments, setOccupiedAppointments] = useState<Appointment[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilityError, setAvailabilityError] = useState(false);
+  const initialSlotSelectedRef = useRef(false);
   const { toast } = useToast();
+
+  const getStarts = (day: Date) => availabilitySettings && !availabilityLoading && !availabilityError
+    ? getAvailableStarts(day, Number(durationValue ?? '60'), availabilitySettings, occupiedAppointments, appointment?.id)
+    : [];
+  const selectedStart = new Date(startValue);
+  const startIsAvailable = getStarts(selectedStart).some((start) => start.getTime() === selectedStart.getTime());
+
+  useEffect(() => {
+    if (!open) return;
+    let isMounted = true;
+    setAvailabilityLoading(true);
+    setAvailabilityError(false);
+    void Promise.all([settingsStorage.get(), appointmentsStorage.getAll()]).then(([settings, appointments]) => {
+      if (isMounted) {
+        setAvailabilitySettings(settings);
+        setOccupiedAppointments(appointments);
+      }
+    }).catch(() => {
+      if (isMounted) setAvailabilityError(true);
+    }).finally(() => {
+      if (isMounted) setAvailabilityLoading(false);
+    });
+    return () => { isMounted = false; };
+  }, [open, refreshTrigger]);
 
   const resetNewPatientForm = () => {
     setNewPatientForm(createEmptyPatientForm());
@@ -208,7 +353,7 @@ export default function AppointmentDialog({
     if (startValue && durationValue) {
       const startDate = new Date(startValue);
       const durationMinutes = Number(durationValue);
-      if (isFinite(startDate.getTime()) && [30, 60, 120].includes(durationMinutes)) {
+      if (Number.isFinite(startDate.getTime()) && [30, 45, 60, 90, 120].includes(durationMinutes)) {
         const expectedEnd = toDateTimeLocal(addMinutes(startDate, durationMinutes));
         if (expectedEnd !== endValue) {
           setValue("end", expectedEnd, { shouldDirty: true, shouldValidate: true });
@@ -220,13 +365,26 @@ export default function AppointmentDialog({
   useEffect(() => {
     if (open) {
       reset(defaultValues);
-      setShowNewPatientPanel(false);
       setPatientPickerOpen(false);
       setSubmissionError(null);
       setSubmissionErrorId(null);
+      setOpenTimePicker(null);
+      initialSlotSelectedRef.current = false;
       resetNewPatientForm();
     }
   }, [open, reset, defaultValues]);
+
+  useEffect(() => {
+    if (!open || effectiveMode !== 'create' || !selectedDate || availabilityLoading ||
+        availabilityError || !availabilitySettings || initialSlotSelectedRef.current) return;
+    initialSlotSelectedRef.current = true;
+    const start = new Date(defaultValues.start);
+    const fittingDuration = getAvailableStartDurations(start, 60, availabilitySettings, occupiedAppointments).get(start.getTime());
+    if (fittingDuration === undefined) return;
+    setValue('duration', String(fittingDuration) as AppointmentDuration, { shouldValidate: true });
+    setValue('start', toDateTimeLocal(start), { shouldValidate: true });
+    setValue('end', toDateTimeLocal(addMinutes(start, fittingDuration)), { shouldValidate: true });
+  }, [open, effectiveMode, selectedDate, availabilityLoading, availabilityError, availabilitySettings, occupiedAppointments, defaultValues, setValue]);
 
   useEffect(() => {
     const selectedPatientId = mergedInitial?.patientId ?? null;
@@ -310,7 +468,6 @@ export default function AppointmentDialog({
       );
       setValue('patientId', created.id, { shouldDirty: true, shouldValidate: true });
       setPatientPickerOpen(false);
-      setShowNewPatientPanel(false);
       resetNewPatientForm();
 
       toast({
@@ -331,20 +488,24 @@ export default function AppointmentDialog({
 
   const submit = async (data: FormData) => {
     setSubmissionError(null);
-    let patient = (localPatients || patients).find((p) => p.id === data.patientId);
+    if (!startIsAvailable) {
+      setSubmissionError(t('appointment.unavailableStart'));
+      setSubmissionErrorId('error-slot-conflict');
+      return;
+    }
+    const patient = localPatients.find((p) => p.id === data.patientId);
     const enrichedData: AppointmentDialogSubmitData = {
       ...data,
       patientName: patient ? patient.name : undefined,
-      syncToGoogle: data.syncToGoogle,
+      syncToGoogle: false,
     };
 
-    if (!patient && showNewPatientPanel) {
+    if (!patient) {
       const created = await saveNewPatient();
       if (!created) {
         return;
       }
 
-      patient = created;
       enrichedData.patientId = created.id;
       enrichedData.patientName = created.name;
     }
@@ -388,7 +549,19 @@ export default function AppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden border-border/70 p-0 shadow-2xl sm:max-w-[800px]">
+      <DialogContent
+        ref={pickerContainerRef}
+        className="border-border/70 p-0 shadow-2xl sm:max-w-[800px]"
+        onInteractOutside={(event) => {
+          if (openTimePicker) event.preventDefault();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (openTimePicker) {
+            event.preventDefault();
+            setOpenTimePicker(null);
+          }
+        }}
+      >
         <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-h-[calc(100vh-2rem)]" data-testid="booking-dialog">
           <div className="border-b border-border/60 bg-gradient-to-br from-primary/10 via-background to-background px-5 py-3 sm:px-6">
             <DialogHeader className="space-y-2 text-left">
@@ -437,19 +610,60 @@ export default function AppointmentDialog({
           <form onSubmit={handleSubmit(submit)}>
             <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: Title and Patient */}
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
-                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="title" className="flex items-center gap-2">
-                      <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" />
-                      {t('appointment.title')}
-                    </Label>
-                    <Input id="title" data-testid="appointment-title-input" {...register("title")} className="h-10 border-border bg-background shadow-sm" />
-                  </div>
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                  <section aria-label={t('appointment.title')} className="min-w-0 space-y-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                    <div className="relative">
+                      <Label htmlFor="title" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
+                        {t('appointment.title')}
+                      </Label>
+                      <Input id="title" data-testid="appointment-title-input" {...register("title")} className="h-10 border-border bg-background shadow-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div className="relative min-w-0">
+                        <Label id="appointment-type-label" htmlFor="type" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">{t('createAppointment.type')}</Label>
+                        <Select
+                          onValueChange={(val) => setValue("type", (val ?? "consultation") as AppointmentType, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })}
+                          value={watch("type") ?? "consultation"}
+                        >
+                          <SelectTrigger id="type" aria-labelledby="appointment-type-label" data-testid="appointment-type-select" className="h-10 border-border bg-background shadow-sm">
+                            <SelectValue placeholder={t('appointment.selectType')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="consultation" data-testid="appointment-type-option-consultation">{t('appointment.types.consultation')}</SelectItem>
+                            <SelectItem value="follow-up" data-testid="appointment-type-option-follow-up">{t('appointment.types.followUp')}</SelectItem>
+                            <SelectItem value="procedure" data-testid="appointment-type-option-procedure">{t('appointment.types.procedure')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="relative min-w-0">
+                        <Label id="appointment-duration-label" htmlFor="duration" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">{t('createAppointment.duration')}</Label>
+                        <Select
+                          onValueChange={(val) => setValue("duration", (val ?? "60") as AppointmentDuration, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })}
+                          value={watch("duration") ?? "60"}
+                        >
+                          <SelectTrigger id="duration" aria-labelledby="appointment-duration-label" data-testid="duration-select" className="h-10 border-border bg-background shadow-sm">
+                            <SelectValue placeholder={t('appointment.selectDuration')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[30, 45, 60, 90, 120].map((minutes) => (
+                              <SelectItem key={minutes} value={String(minutes)} data-testid={`duration-option-${minutes}`}>
+                                {t('settings.minutes', { n: minutes })}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </section>
 
-                  <div className="space-y-1.5 pr-3">
-                    <Label htmlFor="patientId" className="flex items-center gap-2">
-                      <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
+                  <section aria-label={t('appointment.patient')} className="relative flex min-w-0 flex-col gap-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                    <Label id="appointment-patient-label" htmlFor="patientId" className="absolute left-6 top-2.5 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
                       {t('appointment.patient')}
                     </Label>
                     <Popover open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
@@ -459,6 +673,7 @@ export default function AppointmentDialog({
                           type="button"
                           variant="outline"
                           role="combobox"
+                          aria-labelledby="appointment-patient-label"
                           aria-expanded={patientPickerOpen}
                           data-testid="patient-select"
                           className="h-10 w-full justify-between border-border bg-background font-normal shadow-sm hover:bg-background"
@@ -492,143 +707,49 @@ export default function AppointmentDialog({
                         </Command>
                       </PopoverContent>
                     </Popover>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      data-testid="create-new-patient-btn"
-                      className="mt-2 h-8 w-full border-border bg-background text-sm shadow-sm"
-                      onClick={() => {
-                        setShowNewPatientPanel((current) => !current);
-                        setSubmissionError(null);
-                        setSubmissionErrorId(null);
-                      }}
-                    >
-                      {showNewPatientPanel ? t('appointment.cancelNewPatient') : t('appointment.addNewPatient')}
-                    </Button>
-                  </div>
-                </div>
-                {showNewPatientPanel && (
-                  <div data-testid="new-patient-panel" className="mt-3 space-y-2 rounded-xl border border-border/80 bg-background p-2.5 shadow-sm">
-                    <div className="grid gap-2 sm:grid-cols-3">
-                          <Input
-                            id="patient-first-name"
-                            data-testid="patient-first-name"
-                            placeholder={t('appointment.firstName')}
-                            value={newPatientForm.firstName}
-                            onChange={(e) => setNewPatientForm(f => ({ ...f, firstName: e.target.value }))}
-                          />
-                          <Input
-                            id="patient-last-name"
-                            data-testid="patient-last-name"
-                            placeholder={t('appointment.lastName')}
-                            value={newPatientForm.lastName}
-                            onChange={(e) => setNewPatientForm(f => ({ ...f, lastName: e.target.value }))}
-                          />
-                          <Input
-                            id="patient-email"
-                            data-testid="patient-email"
-                            type="email"
-                            placeholder="Email"
-                            value={newPatientForm.email}
-                            onChange={(e) => setNewPatientForm(f => ({ ...f, email: e.target.value }))}
-                          />
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                          <Input
-                            id="patient-phone"
-                            data-testid="patient-phone"
-                            type="tel"
-                            placeholder="Phone"
-                            value={newPatientForm.phone}
-                            onChange={(e) => setNewPatientForm(f => ({ ...f, phone: e.target.value }))}
-                          />
-                          <Input
-                            id="patient-dob"
-                            data-testid="patient-dob"
-                            type="date"
-                            placeholder="YYYY-MM-DD"
-                            value={newPatientForm.dateOfBirth}
-                            onChange={(e) => setNewPatientForm(f => ({ ...f, dateOfBirth: e.target.value }))}
-                          />
-                          <Button
-                            type="button"
-                            data-testid="new-patient-save"
-                            disabled={savingNewPatient}
-                            onClick={() => void saveNewPatient()}
-                            className="h-10 sm:self-stretch"
-                          >
-                            {savingNewPatient ? t('appointment.saving') : t('appointment.savePatient')}
-                          </Button>
-                    </div>
-                          {submissionError && submissionErrorId === 'new-patient-panel' && (
-                            <div
-                              data-testid="new-patient-inline-error"
-                              role="alert"
-                              className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive-foreground"
-                            >
-                              {submissionError}
-                            </div>
-                          )}
-                  </div>
-                )}
-              </section>
-
-              {/* Box 2: Type and Duration */}
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
-                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="type">{t('createAppointment.type')}</Label>
-                    <Select
-                      onValueChange={(val) =>
-                        setValue("type", (val ?? "consultation") as AppointmentType, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      value={watch("type") ?? "consultation"}
-                    >
-                      <SelectTrigger
-                        id="type"
-                        data-testid="appointment-type-select"
-                        className="h-10 border-border bg-background shadow-sm"
+                    {selectedPatient ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="mt-auto h-10 w-full text-sm"
+                        disabled={saving || savingNewPatient || formState.isSubmitting}
+                        onClick={() => {
+                          setValue('patientId', null, { shouldDirty: true, shouldValidate: true });
+                          setSubmissionError(null);
+                        }}
                       >
-                        <SelectValue placeholder={t('appointment.selectType')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="consultation" data-testid="appointment-type-option-consultation">{t('appointment.types.consultation')}</SelectItem>
-                        <SelectItem value="follow-up" data-testid="appointment-type-option-follow-up">{t('appointment.types.followUp')}</SelectItem>
-                        <SelectItem value="procedure" data-testid="appointment-type-option-procedure">{t('appointment.types.procedure')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5 pr-3">
-                    <Label htmlFor="duration">{t('createAppointment.duration')}</Label>
-                    <Select
-                      onValueChange={(val) =>
-                        setValue("duration", (val ?? "30") as AppointmentDuration, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      value={watch("duration") ?? "30"}
-                    >
-                      <SelectTrigger
-                        id="duration"
-                        data-testid="duration-select"
-                        className="h-10 border-border bg-background shadow-sm"
-                      >
-                        <SelectValue placeholder={t('appointment.selectDuration')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30" data-testid="duration-option-30">{t('appointment.halfHour')}</SelectItem>
-                        <SelectItem value="60" data-testid="duration-option-60">{t('appointment.fullHour')}</SelectItem>
-                        <SelectItem value="120" data-testid="duration-option-120">{t('appointment.doubleHour')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <X className="mr-2 h-4 w-4" />
+                        {t('appointment.addNewPatient')}
+                      </Button>
+                    ) : (
+                      <div data-testid="new-patient-panel" className="mt-2 grid grid-cols-2 gap-2 sm:mt-auto">
+                        <Input
+                          id="patient-first-name"
+                          data-testid="patient-first-name"
+                          aria-label={t('appointment.firstName')}
+                          autoComplete="given-name"
+                          placeholder={t('appointment.firstName')}
+                          value={newPatientForm.firstName}
+                          disabled={saving || savingNewPatient || formState.isSubmitting}
+                          onChange={(event) => setNewPatientForm((current) => ({ ...current, firstName: event.target.value }))}
+                        />
+                        <Input
+                          id="patient-last-name"
+                          data-testid="patient-last-name"
+                          aria-label={t('appointment.lastName')}
+                          autoComplete="family-name"
+                          placeholder={t('appointment.lastName')}
+                          value={newPatientForm.lastName}
+                          disabled={saving || savingNewPatient || formState.isSubmitting}
+                          onChange={(event) => setNewPatientForm((current) => ({ ...current, lastName: event.target.value }))}
+                        />
+                      </div>
+                    )}
+                    {submissionError && submissionErrorId === 'new-patient-panel' && (
+                      <p data-testid="new-patient-inline-error" role="alert" className="text-sm text-destructive">{submissionError}</p>
+                    )}
+                  </section>
                 </div>
-              </section>
 
               {effectiveMode === "edit" && (
                 <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
@@ -662,24 +783,88 @@ export default function AppointmentDialog({
               )}
 
               {/* Box 3: Date (start/end) and Note */}
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
-                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
-                  <div className="space-y-2.5">
-                    <div className="space-y-1.5">
+              <PickerAvailabilityContext.Provider value={getStarts}>
+              <section className="space-y-3 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                {availabilityLoading ? (
+                  <p role="status" className="text-sm text-muted-foreground">{t('appointment.loadingAvailability')}</p>
+                ) : availabilityError ? (
+                  <p role="alert" className="text-sm text-destructive">{t('appointment.availabilityFailed')}</p>
+                ) : (
+                  <>
+                    <FreeStartTimes
+                      day={selectedStart}
+                      duration={Number(durationValue ?? '60')}
+                      slots={availabilitySettings ? getWorkingTimeSlots(selectedStart, availabilitySettings) : []}
+                      availableDurations={availabilitySettings
+                        ? getAvailableStartDurations(selectedStart, 60, availabilitySettings, occupiedAppointments, appointment?.id)
+                        : new Map()}
+                      onSelect={(date, fittingDuration) => {
+                        setValue('duration', String(fittingDuration) as AppointmentDuration, { shouldDirty: true, shouldValidate: true });
+                        setValue('start', toDateTimeLocal(date), { shouldDirty: true, shouldValidate: true });
+                        setValue('end', toDateTimeLocal(addMinutes(date, fittingDuration)), { shouldDirty: true, shouldValidate: true });
+                      }}
+                    />
+                    {!startIsAvailable && <p role="alert" className="text-sm text-destructive">{t('appointment.unavailableStart')}</p>}
+                  </>
+                )}
+                <div className="grid gap-3 sm:grid-cols-[minmax(210px,30fr)_minmax(145px,15fr)_minmax(0,65fr)]">
+                    <div className="min-w-0 space-y-1.5">
                       <Label htmlFor="start" className="flex items-center gap-2">
                         <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                         {t('appointment.start')}
                       </Label>
-                      <Input
-                        id="start"
-                        data-testid="appointment-start-input"
-                        type="datetime-local"
-                        {...register("start")}
-                        className="h-10 border-border bg-background shadow-sm"
+                      <DateTimePicker
+                        ampm={false}
+                        format="dd/MM/yyyy HH:mm"
+                        slots={{ layout: AppointmentPickerLayout, dialog: AppointmentPickerDialog }}
+                        views={isMobilePicker ? ["year", "month", "day"] : undefined}
+                        closeOnSelect={false}
+                        minutesStep={15}
+                        timeSteps={{ minutes: 15 }}
+                        desktopModeMediaQuery="(min-width: 640px)"
+                        disabled={availabilityLoading || availabilityError}
+                        shouldDisableDate={(date) => !availabilitySettings?.workingDays.includes(date.getDay())}
+                        shouldDisableTime={(date, view) => {
+                          const available = getStarts(date);
+                          return !available.some((start) => start.getHours() === date.getHours() &&
+                            (view === 'hours' || start.getMinutes() === date.getMinutes()));
+                        }}
+                        open={openTimePicker === "start"}
+                        onOpen={() => setOpenTimePicker("start")}
+                        onClose={() => setOpenTimePicker(null)}
+                        value={startValue ? new Date(startValue) : null}
+                        onChange={(date) => {
+                          if (date && isValid(date)) {
+                            setValue("start", toDateTimeLocal(date), {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                        slotProps={{
+                          textField: {
+                            id: "start",
+                            size: "small",
+                            fullWidth: true,
+                            onClick: (event) => {
+                              if (!(event.target as HTMLElement).closest('button')) setOpenTimePicker("start");
+                            },
+                            onKeyDown: (event) => {
+                              if ((event.target as HTMLElement).closest('button')) return;
+                              if (event.key === "Enter" || event.key === "ArrowDown") {
+                                event.preventDefault();
+                                setOpenTimePicker("start");
+                              }
+                            },
+                            inputProps: { "data-testid": "appointment-start-input", "aria-haspopup": "dialog" },
+                          },
+                          popper: { container: () => pickerContainerRef.current, sx: { zIndex: 2100 } },
+                          desktopTrapFocus: { disableEnforceFocus: true },
+                        }}
                       />
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="min-w-0 space-y-1.5">
                       <Label htmlFor="end" className="flex items-center gap-2">
                         <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
                         {t('appointment.end')}
@@ -687,14 +872,13 @@ export default function AppointmentDialog({
                       <Input
                         id="end"
                         data-testid="appointment-end-input"
-                        type="datetime-local"
-                        {...register("end")}
-                        className="h-10 border-border bg-background shadow-sm"
+                        readOnly
+                        value={endValue && isValid(new Date(endValue)) ? format(new Date(endValue), "dd/MM/yyyy HH:mm") : ""}
+                        className="h-10 border-border bg-muted/50 shadow-sm"
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-1.5 pr-3">
+                  <div className="min-w-0 space-y-1.5">
                     <Label htmlFor="notes" className="flex items-center gap-2">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       {t('editAppointment.notes')}
@@ -703,12 +887,13 @@ export default function AppointmentDialog({
                       id="notes"
                       data-testid="appointment-notes"
                       {...register("notes")}
-                      rows={3}
-                      className="min-h-[88px] border-border bg-background shadow-sm"
+                      rows={1}
+                      className="h-10 min-h-10 border-border bg-background shadow-sm"
                     />
                   </div>
                 </div>
               </section>
+              </PickerAvailabilityContext.Provider>
 
               {/* Google sync toggle and submission errors */}
               <div className="px-3">
@@ -717,8 +902,8 @@ export default function AppointmentDialog({
                     id="google-sync-toggle"
                     data-testid="google-sync-toggle"
                     type="checkbox"
-                    checked={!!syncToGoogleValue}
-                    onChange={(e) => setValue('syncToGoogle', e.target.checked as any, { shouldDirty: true })}
+                    disabled
+                    checked={false}
                   />
                   <label htmlFor="google-sync-toggle" className="text-sm text-muted-foreground">{t('appointment.syncGoogle')}</label>
                 </div>
@@ -750,10 +935,11 @@ export default function AppointmentDialog({
               <Button
                 type="submit"
                 data-testid="booking-submit-btn"
-                disabled={saving || !formState.isValid}
+                disabled={saving || savingNewPatient || formState.isSubmitting || !formState.isValid || !startIsAvailable ||
+                  (!selectedPatient && (!newPatientForm.firstName.trim() || !newPatientForm.lastName.trim()))}
                 className="h-10 px-5 shadow-sm"
               >
-                {saving ? t('appointment.saving') : effectiveMode === "create" ? t('appointment.create') : t('appointment.save')}
+                {saving || savingNewPatient || formState.isSubmitting ? t('appointment.saving') : effectiveMode === "create" ? t('appointment.create') : t('appointment.save')}
               </Button>
             </DialogFooter>
           </form>

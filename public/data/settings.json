@@ -5,11 +5,10 @@
     2,
     3,
     4,
-    5,
-    6
+    5
   ],
-  "startTime": "07:00",
-  "endTime": "16:00",
+  "startTime": "09:00",
+  "endTime": "18:00",
   "appointmentSizes": {
     "half": {
       "duration": 30,
@@ -25,7 +24,7 @@
     }
   },
   "breakTime": 15,
-  "timeSlotMinutes": 30,
+  "timeSlotMinutes": 15,
   "notifications": {
     "emailWebhookUrl": "",
     "smsWebhookUrl": "",
@@ -36,6 +35,5 @@
     "enableSameDaySMS": true,
     "emailTemplate": "",
     "smsTemplate": ""
-  },
-  "practiceName": "Test Clinic QA"
+  }
 }

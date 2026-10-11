@@ -5,7 +5,7 @@ import { PatientList } from '@/components/patients/PatientList';
 import { TabbedSettingsPanel } from '@/components/settings/TabbedSettingsPanel';
 import AppointmentDialog from '@/components/appointments/AppointmentDialog';
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
-import { Patient, Appointment } from '@/types/appointment';
+import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
 import { appointmentsStorage, patientsStorage } from '@/lib/storage';
 import { useI18n } from '@/i18n';
 import { useToast } from '@/hooks/use-toast';
@@ -22,9 +22,11 @@ const rangesOverlap = (
 ) => startA < endB && startB < endA;
 
 const Index = () => {
-  const { t } = useI18n();
+  const { t, initialSettings } = useI18n();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [brandSettings, setBrandSettings] = useState<Pick<AppointmentSettings, 'practiceName' | 'logoDataUrl'>>(initialSettings ?? {});
+  const brandName = brandSettings.practiceName?.trim() || t('sidebar.appName');
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
@@ -66,6 +68,10 @@ const Index = () => {
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
   };
+
+  useEffect(() => {
+    document.title = brandName;
+  }, [brandName]);
 
   useEffect(() => {
     let isMounted = true;
@@ -164,8 +170,7 @@ const Index = () => {
       const endMs = new Date(endISO).getTime();
       const durationMs = new Date(endISO).getTime() - new Date(startISO).getTime();
       const durationMinutes = Math.round(durationMs / (1000 * 60));
-      // Map to valid durations: 30, 60, or 120
-      const validDuration = durationMinutes <= 45 ? 30 : durationMinutes <= 90 ? 60 : 120 as 30 | 60 | 120;
+      const validDuration = durationMinutes as 30 | 45 | 60 | 90 | 120;
 
       const conflictingAppointment = existingAppointments.find((appointment: any) => {
         if (appointment.id === selectedAppointment?.id) {
@@ -303,7 +308,7 @@ const Index = () => {
           />
         );
       case 'settings':
-        return <TabbedSettingsPanel />;
+        return <TabbedSettingsPanel onSettingsSaved={setBrandSettings} />;
       default:
         return <div>{t('notFound.message')}</div>;
     }
@@ -311,13 +316,13 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} className="hidden md:flex" />
+      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="hidden md:flex" />
       <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
         <SheetContent side="left" className="w-[18rem] p-0 sm:max-w-none">
           <SheetHeader className="sr-only">
             <SheetTitle>{t('sidebar.menu')}</SheetTitle>
           </SheetHeader>
-          <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} className="h-full w-full border-r-0" />
+          <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="h-full w-full border-r-0" />
         </SheetContent>
       </Sheet>
       <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:p-8 lg:px-10 lg:py-9">

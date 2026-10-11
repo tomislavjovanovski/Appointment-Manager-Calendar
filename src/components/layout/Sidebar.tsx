@@ -13,6 +13,8 @@ interface SidebarProps {
   onTabChange: (tab: string) => void;
   stats?: SidebarStat[];
   className?: string;
+  brandName?: string;
+  logoDataUrl?: string;
 }
 
 const navigation = [
@@ -21,19 +23,23 @@ const navigation = [
   { id: 'settings', nameKey: 'sidebar.settings' as const, icon: Settings, testId: 'nav-settings' },
 ];
 
-export function Sidebar({ activeTab, onTabChange, stats = [], className }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, stats = [], className, brandName, logoDataUrl }: Readonly<SidebarProps>) {
   const { t } = useI18n();
   return (
     <div className={cn('flex w-64 flex-col border-r border-sidebar-border/80 bg-sidebar shadow-soft', className)}>
       {/* Header */}
       <div className="border-b border-sidebar-border/60 px-5 py-6">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-medical-purple shadow-sm ring-1 ring-white/25">
-            <Stethoscope className="h-5 w-5 text-primary-foreground" />
-          </div>
+          {logoDataUrl ? (
+            <img src={logoDataUrl} alt="" className="h-11 w-11 shrink-0 object-contain" />
+          ) : (
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-medical-purple shadow-sm ring-1 ring-white/25">
+              <Stethoscope className="h-5 w-5 text-primary-foreground" />
+            </div>
+          )}
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold tracking-tight text-sidebar-foreground">
-              {t('sidebar.appName')}
+            <h1 className="break-words text-lg font-semibold text-sidebar-foreground">
+              {brandName || t('sidebar.appName')}
             </h1>
             <p className="truncate text-xs font-medium text-muted-foreground">{t('sidebar.appSubtitle')}</p>
           </div>

@@ -39,10 +39,12 @@ interface WeeklySchedulerProps {
 }
 
 export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0 }: WeeklySchedulerProps) {
+  const { toast } = useToast();
+  const { t, dateFnsLocale, initialSettings } = useI18n();
   const initialLoadDoneRef = useRef(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
-  const [settings, setSettings] = useState<any>({
+  const [settings, setSettings] = useState<any>(settingsStorage.getCached() ?? initialSettings ?? {
     startTime: '08:00',
     endTime: '18:00',
     timeSlotMinutes: 30
@@ -52,8 +54,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
   const [showGoogleSync, setShowGoogleSync] = useState(false);
   const [googleReauthRequired, setGoogleReauthRequired] = useState(false);
   const [googleDetailEvent, setGoogleDetailEvent] = useState<any | null>(null);
-  const { toast } = useToast();
-  const { t, dateFnsLocale } = useI18n();
 
   const [viewDate, setViewDate] = useState<Date>(() => new Date());
 
@@ -99,12 +99,14 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       const showFullLoading = !initialLoadDoneRef.current;
       try {
         if (showFullLoading) setLoading(true);
-        const appointmentsData = await appointmentsStorage.getAll().catch(() => []);
-        const settingsData = await settingsStorage.get().catch(() => ({
-          startTime: '08:00',
-          endTime: '18:00',
-          timeSlotMinutes: 30
-        }));
+        const [appointmentsData, settingsData] = await Promise.all([
+          appointmentsStorage.getAll().catch(() => []),
+          settingsStorage.get().catch(() => settingsStorage.getCached() ?? initialSettings ?? ({
+            startTime: '08:00',
+            endTime: '18:00',
+            timeSlotMinutes: 30
+          })),
+        ]);
 
         console.log('Loaded appointments:', appointmentsData);
 
@@ -137,7 +139,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     return () => {
       isMounted = false;
     };
-  }, [refreshTrigger]);
+  }, [refreshTrigger, initialSettings]);
 
   const fetchGoogleEvents = async () => {
     setGoogleReauthRequired(false);
@@ -221,6 +223,15 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
 
   const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
   const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
+  const visibleAppointments = appointmentEvents.filter((event) => event.start <= weekEnd && event.end >= weekStart);
+  const visibleStartHour = Math.min(startHour, ...visibleAppointments.map((event) =>
+    event.start.toDateString() === event.end.toDateString() ? event.start.getHours() : 0
+  ));
+  const visibleEndHour = Math.max(endHour, ...visibleAppointments.map((event) =>
+    event.start.toDateString() === event.end.toDateString()
+      ? Math.ceil(event.end.getHours() + event.end.getMinutes() / 60)
+      : 24
+  ));
   const step = typeof settings.timeSlotMinutes === 'number' ? settings.timeSlotMinutes : 30;
 
   const handleEventClick = (event: any) => {
@@ -337,6 +348,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
         <div className="flex shrink-0 flex-wrap gap-2 sm:pt-0.5">
           <Button
             data-testid="sync-google-btn"
+            disabled
             onClick={async () => {
               setShowGoogleSync(true);
               await fetchGoogleEvents();
@@ -429,7 +441,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
               </Popover>
             </div>
           </div>
-          <div className="h-[600px] weekly-scheduler bg-muted/5">
+          <div className="weekly-scheduler bg-muted/5">
             <Scheduler
               key={weekStart.toISOString()}
               view="week"
@@ -522,8 +534,8 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
               week={{
                 weekDays: [0, 1, 2, 3, 4, 5, 6],
                 weekStartOn: 1,
-                startHour: startHour as any,
-                endHour: endHour as any,
+                startHour: visibleStartHour as any,
+                endHour: visibleEndHour as any,
                 step: step as any,
                 navigation: false,
                 disableGoToDay: true

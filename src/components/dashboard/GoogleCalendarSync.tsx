@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,10 +26,6 @@ export function GoogleCalendarSync() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    checkConnectionStatus();
-  }, []);
 
   const checkConnectionStatus = async () => {
     try {
@@ -146,7 +142,7 @@ export function GoogleCalendarSync() {
   };
 
   return (
-    <div className="space-y-6">
+    <fieldset disabled className="space-y-6 opacity-60">
       {/* Connection Status */}
       <Card>
         <CardHeader>
@@ -174,9 +170,9 @@ export function GoogleCalendarSync() {
                 <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                   <li>
                     {t('google.step1Prefix')}{' '}
-                    <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <span className="text-primary">
                       {t('google.consoleName')} <ExternalLink className="w-3 h-3 inline" />
-                    </a>
+                    </span>
                   </li>
                   <li>{t('google.step2')}</li>
                   <li>{t('google.step3')}</li>
@@ -191,6 +187,7 @@ export function GoogleCalendarSync() {
                   <Label htmlFor="clientId">{t('google.clientId')}</Label>
                   <Input
                     id="clientId"
+                    disabled
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
                     placeholder="xxx.apps.googleusercontent.com"
@@ -200,6 +197,7 @@ export function GoogleCalendarSync() {
                   <Label htmlFor="clientSecret">{t('google.clientSecret')}</Label>
                   <Input
                     id="clientSecret"
+                    disabled
                     type="password"
                     value={clientSecret}
                     onChange={(e) => setClientSecret(e.target.value)}
@@ -208,23 +206,23 @@ export function GoogleCalendarSync() {
                 </div>
               </div>
               
-              <Button onClick={handleConnect} disabled={loading} className="w-full">
+              <Button onClick={handleConnect} disabled className="w-full">
                 {loading ? t('google.connecting') : t('google.connect')}
               </Button>
             </div>
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button onClick={fetchGoogleEvents} disabled={syncing} variant="outline">
+                <Button onClick={fetchGoogleEvents} disabled variant="outline">
                   <RotateCcw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? t('google.syncing') : t('google.refreshEvents')}
                 </Button>
-                <Button onClick={checkConnectionStatus} variant="outline">
+                <Button onClick={checkConnectionStatus} disabled variant="outline">
                   <Settings className="w-4 h-4 mr-2" />
                   {t('google.checkStatus')}
                 </Button>
               </div>
-              <Button onClick={handleDisconnect} variant="destructive">
+              <Button onClick={handleDisconnect} disabled variant="destructive">
                 {t('google.disconnect')}
               </Button>
             </div>
@@ -264,6 +262,6 @@ export function GoogleCalendarSync() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </fieldset>
   );
 }

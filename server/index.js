@@ -33,6 +33,7 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 app.use(cors());
+app.use('/api/settings', express.json({ limit: '512kb' }));
 app.use(express.json());
 
 const asyncRoute = (handler) => (req, res, next) => {
@@ -115,6 +116,10 @@ app.put('/api/settings', asyncRoute(async (req, res) => {
     : await dataStore.updateSettings(req.body);
   res.json(settings);
 }));
+
+app.use('/api/google', (_req, res) => {
+  res.status(503).json({ error: 'Google Calendar integration is disabled in this version.' });
+});
 
 app.post('/api/google/auth', asyncRoute(async (req, res) => {
   const { clientId, clientSecret } = req.body ?? {};

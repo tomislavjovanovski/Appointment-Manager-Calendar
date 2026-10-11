@@ -10,6 +10,9 @@ import {
 import type { Locale } from 'date-fns';
 import { enUS, mk } from 'date-fns/locale';
 import { settingsStorage } from '@/lib/storage';
+import type { AppointmentSettings } from '@/types/appointment';
+import { Button } from '@/components/ui/button';
+import { Loader2, RefreshCw } from 'lucide-react';
 import type { AppLocale } from './types';
 import { translate } from './dictionary';
 
@@ -18,21 +21,33 @@ type I18nContextValue = {
   setLocale: (locale: AppLocale) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
   dateFnsLocale: Locale;
+  initialSettings: AppointmentSettings | null;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<AppLocale>('en');
+  const [initialSettings, setInitialSettings] = useState<AppointmentSettings | null>(null);
+  const [settingsError, setSettingsError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+    setSettingsError(false);
     settingsStorage
       .get()
       .then((s) => {
+        if (!isMounted) return;
         setLocaleState(s.locale === 'mk' ? 'mk' : 'en');
+        document.title = s.practiceName?.trim() || 'MediCal';
+        setInitialSettings(s);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        if (isMounted) setSettingsError(true);
+      });
+    return () => { isMounted = false; };
+  }, [retry]);
 
   useEffect(() => {
     document.documentElement.lang = locale === 'mk' ? 'mk' : 'en';
@@ -50,8 +65,32 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const dateFnsLocale = useMemo<Locale>(() => (locale === 'mk' ? mk : enUS), [locale]);
 
   const value = useMemo(
-    () => ({ locale, setLocale, t, dateFnsLocale }),
-    [locale, setLocale, t, dateFnsLocale]
+    () => ({ locale, setLocale, t, dateFnsLocale, initialSettings }),
+    [locale, setLocale, t, dateFnsLocale, initialSettings]
+  );
+
+  if (!initialSettings) return (
+    <main className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="flex flex-col items-center gap-3" role={settingsError ? 'alert' : 'status'}>
+        {settingsError ? (
+          <>
+            <p className="text-sm text-destructive">{t('settings.startupFailed')}</p>
+            <Button variant="outline" onClick={() => {
+              setSettingsError(false);
+              setRetry((current) => current + 1);
+            }}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {t('settings.retry')}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">{t('settings.startupLoading')}</p>
+          </>
+        )}
+      </div>
+    </main>
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server } from 'lucide-react';
+import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server, Trash2 } from 'lucide-react';
 import { AppointmentSettings } from '@/types/appointment';
 import { settingsStorage, dataManagement } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,54 @@ import { NotificationManager } from '@/components/notifications/NotificationMana
 import { useI18n } from '@/i18n';
 import type { AppLocale } from '@/i18n/types';
 import { buildApiUrl } from '@/lib/storage';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { format, isValid, parse } from 'date-fns';
+
+function SettingsTimeInput({ id, testId, value, onChange }: Readonly<{
+  id: string;
+  testId?: string;
+  value: string;
+  onChange: (value: string) => void;
+}>) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <TimePicker
+      ampm={false}
+      format="HH:mm"
+      minutesStep={15}
+      timeSteps={{ minutes: 15 }}
+      desktopModeMediaQuery="(min-width: 640px)"
+      open={open}
+      onOpen={() => setOpen(true)}
+      onClose={() => setOpen(false)}
+      value={parse(value, 'HH:mm', new Date())}
+      onChange={(time) => {
+        if (time && isValid(time)) onChange(format(time, 'HH:mm'));
+      }}
+      slotProps={{
+        textField: {
+          id,
+          size: 'small',
+          fullWidth: true,
+          onClick: (event) => {
+            if (!(event.target as HTMLElement).closest('button')) setOpen(true);
+          },
+          onKeyDown: (event) => {
+            if ((event.target as HTMLElement).closest('button')) return;
+            if (event.key === 'Enter' || event.key === 'ArrowDown') {
+              event.preventDefault();
+              setOpen(true);
+            }
+          },
+          inputProps: { 'data-testid': testId, 'aria-haspopup': 'dialog' },
+        },
+        popper: { sx: { zIndex: 2100 } },
+        dialog: { sx: { zIndex: 2100 } },
+      }}
+    />
+  );
+}
 
 const DAYS_OF_WEEK = [
   { id: 0, shortKey: 'sun' as const },
@@ -35,9 +83,11 @@ type ApiHealthResponse = {
   appointmentsCount: number;
 };
 
-export function TabbedSettingsPanel() {
+export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
+  onSettingsSaved?: (settings: AppointmentSettings) => void;
+}>) {
   const { t, setLocale } = useI18n();
-  const [settings, setSettings] = useState<AppointmentSettings>({
+  const [settings, setSettings] = useState<AppointmentSettings>(() => settingsStorage.getCached() ?? {
     locale: 'en',
     workingDays: [1, 2, 3, 4, 5],
     startTime: '09:00',
@@ -65,6 +115,8 @@ export function TabbedSettingsPanel() {
   const [apiHealthLoading, setApiHealthLoading] = useState(false);
   const [apiHealthError, setApiHealthError] = useState<string | null>(null);
   const [lastHealthCheck, setLastHealthCheck] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const { toast } = useToast();
   const apiHealthUrl = buildApiUrl('/health');
 
@@ -99,9 +151,39 @@ export function TabbedSettingsPanel() {
     void loadApiHealth();
   }, [loadApiHealth]);
 
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    setLogoError(null);
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 128 * 1024) {
+      setLogoError(t('settings.logoInvalid'));
+      return;
+    }
+
+    setLogoUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Unable to read logo.'));
+        reader.readAsDataURL(file);
+      });
+      const image = new Image();
+      image.src = dataUrl;
+      await image.decode();
+      setSettings((current) => ({ ...current, logoDataUrl: dataUrl }));
+    } catch {
+      setLogoError(t('settings.logoInvalid'));
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
-      await settingsStorage.save(settings);
+      const savedSettings = await settingsStorage.save(settings);
+      onSettingsSaved?.(savedSettings);
       setLocale(settings.locale === 'mk' ? 'mk' : 'en');
       toast({
         title: t('settings.savedTitle'),
@@ -145,6 +227,7 @@ export function TabbedSettingsPanel() {
         await dataManagement.importAll(data);
         const newSettings = await settingsStorage.get();
         setSettings(newSettings);
+        onSettingsSaved?.(newSettings);
         setLocale(newSettings.locale === 'mk' ? 'mk' : 'en');
         toast({
           title: t('settings.importToastTitle'),
@@ -251,25 +334,57 @@ export function TabbedSettingsPanel() {
                   className="max-w-xl"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="brandLogo">{t('settings.logo')}</Label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {settings.logoDataUrl && (
+                    <img src={settings.logoDataUrl} alt={t('settings.logo')} className="h-16 w-16 shrink-0 border border-border bg-background object-contain p-1" />
+                  )}
+                  <Input
+                    id="brandLogo"
+                    data-testid="settings-logo-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={logoUploading}
+                    onChange={(event) => void handleLogoUpload(event)}
+                    className="max-w-sm"
+                  />
+                  {settings.logoDataUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      disabled={logoUploading}
+                      aria-label={t('settings.removeLogo')}
+                      title={t('settings.removeLogo')}
+                      onClick={() => {
+                        setSettings((current) => ({ ...current, logoDataUrl: '' }));
+                        setLogoError(null);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {logoError && <p role="alert" className="text-sm text-destructive">{logoError}</p>}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="startTime">{t('settings.startTime')}</Label>
-                  <Input
+                  <SettingsTimeInput
                     id="startTime"
-                    data-testid="settings-start-time-input"
-                    type="time"
+                    testId="settings-start-time-input"
                     value={settings.startTime}
-                    onChange={(e) => setSettings({ ...settings, startTime: e.target.value })}
+                    onChange={(startTime) => setSettings({ ...settings, startTime })}
                   />
                 </div>
                 <div>
                   <Label htmlFor="endTime">{t('settings.endTime')}</Label>
-                  <Input
+                  <SettingsTimeInput
                     id="endTime"
-                    data-testid="settings-end-time-input"
-                    type="time"
+                    testId="settings-end-time-input"
                     value={settings.endTime}
-                    onChange={(e) => setSettings({ ...settings, endTime: e.target.value })}
+                    onChange={(endTime) => setSettings({ ...settings, endTime })}
                   />
                 </div>
               </div>
@@ -340,29 +455,6 @@ export function TabbedSettingsPanel() {
             </CardContent>
           </Card>
 
-          {/* Appointment Sizes */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('settings.appointmentDurationTypes')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Object.entries(settings.appointmentSizes).map(([key, size]) => {
-                const labelKey =
-                  key === 'half' ? 'settings.sizeHalf' : key === 'full' ? 'settings.sizeFull' : 'settings.sizeDouble';
-                return (
-                <div key={key} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div>
-                    <div className="font-medium">{t(labelKey)}</div>
-                    <div className="text-sm text-muted-foreground">{t('settings.minutes', { n: size.duration })}</div>
-                  </div>
-                  <Badge variant="outline" className="bg-primary/10 text-primary">
-                    {t('settings.minutesShort', { n: size.duration })}
-                  </Badge>
-                </div>
-              );
-              })}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Integration Tab */}
@@ -401,13 +493,12 @@ export function TabbedSettingsPanel() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="emailTime">{t('settings.notificationTime')}</Label>
-                    <Input
+                    <SettingsTimeInput
                       id="emailTime"
-                      type="time"
                       value={settings.notifications.emailNotificationTime}
-                      onChange={(e) => setSettings({
+                      onChange={(emailNotificationTime) => setSettings({
                         ...settings,
-                        notifications: { ...settings.notifications, emailNotificationTime: e.target.value }
+                        notifications: { ...settings.notifications, emailNotificationTime }
                       })}
                     />
                   </div>
@@ -478,13 +569,12 @@ export function TabbedSettingsPanel() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="smsTime">{t('settings.smsTime')}</Label>
-                    <Input
+                    <SettingsTimeInput
                       id="smsTime"
-                      type="time"
                       value={settings.notifications.smsNotificationTime}
-                      onChange={(e) => setSettings({
+                      onChange={(smsNotificationTime) => setSettings({
                         ...settings,
-                        notifications: { ...settings.notifications, smsNotificationTime: e.target.value }
+                        notifications: { ...settings.notifications, smsNotificationTime }
                       })}
                     />
                   </div>
@@ -667,7 +757,7 @@ export function TabbedSettingsPanel() {
         </TabsContent>
 
         {/* Save Button - Always visible */}
-        <Button onClick={handleSave} data-testid="save-settings-btn" className="w-full bg-gradient-to-r from-accent to-accent-hover">
+        <Button onClick={handleSave} disabled={logoUploading} data-testid="save-settings-btn" className="w-full bg-gradient-to-r from-accent to-accent-hover">
           <Save className="w-4 h-4 mr-2" />
           {t('settings.save')}
         </Button>

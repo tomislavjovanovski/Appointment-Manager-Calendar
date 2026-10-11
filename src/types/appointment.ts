@@ -22,7 +22,7 @@ export interface Appointment {
   startTime: string;
   /** ISO timestamp */
   endTime: string;
-  duration: 30 | 60 | 120; // in minutes
+  duration: 30 | 45 | 60 | 90 | 120; // in minutes
   type: 'consultation' | 'follow-up' | 'procedure';
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   notes: string;
@@ -45,6 +45,7 @@ export interface AppointmentSettings {
   /** UI language; persisted with other settings */
   locale?: AppLocale;
   practiceName?: string;
+  logoDataUrl?: string;
   workingDays: number[]; // 0 = Sunday, 1 = Monday, etc.
   startTime: string;
   endTime: string;

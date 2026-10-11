@@ -16,6 +16,10 @@ const resolveApiBaseUrl = () => {
     return configuredBaseUrl.endsWith('/api') ? configuredBaseUrl : `${configuredBaseUrl}/api`;
   }
 
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+
   if (typeof window !== 'undefined') {
     const { hostname, port, protocol } = window.location;
     if (port !== '3000' && isLikelyLocalBackendHost(hostname)) {
@@ -43,13 +47,29 @@ const isJsonResponse = (response: Response) =>
   response.headers.get('content-type')?.includes('application/json');
 
 // API helper functions
-const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+const pendingReads = new Map<string, Promise<unknown>>();
+
+const apiCall = (endpoint: string, options: RequestInit = {}): Promise<any> => {
+  const shareRead = (options.method ?? 'GET').toUpperCase() === 'GET' && !options.signal;
+  const pending = shareRead ? pendingReads.get(endpoint) : undefined;
+  if (pending !== undefined) return pending;
+  const request = performApiCall(endpoint, options);
+  if (!shareRead) return request;
+  const shared = request.finally(() => { pendingReads.delete(endpoint); });
+  pendingReads.set(endpoint, shared);
+  return shared;
+};
+
+const performApiCall = async (endpoint: string, options: RequestInit = {}) => {
   const response = await fetch(buildApiUrl(endpoint), {
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
     ...options,
+    signal: options.signal ?? ((options.method ?? 'GET').toUpperCase() === 'GET'
+      ? AbortSignal.timeout(10_000)
+      : undefined),
   });
   
   if (!response.ok) {
@@ -204,21 +224,42 @@ export const appointmentsStorage = {
 };
 
 // Settings storage operations
+let cachedSettings: AppointmentSettings | null = null;
+let settingsCachedAt = 0;
+let settingsRevision = 0;
+
+const cacheSettings = (settings: AppointmentSettings) => {
+  cachedSettings = settings;
+  settingsCachedAt = Date.now();
+  return settings;
+};
+
 export const settingsStorage = {
-  get: async (): Promise<AppointmentSettings> => normalizeSettings(await apiCall('/settings')),
+  getCached: (): AppointmentSettings | null => cachedSettings,
+  get: async (): Promise<AppointmentSettings> => {
+    if (cachedSettings && Date.now() - settingsCachedAt < 5_000) return cachedSettings;
+    const revision = settingsRevision;
+    const settings = normalizeSettings(await apiCall('/settings'));
+    if (revision !== settingsRevision && cachedSettings) return cachedSettings;
+    return cacheSettings(settings);
+  },
   
   save: async (settings: AppointmentSettings): Promise<AppointmentSettings> => {
-    return normalizeSettings(await apiCall('/settings', {
+    const saved = normalizeSettings(await apiCall('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
     }));
+    settingsRevision += 1;
+    return cacheSettings(saved);
   },
   
   update: async (updates: Partial<AppointmentSettings>): Promise<AppointmentSettings> => {
-    return normalizeSettings(await apiCall('/settings', {
+    const saved = normalizeSettings(await apiCall('/settings', {
       method: 'PUT',
       body: JSON.stringify(updates),
     }));
+    settingsRevision += 1;
+    return cacheSettings(saved);
   }
 };
 
