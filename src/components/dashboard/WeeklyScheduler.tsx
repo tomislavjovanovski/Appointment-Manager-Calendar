@@ -441,7 +441,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
               </Popover>
             </div>
           </div>
-          <div className="weekly-scheduler bg-muted/5">
+          <div className="weekly-scheduler bg-muted/5" style={{ zoom: 0.8, width: '100%' }}>
             <Scheduler
               key={weekStart.toISOString()}
               view="week"
@@ -538,6 +538,15 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 endHour: visibleEndHour as any,
                 step: step as any,
                 navigation: false,
+                headRenderer: ({ day }: { day: Date }) => (
+                  <time
+                    dateTime={format(day, 'yyyy-MM-dd')}
+                    className="flex h-full w-full items-center justify-center gap-2 whitespace-nowrap px-1 text-[15px] leading-none"
+                  >
+                    <span className="font-semibold tabular-nums">{format(day, 'dd')}</span>
+                    <span>{format(day, 'EEE', { locale: dateFnsLocale })}</span>
+                  </time>
+                ),
                 disableGoToDay: true
                 ,
                 cellRenderer: (props: any) => {

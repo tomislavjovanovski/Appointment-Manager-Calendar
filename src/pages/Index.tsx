@@ -13,6 +13,7 @@ import { MobileAgenda } from '@/components/dashboard/MobileAgenda';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Menu, Plus } from 'lucide-react';
+import { isSameDay, isSameMonth, isSameWeek, isValid } from 'date-fns';
 
 const rangesOverlap = (
   startA: number,
@@ -36,6 +37,12 @@ const Index = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [savingAppointment, setSavingAppointment] = useState(false);
   const appointmentSaveInFlightRef = useRef(false);
+  const [sidebarAppointments, setSidebarAppointments] = useState<Appointment[]>([]);
+  const [sidebarPatients, setSidebarPatients] = useState<Patient[]>([]);
+  const [patientStatsError, setPatientStatsError] = useState(false);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState(false);
+  const [today, setToday] = useState(() => new Date());
   const [sidebarStats, setSidebarStats] = useState({
     totalPatients: 0,
     totalVisits: 0,
@@ -74,13 +81,28 @@ const Index = () => {
   }, [brandName]);
 
   useEffect(() => {
+    const timer = setInterval(() => setToday(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const todayAppointments = sidebarAppointments
+    .filter((appointment) => isValid(new Date(appointment.startTime)) && isSameDay(new Date(appointment.startTime), today))
+    .sort((first, second) => new Date(first.startTime).getTime() - new Date(second.startTime).getTime());
+
+  useEffect(() => {
     let isMounted = true;
 
     const loadSidebarStats = async () => {
+      setOverviewLoading(true);
+      setOverviewError(false);
+      setPatientStatsError(false);
       try {
         const [patients, appointments] = await Promise.all([
-          patientsStorage.getAll().catch(() => []),
-          appointmentsStorage.getAll().catch(() => []),
+          patientsStorage.getAll().catch(() => {
+            if (isMounted) setPatientStatsError(true);
+            return null;
+          }),
+          appointmentsStorage.getAll(),
         ]);
 
         const now = new Date();
@@ -97,20 +119,25 @@ const Index = () => {
         }).length;
 
         if (isMounted) {
+          setSidebarAppointments(appointments);
+          if (patients) setSidebarPatients(patients);
           setSidebarStats({
-            totalPatients: patients.length,
+            totalPatients: patients?.length ?? 0,
             totalVisits: appointments.length,
             visitsThisMonth,
           });
         }
       } catch (error) {
         if (isMounted) {
+          setOverviewError(true);
           setSidebarStats({
             totalPatients: 0,
             totalVisits: 0,
             visitsThisMonth: 0,
           });
         }
+      } finally {
+        if (isMounted) setOverviewLoading(false);
       }
     };
 
@@ -123,12 +150,18 @@ const Index = () => {
 
   const sidebarStatItems = useMemo(
     () => [
-      { label: t('sidebar.totalPatients'), value: sidebarStats.totalPatients },
-      { label: t('sidebar.totalVisits'), value: sidebarStats.totalVisits },
-      { label: t('sidebar.visitsThisMonth'), value: sidebarStats.visitsThisMonth },
+      { label: t('sidebar.today'), value: todayAppointments.length },
+      { label: t('sidebar.thisWeek'), value: sidebarAppointments.filter((appointment) => isSameWeek(new Date(appointment.startTime), today, { weekStartsOn: 1 })).length },
+      { label: t('sidebar.thisMonth'), value: sidebarAppointments.filter((appointment) => isSameMonth(new Date(appointment.startTime), today)).length },
+      { label: t('sidebar.allTime'), value: sidebarStats.totalVisits },
     ],
-    [sidebarStats, t]
+    [sidebarStats, sidebarAppointments, today, todayAppointments.length, t]
   );
+
+  const patientStatItems = [
+    { label: t('sidebar.totalPatients'), value: sidebarPatients.length },
+    { label: t('sidebar.newPatientsMonth'), value: sidebarPatients.filter((patient) => isSameMonth(new Date(patient.createdAt), today)).length },
+  ];
 
   const activeTabTitle = {
     dashboard: t('sidebar.dashboard'),
@@ -316,13 +349,27 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="hidden md:flex" />
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        stats={sidebarStatItems}
+        patientStats={patientStatItems}
+        patientStatsError={patientStatsError || overviewError}
+        brandName={brandName}
+        logoDataUrl={brandSettings.logoDataUrl}
+        todayAppointments={todayAppointments}
+        overviewLoading={overviewLoading}
+        overviewError={overviewError}
+        onAppointmentClick={handleAppointmentClick}
+        onOverviewRetry={handleRefresh}
+        className="hidden md:flex"
+      />
       <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
         <SheetContent side="left" className="w-[18rem] p-0 sm:max-w-none">
           <SheetHeader className="sr-only">
             <SheetTitle>{t('sidebar.menu')}</SheetTitle>
           </SheetHeader>
-          <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="h-full w-full border-r-0" />
+          <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} patientStats={patientStatItems} patientStatsError={patientStatsError || overviewError} overviewLoading={overviewLoading} overviewError={overviewError} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="h-full w-full border-r-0" />
         </SheetContent>
       </Sheet>
       <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:p-8 lg:px-10 lg:py-9">

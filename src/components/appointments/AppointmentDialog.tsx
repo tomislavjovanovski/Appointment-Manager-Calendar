@@ -294,7 +294,6 @@ export default function AppointmentDialog({
   const startValue = watch("start");
   const durationValue = watch("duration");
   const endValue = watch("end");
-  const statusValue = watch("status");
   const patientIdValue = watch("patientId");
   // local patients state: prefer prop but fall back to the configured storage source
   const [localPatients, setLocalPatients] = useState<PatientOption[]>(patients ?? []);
@@ -581,32 +580,6 @@ export default function AppointmentDialog({
             </DialogHeader>
           </div>
 
-          {/* Read-only detail panel used by E2E tests to assert appointment display values */}
-          {appointment && (
-            <div className="px-5 py-4" data-testid="appointment-detail-dialog">
-              <div className="mb-2 text-sm text-muted-foreground">{t('appointment.details')}</div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-muted-foreground">{t('createAppointment.type')}</div>
-                  <div data-testid="detail-type" className="font-medium">{(mergedInitial?.type ?? appointment.type) || t('common.unknown')}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">{t('createAppointment.duration')}</div>
-                  <div data-testid="detail-duration" className="font-medium">{String(mergedInitial?.duration ?? appointment.duration ?? '')}</div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-xs text-muted-foreground">{t('editAppointment.notes')}</div>
-                  <div data-testid="detail-notes" className="font-medium">{mergedInitial?.notes ?? appointment.notes ?? ''}</div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-xs text-muted-foreground">{t('appointment.patient')}</div>
-                  <div data-testid="detail-patient-name" className="font-medium">{mergedInitial?.patientId ? (localPatients.find(p => p.id === mergedInitial?.patientId)?.name) : (appointment.patientName ?? t('common.unknown'))}</div>
-                </div>
-              </div>
-              <hr className="my-3" />
-            </div>
-          )}
-
           <form onSubmit={handleSubmit(submit)}>
             <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: Title and Patient */}
@@ -750,37 +723,6 @@ export default function AppointmentDialog({
                     )}
                   </section>
                 </div>
-
-              {effectiveMode === "edit" && (
-                <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
-                  <div className="space-y-1.5 pr-3">
-                    <Label htmlFor="status">{t('editAppointment.status')}</Label>
-                    <Select
-                      onValueChange={(val) =>
-                        setValue("status", (val ?? "scheduled") as FormData["status"], {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      value={statusValue ?? "scheduled"}
-                    >
-                      <SelectTrigger
-                        id="status"
-                        data-testid="appointment-status-select"
-                        className="h-10 border-border bg-background shadow-sm"
-                      >
-                        <SelectValue placeholder={t('appointment.selectStatus')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="scheduled" data-testid="appointment-status-option-scheduled">{t('appointment.status.scheduled')}</SelectItem>
-                        <SelectItem value="completed" data-testid="appointment-status-option-completed">{t('appointment.status.completed')}</SelectItem>
-                        <SelectItem value="cancelled" data-testid="appointment-status-option-cancelled">{t('appointment.status.cancelled')}</SelectItem>
-                        <SelectItem value="no-show" data-testid="appointment-status-option-no-show">{t('appointment.status.noShow')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </section>
-              )}
 
               {/* Box 3: Date (start/end) and Note */}
               <PickerAvailabilityContext.Provider value={getStarts}>

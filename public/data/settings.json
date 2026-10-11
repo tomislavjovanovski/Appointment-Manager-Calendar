@@ -24,7 +24,7 @@
     }
   },
   "breakTime": 15,
-  "timeSlotMinutes": 15,
+  "timeSlotMinutes": 30,
   "notifications": {
     "emailWebhookUrl": "",
     "smsWebhookUrl": "",

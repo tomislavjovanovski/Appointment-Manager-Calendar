@@ -127,6 +127,38 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  .weekly-scheduler div:has(> .rs__cell) {
+    grid-template-columns: 72px repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .weekly-scheduler .rs__cell:not(.rs__time) {
+    min-width: 0 !important;
+  }
+
+  .weekly-scheduler .rs__header:not(.rs__time) > div:first-child {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .weekly-scheduler .MuiTypography-caption {
+    font-size: 0.9375rem;
+  }
+
+  .weekly-scheduler .MuiTypography-body1 {
+    font-size: 1.25rem;
+  }
+
+  .weekly-scheduler [data-testid="appointment-block"] .text-xs,
+  .weekly-scheduler [data-testid="gcal-event-block"] {
+    font-size: 0.9375rem;
+  }
+
+  .weekly-scheduler [data-testid="appointment-block"] .line-clamp-2 {
+    font-size: 13.75px;
+  }
+
   /* Hide React Scheduler navigation (date pickers) within weekly scheduler */
   .weekly-scheduler .rs__navigation {
     display: none !important;

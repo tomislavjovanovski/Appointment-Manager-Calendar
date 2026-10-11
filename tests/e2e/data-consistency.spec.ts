@@ -50,13 +50,7 @@ test.describe('UI ↔ Storage Consistency', () => {
       .filter({ hasText: PATIENTS.alice.firstName })
       .click();
 
-    await expect(page.getByTestId('appointment-detail-dialog')).toBeVisible();
-
-    // Read what the UI shows
-    const uiType = await page.getByTestId('detail-type').textContent();
-    const uiDuration = await page.getByTestId('detail-duration').textContent();
-    const uiNotes = await page.getByTestId('detail-notes').textContent();
-    const uiPatient = await page.getByTestId('detail-patient-name').textContent();
+    await expect(page.getByTestId('booking-dialog')).toBeVisible();
 
     // Read what storage has
     const stored = await storage.getAll(page, 'appointments') as {
@@ -67,10 +61,11 @@ test.describe('UI ↔ Storage Consistency', () => {
     }[];
     const record = stored[stored.length - 1];
 
-    expect(uiType?.toLowerCase()).toContain(record.type);
-    expect(uiDuration).toContain(String(record.duration));
-    expect(uiNotes).toContain(record.notes);
-    expect(uiPatient?.toLowerCase()).toContain(PATIENTS.alice.firstName.toLowerCase());
+    await expect(page.getByTestId('appointment-type-select')).toContainText(new RegExp(record.type, 'i'));
+    await expect(page.getByTestId('duration-select')).toContainText(String(record.duration));
+    await expect(page.getByTestId('appointment-notes')).toHaveValue(record.notes);
+    await expect(page.getByTestId('patient-select')).toContainText(PATIENTS.alice.firstName);
+    await expect(page.getByTestId('appointment-status-select')).toHaveCount(0);
   });
 
   test('deleting an appointment removes it from both UI and storage', async ({
