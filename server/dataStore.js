@@ -221,8 +221,8 @@ export function createDataStore({
       const patients = await readPatients();
       const firstName = String(input.firstName ?? '').trim();
       const lastName = String(input.lastName ?? '').trim();
-      if (!firstName || !lastName) {
-        const error = new Error('First name and last name are required.');
+      if (!firstName) {
+        const error = new Error('First name is required.');
         error.statusCode = 400;
         throw error;
       }
@@ -275,8 +275,8 @@ export function createDataStore({
 
       const nextFirstName = updates.firstName == null ? patients[index].firstName : String(updates.firstName).trim();
       const nextLastName = updates.lastName == null ? patients[index].lastName : String(updates.lastName).trim();
-      if (!nextFirstName || !nextLastName) {
-        const error = new Error('First name and last name are required.');
+      if (!nextFirstName) {
+        const error = new Error('First name is required.');
         error.statusCode = 400;
         throw error;
       }

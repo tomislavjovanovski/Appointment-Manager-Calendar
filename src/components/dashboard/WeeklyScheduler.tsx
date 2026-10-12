@@ -9,6 +9,7 @@ import { CalendarIcon, ChevronLeft, ChevronRight, Clock, Phone, Plus, RotateCcw,
 import { addDays, addWeeks, endOfWeek, format, startOfWeek } from 'date-fns';
 import { Appointment, Patient } from '@/types/appointment';
 import { appointmentsStorage, buildApiUrl, patientsStorage, settingsStorage } from '@/lib/storage';
+import { getDayHours, parseTimeMinutes } from '@/lib/appointmentAvailability';
 import { GoogleCalendarSync } from './GoogleCalendarSync';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
@@ -224,8 +225,14 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
 
   const events = [...appointmentEvents, ...googleCalendarEvents];
 
-  const startHour = parseInt(settings.startTime?.split(':')[0] || '9');
-  const endHour = parseInt(settings.endTime?.split(':')[0] || '17');
+  const dayHourRanges = workingDays.map((weekday) => {
+    const hours = getDayHours(settings, weekday);
+    return { start: parseTimeMinutes(hours.startTime), end: parseTimeMinutes(hours.endTime) };
+  }).filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end));
+  const earliestStart = dayHourRanges.length ? Math.min(...dayHourRanges.map((range) => range.start)) : 9 * 60;
+  const latestEnd = dayHourRanges.length ? Math.max(...dayHourRanges.map((range) => range.end)) : 17 * 60;
+  const startHour = Math.floor(earliestStart / 60);
+  const endHour = Math.ceil(latestEnd / 60);
   const visibleAppointments = appointmentEvents.filter((event) => event.start <= weekEnd && event.end >= weekStart);
   const visibleStartHour = Math.min(startHour, ...visibleAppointments.map((event) =>
     event.start.toDateString() === event.end.toDateString() ? event.start.getHours() : 0
@@ -343,8 +350,8 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
           </div>
           <p className="max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground">
             {t('dashboard.workingHours', {
-              start: settings.startTime || '09:00',
-              end: settings.endTime || '17:00',
+              start: `${String(Math.floor(earliestStart / 60)).padStart(2, '0')}:${String(earliestStart % 60).padStart(2, '0')}`,
+              end: `${String(Math.floor(latestEnd / 60)).padStart(2, '0')}:${String(latestEnd % 60).padStart(2, '0')}`,
             })}
           </p>
         </div>
@@ -491,7 +498,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 const displayTitle = patientName;
                 const firstName = patient?.firstName?.trim() || displayTitle;
                 const lastName = patient?.lastName?.trim();
-                const appointmentTitle = apt?.title?.trim() || t(`appointment.types.${appointmentTypeKey(apt?.type ?? 'consultation')}`);
                 const patientPhone = patient?.phone?.trim() || t(patients === null ? 'dashboard.phoneUnavailable' : 'dashboard.noPhone');
                 const bgColor = schedulerEvent?.color || '#3b82f6';
                 const isDragging = draggingEventId === apt?.id;
@@ -501,9 +507,9 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     data-testid="appointment-block"
                     data-status={apt?.status ?? 'scheduled'}
                     data-source="local"
-                    className={`h-full w-full overflow-hidden rounded-md text-white shadow-sm ${isDragging ? 'pointer-events-none opacity-35' : 'cursor-pointer'}`}
+                    className={`h-full w-full overflow-hidden rounded-md text-left text-white shadow-sm ${isDragging ? 'pointer-events-none opacity-35' : 'cursor-pointer'}`}
                     style={{ backgroundColor: bgColor }}
-                    title={`${displayTitle}\n${patientPhone}\n${appointmentTitle}\n${t('dashboard.dragAppointment')}`}
+                    title={`${displayTitle}\n${patientPhone}\n${t('dashboard.dragAppointment')}`}
                     draggable={props?.draggable}
                     onDragStart={(event) => {
                       setDraggingEventId(apt?.id ?? null);
@@ -521,22 +527,32 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       handleEventClick(schedulerEvent);
                     }}
                   >
-                    <div className={`flex h-full flex-col ${apt?.duration && apt.duration <= step ? 'gap-0.5 p-0.5' : 'gap-1 p-1'}`}>
-                      <div className="flex min-w-0 shrink-0 items-start gap-1.5 rounded-sm bg-black/20 px-1.5 py-1">
+                    {(apt?.duration ?? 30) < step * 2 ? (
+                      <div className="flex h-full flex-col gap-0.5 p-0.5 text-left">
+                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 rounded-sm bg-black/20 px-1.5 text-[17.5px] font-semibold leading-tight">
+                          <UserRound className="h-4 w-4 shrink-0 text-white/75" />
+                          <span className="truncate">{[firstName, lastName].filter(Boolean).join(' ')}</span>
+                        </div>
+                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1 text-[15px] leading-tight text-white/90">
+                          <Phone className="h-4 w-4 shrink-0" />
+                          <span className="shrink-0" data-testid="appointment-phone">{patientPhone}</span>
+                        </div>
+                      </div>
+                    ) : (
+                    <div className="flex h-full flex-col gap-1 p-1 text-left">
+                      <div className="flex min-w-0 shrink-0 items-start justify-start gap-1.5 rounded-sm bg-black/20 px-1.5 py-1">
                         <UserRound className="h-5 w-5 shrink-0 text-white/75" />
-                        <div className="min-w-0 whitespace-normal text-[17.5px] font-semibold leading-tight [overflow-wrap:anywhere]">
+                        <div className="min-w-0 whitespace-normal text-left text-[17.5px] font-semibold leading-tight [overflow-wrap:anywhere]">
                           <div>{firstName}</div>
                           {lastName && <div>{lastName}</div>}
                         </div>
                       </div>
-                      <div className="flex min-w-0 shrink-0 items-center gap-1.5 text-[17.5px] font-medium leading-tight text-white/90">
+                      <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-medium leading-tight text-white/90">
                         <Phone className="h-5 w-5 shrink-0" />
                         <span className="truncate" data-testid="appointment-phone">{patientPhone}</span>
                       </div>
-                      <div className="shrink-0 truncate border-t border-white/30 pt-0.5 text-[15px] leading-tight text-white/90" data-testid="appointment-title" title={appointmentTitle}>
-                        {appointmentTitle}
-                      </div>
                     </div>
+                    )}
                   </div>
                 );
               }}
@@ -573,13 +589,11 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   // start column so Playwright strict mode has a single match.
                   const weekStartDay = weekStart.getDay();
                   const testId = day === weekStartDay ? `time-slot-${label}` : undefined;
-                  const slotHour = typeof start?.getHours === 'function' ? start.getHours() : NaN;
-                  const slotMinute = typeof start?.getMinutes === 'function' ? start.getMinutes() : 0;
-                  const startHourLocal = parseInt(settings.startTime?.split(':')[0] ?? '8', 10);
-                  const endHourLocal = parseInt(settings.endTime?.split(':')[0] ?? '18', 10);
-                  const isWithinHours = Number.isFinite(slotHour) &&
-                    slotHour >= startHourLocal &&
-                    (slotHour < endHourLocal || (slotHour === endHourLocal && slotMinute === 0));
+                  const slotMinutes = start ? start.getHours() * 60 + start.getMinutes() : Number.NaN;
+                  const dayHours = start ? getDayHours(settings, start.getDay()) : undefined;
+                  const isWithinHours = Boolean(dayHours) && Number.isFinite(slotMinutes) &&
+                    slotMinutes >= parseTimeMinutes(dayHours!.startTime) &&
+                    slotMinutes < parseTimeMinutes(dayHours!.endTime);
                   const isEnabled = Boolean(start && end && onClick && isWorkingDay(start) && isWithinHours);
 
                   return (
@@ -612,10 +626,10 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                         if (isEnabled && start && end && onClick) onClick(start, end);
                       }}
                       className={cn(
-                        'h-full w-full rounded-sm transition-colors',
+                        'h-full w-full rounded-sm border-b border-border/60 transition-colors',
                         isEnabled
                           ? 'cursor-pointer bg-transparent hover:bg-primary/5'
-                          : 'cursor-not-allowed bg-muted/35 hover:bg-muted/35'
+                          : 'cursor-not-allowed bg-muted-foreground/10 hover:bg-muted-foreground/10'
                       )}
                     />
                   );

@@ -20,15 +20,15 @@ Starts both frontend and backend, reusing an already healthy backend. No separat
 
 ## Features
 
-- **Booking:** 30/45/60/90/120 minutes, 60-minute default, 24-hour format, automatically calculated end time.
-- **Availability:** working-day/hour restrictions, overlap checks, 15-minute suggestions, and full-range highlighting. Each slot click tries 60, then 45, then 30 minutes.
+- **Booking:** 30/45/60/90/120 minutes, 30-minute default, 24-hour format, automatically calculated end time.
+- **Availability:** working-day/hour restrictions, overlap checks, 15-minute suggestions, and full-range highlighting. A slot click uses the selected duration, or the largest shorter one that fits.
 - **Patients:** select an existing record or create one with name/surname during booking; complete other details later.
-- **Desktop:** seven equal day columns, compact rows, centered headers, and evenly inset appointment blocks showing patient, phone, and title. Patient names wrap on separate first/surname lines.
+- **Desktop:** seven equal day columns, compact rows, centered headers, and evenly inset appointment blocks showing patient and phone, left-aligned, color-coded by appointment type (the title text is no longer repeated on the block). Patient names wrap on separate first/surname lines. Non-working days/hours are shown with a clearly darker disabled background while keeping the half-hour grid lines visible.
 - **Mobile:** compact cards with approximately 15% for start/end times and 85% for full name, phone, and title. Name stays inline without a separate background; status badges are removed.
 - **Overview:** Today / This Week / This Month / All Time appointments, today's clickable list, total patients, and patients added this month.
 - **Editing:** reschedule or delete with confirmation. Deletion frees the slot and keeps the patient; Cancel closes without saving. No duplicate details panel or status selector.
 - **Branding:** saved practice name controls navigation/tab title. Upload or remove a PNG/JPEG/WebP logo up to 128 KB; stored in Settings JSON.
-- **Settings:** working days/hours, calendar interval, language, export/import, and email/SMS webhook configuration.
+- **Settings:** working days, default hours plus optional hours per day, desktop calendar row interval (display only), language, export/import, and email/SMS webhook configuration.
 - **Google Calendar:** disabled for this version; controls remain visible but inactive and backend routes return 503.
 
 ## Data and Deployment
@@ -50,7 +50,7 @@ Backend defaults: `HOST=0.0.0.0`, `PORT=3000`. Frontend API override: `VITE_API_
 ## Known Limits
 
 - Availability checks are not atomic reservations; simultaneous-device booking still needs server-side overlap enforcement.
-- Cancelled records still occupy time; configured break time is not applied as a booking buffer.
+- Cancelled records still occupy time; there is no break buffer between appointments.
 - Patient and appointment creation are separate writes. If booking fails after patient creation, retry using the saved patient.
 - Startup waits for Settings and offers Retry on failure. Concurrent reads are shared; Settings cache lasts five seconds. Some other failures still show empty data, so check backend health if records disappear.
 
@@ -69,6 +69,12 @@ See [docs/Testing.md](docs/Testing.md). Default E2E configuration selects smoke 
 `npm run build` creates deployment artifacts. `npm run preview` serves only the frontend, not the API.
 
 ## Changelog
+
+### 2026-10-12 - Desktop Calendar Readability and Patient Picker Scroll Fix
+
+- Removed the redundant appointment-title text from desktop calendar blocks, since the block color already encodes the appointment type; name and phone are now explicitly left-aligned.
+- Non-working days and out-of-hours slots use a noticeably darker disabled background while the half-hour grid lines remain visible, instead of a flat grey block.
+- Fixed the booking dialog's patient picker: mouse-wheel and touch/mobile scrolling inside the search dropdown now work (previously only dragging the scrollbar thumb scrolled), by having the list cancel the Dialog's nested scroll lock and drive its own scroll position.
 
 ### 2026-10-11 - Calendar and Mobile Polish
 

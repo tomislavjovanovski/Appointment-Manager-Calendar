@@ -19,6 +19,7 @@ import type { AppLocale } from '@/i18n/types';
 import { buildApiUrl } from '@/lib/storage';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { format, isValid, parse } from 'date-fns';
+import { getDayHours } from '@/lib/appointmentAvailability';
 
 function SettingsTimeInput({ id, testId, value, onChange }: Readonly<{
   id: string;
@@ -252,6 +253,20 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
     setSettings({ ...settings, workingDays: newWorkingDays });
   };
 
+  const setDayHours = (weekday: number, patch: Partial<{ startTime: string; endTime: string }>) => {
+    setSettings((current) => ({
+      ...current,
+      dailyHours: { ...current.dailyHours, [weekday]: { ...getDayHours(current, weekday), ...patch } },
+    }));
+  };
+
+  const resetDayHours = (weekday: number) => {
+    setSettings((current) => {
+      const { [weekday]: _removed, ...rest } = current.dailyHours ?? {};
+      return { ...current, dailyHours: rest };
+    });
+  };
+
   return (
     <div className="space-y-6" data-testid="settings-page">
       {/* Header */}
@@ -391,17 +406,6 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="breakTime">{t('settings.breakTime')}</Label>
-                  <Input
-                    id="breakTime"
-                    type="number"
-                    min="0"
-                    max="60"
-                    value={settings.breakTime}
-                    onChange={(e) => setSettings({ ...settings, breakTime: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-                <div>
                   <Label>{t('settings.timeSlotInterval')}</Label>
                   <Select
                     value={String(settings.timeSlotMinutes ?? 30)}
@@ -416,6 +420,7 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                       <SelectItem data-testid="settings-slot-interval-option-60" value="60">{t('settings.slot60')}</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="mt-1 text-xs text-muted-foreground">{t('settings.timeSlotIntervalHint')}</p>
                 </div>
               </div>
             </CardContent>
@@ -452,6 +457,47 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                   );
                 })}
               </div>
+
+              {settings.workingDays.length > 0 && (
+                <div className="mt-6 space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">{t('settings.dailyHours')}</h3>
+                    <p className="text-xs text-muted-foreground">{t('settings.dailyHoursHint')}</p>
+                  </div>
+                  {[...DAYS_OF_WEEK]
+                    .sort((a, b) => ((a.id + 6) % 7) - ((b.id + 6) % 7))
+                    .filter((day) => settings.workingDays.includes(day.id))
+                    .map((day) => {
+                      const hours = getDayHours(settings, day.id);
+                      const isCustom = Boolean(settings.dailyHours?.[day.id]);
+                      return (
+                        <div key={day.id} data-testid={`day-hours-${day.shortKey}`} className="grid grid-cols-[3rem_1fr_1fr_auto] items-center gap-2">
+                          <span className="text-sm font-medium">{t(`days.short.${day.shortKey}`)}</span>
+                          <SettingsTimeInput
+                            id={`dayStart-${day.id}`}
+                            value={hours.startTime}
+                            onChange={(startTime) => setDayHours(day.id, { startTime })}
+                          />
+                          <SettingsTimeInput
+                            id={`dayEnd-${day.id}`}
+                            value={hours.endTime}
+                            onChange={(endTime) => setDayHours(day.id, { endTime })}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={!isCustom}
+                            onClick={() => resetDayHours(day.id)}
+                            className="h-8 px-2 text-xs"
+                          >
+                            {t('settings.resetDayHours')}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

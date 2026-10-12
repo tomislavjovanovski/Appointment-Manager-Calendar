@@ -49,6 +49,8 @@ export interface AppointmentSettings {
   workingDays: number[]; // 0 = Sunday, 1 = Monday, etc.
   startTime: string;
   endTime: string;
+  /** Per-weekday overrides of startTime/endTime, keyed by day (0 = Sunday). */
+  dailyHours?: Partial<Record<number, { startTime: string; endTime: string }>>;
   appointmentSizes: {
     half: { duration: 30; label: 'Half Hour' };
     full: { duration: 60; label: 'Full Hour' };

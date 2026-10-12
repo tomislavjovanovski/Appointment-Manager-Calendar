@@ -57,13 +57,64 @@ CommandInput.displayName = CommandPrimitive.Input.displayName
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, forwardedRef) => {
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      listRef.current = node;
+      if (typeof forwardedRef === "function") forwardedRef(node);
+      else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    },
+    [forwardedRef]
+  );
+
+  // When this list is rendered inside a Popover nested in a modal Dialog, Radix's
+  // scroll lock on the Dialog cancels native wheel/touch scrolling because the
+  // Popover's content is portaled outside the Dialog's scrollable subtree. Native
+  // (non-passive) listeners let us reliably cancel that default and drive
+  // scrollTop ourselves, so scrolling works regardless of the lock while the
+  // scrollbar thumb (unaffected by the lock) keeps working as before.
+  React.useEffect(() => {
+    const node = listRef.current;
+    if (!node) return;
+
+    let touchStartY: number | null = null;
+
+    const handleWheel = (event: WheelEvent) => {
+      node.scrollTop += event.deltaY;
+      event.preventDefault();
+    };
+    const handleTouchStart = (event: TouchEvent) => {
+      touchStartY = event.touches[0]?.clientY ?? null;
+    };
+    const handleTouchMove = (event: TouchEvent) => {
+      const currentY = event.touches[0]?.clientY;
+      if (touchStartY !== null && currentY !== undefined) {
+        node.scrollTop += touchStartY - currentY;
+        touchStartY = currentY;
+        event.preventDefault();
+      }
+    };
+
+    node.addEventListener("wheel", handleWheel, { passive: false });
+    node.addEventListener("touchstart", handleTouchStart, { passive: true });
+    node.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => {
+      node.removeEventListener("wheel", handleWheel);
+      node.removeEventListener("touchstart", handleTouchStart);
+      node.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, []);
+
+  return (
+    <CommandPrimitive.List
+      ref={setRefs}
+      className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden overscroll-contain", className)}
+      {...props}
+    />
+  );
+})
 
 CommandList.displayName = CommandPrimitive.List.displayName
 

@@ -38,7 +38,6 @@ export const validatePatientForm = (values: PatientFormValues) => {
   const errors: Record<string, boolean> = {};
 
   if (!values.firstName) errors.firstName = true;
-  if (!values.lastName) errors.lastName = true;
   if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
     errors.emailInvalid = true;
   }
