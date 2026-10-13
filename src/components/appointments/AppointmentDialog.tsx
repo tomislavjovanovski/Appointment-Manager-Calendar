@@ -18,7 +18,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogOverlay,
+  DialogPortal,
 } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -67,6 +70,24 @@ type AppointmentType = NonNullable<FormData["type"]>;
 type AppointmentStatus = NonNullable<FormData["status"]>;
 
 const PickerAvailabilityContext = createContext<(day: Date) => Date[]>(() => []);
+
+// Tracks the visible area of the page so a full-screen sheet can shrink above the on-screen keyboard.
+function useVisualViewport(enabled: boolean) {
+  const [viewport, setViewport] = useState<{ height: number; top: number } | null>(null);
+  useEffect(() => {
+    const vv = typeof window === "undefined" ? undefined : window.visualViewport;
+    if (!enabled || !vv) return;
+    const update = () => setViewport({ height: vv.height, top: vv.offsetTop });
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [enabled]);
+  return viewport;
+}
 
 function FreeStartTimes({ day, slots, duration, availableDurations, onSelect }: Readonly<{
   day: Date;
@@ -298,6 +319,7 @@ export default function AppointmentDialog({
   // local patients state: prefer prop but fall back to the configured storage source
   const [localPatients, setLocalPatients] = useState<PatientOption[]>(patients ?? []);
   const [patientPickerOpen, setPatientPickerOpen] = useState(false);
+  const pickerViewport = useVisualViewport(isMobilePicker && patientPickerOpen);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState(createEmptyPatientForm);
   const [savingNewPatient, setSavingNewPatient] = useState(false);
@@ -647,8 +669,8 @@ export default function AppointmentDialog({
                     <Label id="appointment-patient-label" htmlFor="patientId" className="absolute left-6 top-2.5 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
                       {t('appointment.patient')}
                     </Label>
-                    <Popover open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
-                      <PopoverTrigger asChild>
+                    {(() => {
+                      const trigger = (
                         <Button
                           id="patientId"
                           type="button"
@@ -658,15 +680,20 @@ export default function AppointmentDialog({
                           aria-expanded={patientPickerOpen}
                           data-testid="patient-select"
                           className="h-10 w-full justify-between border-border bg-background font-normal shadow-sm hover:bg-background"
+                          onClick={isMobilePicker ? () => setPatientPickerOpen(true) : undefined}
                         >
                           <span className="truncate">{selectedPatient?.name ?? t('appointment.selectPatient')}</span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                         </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-                        <Command>
-                          <CommandInput data-testid="patient-search-input" placeholder={t('appointment.searchPatients')} />
-                          <CommandList>
+                      );
+                      const patientCommand = (
+                        <Command className={isMobilePicker ? 'min-h-0 flex-1 rounded-none' : undefined}>
+                          <CommandInput
+                            data-testid="patient-search-input"
+                            placeholder={t('appointment.searchPatients')}
+                            className={isMobilePicker ? 'h-12 text-base' : undefined}
+                          />
+                          <CommandList className={isMobilePicker ? 'max-h-none min-h-0 flex-1' : undefined}>
                             <CommandEmpty>{t('appointment.noPatients')}</CommandEmpty>
                             <CommandGroup>
                               {localPatients.map((patient) => (
@@ -674,20 +701,68 @@ export default function AppointmentDialog({
                                   key={patient.id}
                                   value={`${patient.name} ${patient.searchValue ?? ''}`}
                                   data-testid={`patient-option-${patient.id}`}
+                                  className={isMobilePicker ? 'border-b border-border/60 py-3 text-base last:border-b-0' : undefined}
                                   onSelect={() => {
                                     setValue('patientId', patient.id, { shouldDirty: true, shouldValidate: true });
                                     setPatientPickerOpen(false);
                                   }}
                                 >
-                                  <Check className={`mr-2 h-4 w-4 ${patient.id === patientIdValue ? 'opacity-100' : 'opacity-0'}`} />
-                                  {patient.name}
+                                  <Check className={`mr-2 h-4 w-4 shrink-0 ${patient.id === patientIdValue ? 'opacity-100' : 'opacity-0'}`} />
+                                  <span className="truncate">{patient.name}</span>
                                 </CommandItem>
                               ))}
                             </CommandGroup>
                           </CommandList>
                         </Command>
-                      </PopoverContent>
-                    </Popover>
+                      );
+                      if (isMobilePicker) {
+                        return (
+                          <>
+                            {trigger}
+                            <Dialog open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
+                              <DialogPortal>
+                              <DialogOverlay className="z-[2100] bg-black/50" />
+                              <DialogPrimitive.Content
+                                data-testid="patient-picker-sheet"
+                                aria-describedby={undefined}
+                                onOpenAutoFocus={(event) => event.preventDefault()}
+                                className="fixed inset-x-0 z-[2101] mx-auto box-border flex w-[calc(100%-1.5rem)] max-w-md flex-col overflow-hidden rounded-2xl border bg-background shadow-xl"
+                                style={{
+                                  top: `calc(${pickerViewport?.top ?? 0}px + max(0.75rem, env(safe-area-inset-top)))`,
+                                  height: pickerViewport
+                                    ? `calc(${pickerViewport.height}px - 1.5rem - env(safe-area-inset-top))`
+                                    : 'calc(100dvh - 1.5rem - env(safe-area-inset-top))',
+                                }}
+                              >
+                                <div className="flex shrink-0 items-center justify-between gap-2 border-b py-2 pl-4 pr-2">
+                                  <DialogTitle className="min-w-0 truncate text-base">{t('appointment.selectPatient')}</DialogTitle>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9"
+                                    aria-label="Close"
+                                    onClick={() => setPatientPickerOpen(false)}
+                                  >
+                                    <X className="h-5 w-5" />
+                                  </Button>
+                                </div>
+                                {patientCommand}
+                              </DialogPrimitive.Content>
+                              </DialogPortal>
+                            </Dialog>
+                          </>
+                        );
+                      }
+                      return (
+                        <Popover open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
+                          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+                          <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+                            {patientCommand}
+                          </PopoverContent>
+                        </Popover>
+                      );
+                    })()}
                     {selectedPatient ? (
                       <Button
                         type="button"

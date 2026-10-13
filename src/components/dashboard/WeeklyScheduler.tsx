@@ -529,18 +529,18 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   >
                     {(apt?.duration ?? 30) < step * 2 ? (
                       <div className="flex h-full flex-col gap-0.5 p-0.5 text-left">
-                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 rounded-sm bg-black/20 px-1.5 text-[17.5px] font-semibold leading-tight">
+                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-semibold leading-tight">
                           <UserRound className="h-4 w-4 shrink-0 text-white/75" />
                           <span className="truncate">{[firstName, lastName].filter(Boolean).join(' ')}</span>
                         </div>
-                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1 text-[15px] leading-tight text-white/90">
+                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[15px] leading-tight text-white/90">
                           <Phone className="h-4 w-4 shrink-0" />
                           <span className="shrink-0" data-testid="appointment-phone">{patientPhone}</span>
                         </div>
                       </div>
                     ) : (
                     <div className="flex h-full flex-col gap-1 p-1 text-left">
-                      <div className="flex min-w-0 shrink-0 items-start justify-start gap-1.5 rounded-sm bg-black/20 px-1.5 py-1">
+                      <div className="flex min-w-0 shrink-0 items-start justify-start gap-1.5">
                         <UserRound className="h-5 w-5 shrink-0 text-white/75" />
                         <div className="min-w-0 whitespace-normal text-left text-[17.5px] font-semibold leading-tight [overflow-wrap:anywhere]">
                           <div>{firstName}</div>

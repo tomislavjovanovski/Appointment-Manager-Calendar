@@ -22,7 +22,7 @@ Starts both frontend and backend, reusing an already healthy backend. No separat
 
 - **Booking:** 30/45/60/90/120 minutes, 30-minute default, 24-hour format, automatically calculated end time.
 - **Availability:** working-day/hour restrictions, overlap checks, 15-minute suggestions, and full-range highlighting. A slot click uses the selected duration, or the largest shorter one that fits.
-- **Patients:** select an existing record or create one with name/surname during booking; complete other details later.
+- **Patients:** select an existing record or create one with name/surname during booking; complete other details later. On mobile, the patient picker opens as a searchable card that stays above the on-screen keyboard.
 - **Desktop:** seven equal day columns, compact rows, centered headers, and evenly inset appointment blocks showing patient and phone, left-aligned, color-coded by appointment type (the title text is no longer repeated on the block). Patient names wrap on separate first/surname lines. Non-working days/hours are shown with a clearly darker disabled background while keeping the half-hour grid lines visible.
 - **Mobile:** compact cards with approximately 15% for start/end times and 85% for full name, phone, and title. Name stays inline without a separate background; status badges are removed.
 - **Overview:** Today / This Week / This Month / All Time appointments, today's clickable list, total patients, and patients added this month.
@@ -69,6 +69,12 @@ See [docs/Testing.md](docs/Testing.md). Default E2E configuration selects smoke 
 `npm run build` creates deployment artifacts. `npm run preview` serves only the frontend, not the API.
 
 ## Changelog
+
+### 2026-10-13 - Mobile Patient Picker
+
+- On mobile (under 640px), choosing a patient while booking now opens a centered, inset card instead of the small dropdown. The card has a header with a close button, a search field, and a full-height patient list with larger, easier-to-tap rows. Desktop keeps the existing dropdown.
+- The keypad no longer opens automatically, so the full list is visible first. The card resizes to the visible viewport, so the search field and results stay above the on-screen keyboard, and it respects the iPhone safe-area insets.
+- Fixed the picker's left side being clipped on iPhone. It now uses its own dialog panel without the shared dialog's centering transform and slide animation.
 
 ### 2026-10-12 - Desktop Calendar Readability and Patient Picker Scroll Fix
 
