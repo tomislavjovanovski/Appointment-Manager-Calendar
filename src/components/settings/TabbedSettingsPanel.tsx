@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server, Trash2 } from 'lucide-react';
+import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server, Trash2, Building2, Languages, type LucideIcon } from 'lucide-react';
 import { AppointmentSettings } from '@/types/appointment';
 import { settingsStorage, dataManagement } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ import { buildApiUrl } from '@/lib/storage';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { format, isValid, parse } from 'date-fns';
 import { getDayHours } from '@/lib/appointmentAvailability';
+import { cn } from '@/lib/utils';
 
 function SettingsTimeInput({ id, testId, value, onChange }: Readonly<{
   id: string;
@@ -267,77 +268,45 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
     });
   };
 
+  const tabs = [
+    { value: 'general', icon: Settings, label: t('settings.tabGeneral') },
+    { value: 'integration', icon: Puzzle, label: t('settings.tabIntegration') },
+    { value: 'data', icon: Database, label: t('settings.tabData') },
+    { value: 'api-health', icon: Activity, label: t('settings.tabApiHealth') },
+  ];
+
+  const workingDaysOrdered = [...DAYS_OF_WEEK].sort((a, b) => ((a.id + 6) % 7) - ((b.id + 6) % 7));
+
   return (
-    <div className="space-y-6" data-testid="settings-page">
-      {/* Header */}
+    <div className="w-full space-y-4 sm:space-y-6" data-testid="settings-page">
       <div className="space-y-1">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Settings className="h-5 w-5" strokeWidth={2} />
           </span>
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t('settings.title')}</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t('settings.title')}</h2>
         </div>
-        <p className="max-w-2xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground">{t('settings.subtitle')}</p>
+        <p className="hidden max-w-2xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground sm:block">{t('settings.subtitle')}</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid h-11 w-full grid-cols-4 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 shadow-sm">
-          <TabsTrigger value="general" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
-            <Settings className="w-4 h-4" />
-            {t('settings.tabGeneral')}
-          </TabsTrigger>
-          <TabsTrigger value="integration" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
-            <Puzzle className="w-4 h-4" />
-            {t('settings.tabIntegration')}
-          </TabsTrigger>
-          <TabsTrigger value="data" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
-            <Database className="w-4 h-4" />
-            {t('settings.tabData')}
-          </TabsTrigger>
-          <TabsTrigger value="api-health" className="flex items-center gap-2 rounded-lg data-[state=active]:shadow-sm">
-            <Activity className="w-4 h-4" />
-            {t('settings.tabApiHealth')}
-          </TabsTrigger>
+      <Tabs defaultValue="general" className="space-y-4 sm:space-y-6">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 shadow-sm lg:grid-cols-4">
+          {tabs.map(({ value, icon: Icon, label }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="flex h-10 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-xs data-[state=active]:shadow-sm sm:text-sm"
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{label}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {/* General Settings Tab */}
-        <TabsContent value="general" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-primary" />
-                {t('settings.language')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Label>{t('settings.language')}</Label>
-              <Select
-                value={settings.locale ?? 'en'}
-                onValueChange={(value) =>
-                  setSettings({ ...settings, locale: value as AppLocale })
-                }
-              >
-                <SelectTrigger data-testid="settings-locale-select" className="max-w-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem data-testid="settings-locale-option-en" value="en">{t('settings.langEnglish')}</SelectItem>
-                  <SelectItem data-testid="settings-locale-option-mk" value="mk">{t('settings.langMacedonian')}</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">{t('settings.languageHint')}</p>
-            </CardContent>
-          </Card>
-
-          {/* Working Hours */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                {t('settings.workingHours')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* General */}
+        <TabsContent value="general" className="mt-0 space-y-4 sm:space-y-6">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <SettingsSection icon={Building2} title={t('settings.practiceSection')}>
               <div className="space-y-2">
                 <Label htmlFor="practiceName">{t('settings.practiceName')}</Label>
                 <Input
@@ -346,14 +315,14 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                   value={settings.practiceName ?? ''}
                   onChange={(e) => setSettings({ ...settings, practiceName: e.target.value })}
                   placeholder={t('settings.clinicName')}
-                  className="max-w-xl"
+                  className="text-base sm:text-sm"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="brandLogo">{t('settings.logo')}</Label>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-3">
                   {settings.logoDataUrl && (
-                    <img src={settings.logoDataUrl} alt={t('settings.logo')} className="h-16 w-16 shrink-0 border border-border bg-background object-contain p-1" />
+                    <img src={settings.logoDataUrl} alt={t('settings.logo')} className="h-12 w-12 shrink-0 rounded-md border border-border bg-background object-contain p-1" />
                   )}
                   <Input
                     id="brandLogo"
@@ -362,13 +331,14 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                     accept="image/png,image/jpeg,image/webp"
                     disabled={logoUploading}
                     onChange={(event) => void handleLogoUpload(event)}
-                    className="max-w-sm"
+                    className="min-w-0 flex-1"
                   />
                   {settings.logoDataUrl && (
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
+                      className="shrink-0"
                       disabled={logoUploading}
                       aria-label={t('settings.removeLogo')}
                       title={t('settings.removeLogo')}
@@ -383,96 +353,121 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                 </div>
                 {logoError && <p role="alert" className="text-sm text-destructive">{logoError}</p>}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="startTime">{t('settings.startTime')}</Label>
-                  <SettingsTimeInput
-                    id="startTime"
-                    testId="settings-start-time-input"
-                    value={settings.startTime}
-                    onChange={(startTime) => setSettings({ ...settings, startTime })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="endTime">{t('settings.endTime')}</Label>
-                  <SettingsTimeInput
-                    id="endTime"
-                    testId="settings-end-time-input"
-                    value={settings.endTime}
-                    onChange={(endTime) => setSettings({ ...settings, endTime })}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>{t('settings.timeSlotInterval')}</Label>
-                  <Select
-                    value={String(settings.timeSlotMinutes ?? 30)}
-                    onValueChange={(value) => setSettings({ ...settings, timeSlotMinutes: parseInt(value) as any })}
-                  >
-                    <SelectTrigger data-testid="settings-slot-interval-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem data-testid="settings-slot-interval-option-15" value="15">{t('settings.slot15')}</SelectItem>
-                      <SelectItem data-testid="settings-slot-interval-option-30" value="30">{t('settings.slot30')}</SelectItem>
-                      <SelectItem data-testid="settings-slot-interval-option-60" value="60">{t('settings.slot60')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="mt-1 text-xs text-muted-foreground">{t('settings.timeSlotIntervalHint')}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            </SettingsSection>
 
-          {/* Working Days */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary" />
+            <SettingsSection icon={Languages} title={t('settings.language')} description={t('settings.languageHint')}>
+              <Select
+                value={settings.locale ?? 'en'}
+                onValueChange={(value) => setSettings({ ...settings, locale: value as AppLocale })}
+              >
+                <SelectTrigger data-testid="settings-locale-select" aria-label={t('settings.language')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem data-testid="settings-locale-option-en" value="en">{t('settings.langEnglish')}</SelectItem>
+                  <SelectItem data-testid="settings-locale-option-mk" value="mk">{t('settings.langMacedonian')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingsSection>
+          </div>
+
+          <SettingsSection icon={Clock} title={t('settings.workingHours')} contentClassName="space-y-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">{t('settings.startTime')}</Label>
+                <SettingsTimeInput
+                  id="startTime"
+                  testId="settings-start-time-input"
+                  value={settings.startTime}
+                  onChange={(startTime) => setSettings({ ...settings, startTime })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endTime">{t('settings.endTime')}</Label>
+                <SettingsTimeInput
+                  id="endTime"
+                  testId="settings-end-time-input"
+                  value={settings.endTime}
+                  onChange={(endTime) => setSettings({ ...settings, endTime })}
+                />
+              </div>
+              <div className="col-span-2 space-y-2 sm:col-span-1">
+                <Label>{t('settings.timeSlotInterval')}</Label>
+                <Select
+                  value={String(settings.timeSlotMinutes ?? 30)}
+                  onValueChange={(value) => setSettings({ ...settings, timeSlotMinutes: parseInt(value) as any })}
+                >
+                  <SelectTrigger data-testid="settings-slot-interval-select" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem data-testid="settings-slot-interval-option-15" value="15">{t('settings.slot15')}</SelectItem>
+                    <SelectItem data-testid="settings-slot-interval-option-30" value="30">{t('settings.slot30')}</SelectItem>
+                    <SelectItem data-testid="settings-slot-interval-option-60" value="60">{t('settings.slot60')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="col-span-2 -mt-1 text-xs text-muted-foreground sm:col-span-3">{t('settings.timeSlotIntervalHint')}</p>
+            </div>
+
+            <div className="space-y-3 border-t border-border/60 pt-5">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <Calendar className="h-4 w-4 text-primary" />
                 {t('settings.workingDays')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-2">
+              </h3>
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                 {DAYS_OF_WEEK.map((day) => {
                   const isSelected = settings.workingDays.includes(day.id);
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={day.id}
                       data-testid={`working-day-toggle-${day.shortKey}`}
                       data-selected={isSelected ? 'true' : 'false'}
+                      aria-pressed={isSelected}
                       onClick={() => toggleWorkingDay(day.id)}
-                      className={`
-                        p-3 text-center rounded-lg border-2 cursor-pointer transition-all
-                        ${isSelected 
-                          ? 'border-primary bg-primary text-primary-foreground' 
+                      className={`min-w-0 rounded-lg border-2 px-1 py-2.5 text-center text-xs font-medium transition-all sm:py-3 ${
+                        isSelected
+                          ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border bg-background hover:border-primary/50'
-                        }
-                      `}
+                      }`}
                     >
-                      <div className="text-xs font-medium">{t(`days.short.${day.shortKey}`)}</div>
-                    </div>
+                      {t(`days.short.${day.shortKey}`)}
+                    </button>
                   );
                 })}
               </div>
+            </div>
 
-              {settings.workingDays.length > 0 && (
-                <div className="mt-6 space-y-3">
-                  <div>
-                    <h3 className="text-sm font-semibold">{t('settings.dailyHours')}</h3>
-                    <p className="text-xs text-muted-foreground">{t('settings.dailyHoursHint')}</p>
-                  </div>
-                  {[...DAYS_OF_WEEK]
-                    .sort((a, b) => ((a.id + 6) % 7) - ((b.id + 6) % 7))
+            {settings.workingDays.length > 0 && (
+              <div className="space-y-3 border-t border-border/60 pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">{t('settings.dailyHours')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('settings.dailyHoursHint')}</p>
+                </div>
+                <div className="space-y-2">
+                  {workingDaysOrdered
                     .filter((day) => settings.workingDays.includes(day.id))
                     .map((day) => {
                       const hours = getDayHours(settings, day.id);
                       const isCustom = Boolean(settings.dailyHours?.[day.id]);
                       return (
-                        <div key={day.id} data-testid={`day-hours-${day.shortKey}`} className="grid grid-cols-[3rem_1fr_1fr_auto] items-center gap-2">
+                        <div
+                          key={day.id}
+                          data-testid={`day-hours-${day.shortKey}`}
+                          className="grid grid-cols-2 items-center gap-2 rounded-lg border border-border/60 p-2.5 sm:grid-cols-[3.5rem_1fr_1fr_auto] sm:border-0 sm:p-0"
+                        >
                           <span className="text-sm font-medium">{t(`days.short.${day.shortKey}`)}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={!isCustom}
+                            onClick={() => resetDayHours(day.id)}
+                            className="h-8 justify-self-end px-2 text-xs sm:order-last"
+                          >
+                            {t('settings.resetDayHours')}
+                          </Button>
                           <SettingsTimeInput
                             id={`dayStart-${day.id}`}
                             value={hours.startTime}
@@ -483,51 +478,30 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                             value={hours.endTime}
                             onChange={(endTime) => setDayHours(day.id, { endTime })}
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={!isCustom}
-                            onClick={() => resetDayHours(day.id)}
-                            className="h-8 px-2 text-xs"
-                          >
-                            {t('settings.resetDayHours')}
-                          </Button>
                         </div>
                       );
                     })}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
+              </div>
+            )}
+          </SettingsSection>
         </TabsContent>
 
-        {/* Integration Tab */}
-        <TabsContent value="integration" className="space-y-6">
-          {/* Notification Manager */}
-          <NotificationManager />
-          
-          {/* Notification Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5 text-primary" />
-                {t('settings.notificationSettings')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Zapier Webhooks */}
-              <div className="space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
+        {/* Integration */}
+        <TabsContent value="integration" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsSection icon={Bell} title={t('settings.notificationSettings')}>
+            <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+              <div className="space-y-4 rounded-xl border border-border/60 p-3 sm:p-4">
+                <h4 className="flex items-center gap-2 text-sm font-semibold">
+                  <Mail className="h-4 w-4 text-primary" />
                   {t('settings.emailZapier')}
                 </h4>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="emailWebhook">{t('settings.emailWebhook')}</Label>
                   <Input
                     id="emailWebhook"
                     placeholder="https://hooks.zapier.com/hooks/catch/..."
+                    className="text-base sm:text-sm"
                     value={settings.notifications.emailWebhookUrl}
                     onChange={(e) => setSettings({
                       ...settings,
@@ -535,9 +509,8 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                     })}
                   />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
                     <Label htmlFor="emailTime">{t('settings.notificationTime')}</Label>
                     <SettingsTimeInput
                       id="emailTime"
@@ -550,7 +523,7 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                   </div>
                   <div className="space-y-2">
                     <Label>{t('settings.emailSettingsLabel')}</Label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <Checkbox
                         id="dayBeforeEmail"
                         checked={settings.notifications.enableDayBeforeEmail}
@@ -559,9 +532,9 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                           notifications: { ...settings.notifications, enableDayBeforeEmail: checked as boolean }
                         })}
                       />
-                      <Label htmlFor="dayBeforeEmail" className="text-sm">{t('settings.dayBeforeReminder')}</Label>
+                      <Label htmlFor="dayBeforeEmail" className="text-sm font-normal">{t('settings.dayBeforeReminder')}</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <Checkbox
                         id="sameDayEmail"
                         checked={settings.notifications.enableSameDayEmail}
@@ -570,40 +543,38 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                           notifications: { ...settings.notifications, enableSameDayEmail: checked as boolean }
                         })}
                       />
-                      <Label htmlFor="sameDayEmail" className="text-sm">{t('settings.sameDayReminder')}</Label>
+                      <Label htmlFor="sameDayEmail" className="text-sm font-normal">{t('settings.sameDayReminder')}</Label>
                     </div>
                   </div>
                 </div>
-
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="emailTemplate">{t('settings.emailTemplate')}</Label>
                   <Textarea
                     id="emailTemplate"
                     placeholder={t('settings.emailTemplatePlaceholder')}
                     rows={4}
+                    className="text-base sm:text-sm"
                     value={settings.notifications.emailTemplate}
                     onChange={(e) => setSettings({
                       ...settings,
                       notifications: { ...settings.notifications, emailTemplate: e.target.value }
                     })}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t('settings.emailTemplateHint')}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t('settings.emailTemplateHint')}</p>
                 </div>
               </div>
 
-              {/* SMS Settings */}
-              <div className="space-y-4 pt-4 border-t">
-                <h4 className="font-medium flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
+              <div className="space-y-4 rounded-xl border border-border/60 p-3 sm:p-4">
+                <h4 className="flex items-center gap-2 text-sm font-semibold">
+                  <MessageSquare className="h-4 w-4 text-primary" />
                   {t('settings.smsZapier')}
                 </h4>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="smsWebhook">{t('settings.smsWebhook')}</Label>
                   <Input
                     id="smsWebhook"
                     placeholder="https://hooks.zapier.com/hooks/catch/..."
+                    className="text-base sm:text-sm"
                     value={settings.notifications.smsWebhookUrl}
                     onChange={(e) => setSettings({
                       ...settings,
@@ -611,9 +582,8 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                     })}
                   />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
                     <Label htmlFor="smsTime">{t('settings.smsTime')}</Label>
                     <SettingsTimeInput
                       id="smsTime"
@@ -626,7 +596,7 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                   </div>
                   <div className="space-y-2">
                     <Label>{t('settings.smsSettingsLabel')}</Label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <Checkbox
                         id="sameDaySMS"
                         checked={settings.notifications.enableSameDaySMS}
@@ -635,179 +605,180 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
                           notifications: { ...settings.notifications, enableSameDaySMS: checked as boolean }
                         })}
                       />
-                      <Label htmlFor="sameDaySMS" className="text-sm">{t('settings.sameDaySms')}</Label>
+                      <Label htmlFor="sameDaySMS" className="text-sm font-normal">{t('settings.sameDaySms')}</Label>
                     </div>
                   </div>
                 </div>
-
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="smsTemplate">{t('settings.smsTemplate')}</Label>
                   <Textarea
                     id="smsTemplate"
                     placeholder={t('settings.smsTemplatePlaceholder')}
-                    rows={3}
+                    rows={4}
+                    className="text-base sm:text-sm"
                     value={settings.notifications.smsTemplate}
                     onChange={(e) => setSettings({
                       ...settings,
                       notifications: { ...settings.notifications, smsTemplate: e.target.value }
                     })}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t('settings.smsTemplateHint')}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t('settings.smsTemplateHint')}</p>
                 </div>
               </div>
+            </div>
 
-              <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                <p><strong>{t('settings.zapierHelpTitle')}</strong></p>
-                <p>1. {t('settings.zapierHelp1')}</p>
-                <p>2. {t('settings.zapierHelp2')}</p>
-                <p>3. {t('settings.zapierHelp3')}</p>
-                <p>4. {t('settings.zapierHelp4')}</p>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="space-y-0.5 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              <p><strong>{t('settings.zapierHelpTitle')}</strong></p>
+              <p>1. {t('settings.zapierHelp1')}</p>
+              <p>2. {t('settings.zapierHelp2')}</p>
+              <p>3. {t('settings.zapierHelp3')}</p>
+              <p>4. {t('settings.zapierHelp4')}</p>
+            </div>
+          </SettingsSection>
 
-          {/* Google Calendar Integration */}
+          <NotificationManager />
+
           <GoogleCalendarSync />
         </TabsContent>
 
-        {/* Data Management Tab */}
-        <TabsContent value="data" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-primary" />
-                {t('settings.dataTitle')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
-                <Button onClick={handleExport} variant="outline" className="flex-1">
-                  <Download className="w-4 h-4 mr-2" />
-                  {t('settings.export')}
-                </Button>
-                
-                <div className="flex-1">
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImport}
-                    className="hidden"
-                    id="import-file"
-                  />
-                  <Button asChild variant="outline" className="w-full">
-                    <label htmlFor="import-file" className="cursor-pointer">
-                      <Upload className="w-4 h-4 mr-2" />
-                      {t('settings.import')}
-                    </label>
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                <p><strong>{t('settings.exportHelp')}</strong> {t('settings.exportHelpText')}</p>
-                <p><strong>{t('settings.importHelp')}</strong> {t('settings.importHelpText')}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="api-health" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="flex items-center gap-2">
-                    <Server className="w-5 h-5 text-primary" />
-                    {t('settings.apiHealthTitle')}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">{t('settings.apiHealthSubtitle')}</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={loadApiHealth}
-                  disabled={apiHealthLoading}
-                >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${apiHealthLoading ? 'animate-spin' : ''}`} />
-                  {t('settings.apiHealthRefresh')}
+        {/* Data */}
+        <TabsContent value="data" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsSection icon={Database} title={t('settings.dataTitle')}>
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+              <Button onClick={handleExport} variant="outline" className="h-11 w-full">
+                <Download className="mr-2 h-4 w-4" />
+                {t('settings.export')}
+              </Button>
+              <div>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  className="hidden"
+                  id="import-file"
+                />
+                <Button asChild variant="outline" className="h-11 w-full">
+                  <label htmlFor="import-file" className="cursor-pointer">
+                    <Upload className="mr-2 h-4 w-4" />
+                    {t('settings.import')}
+                  </label>
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {t('settings.apiHealthStatus')}
-                  </div>
-                  <div className="mt-2">
-                    <Badge variant={apiHealth?.ok ? 'default' : 'destructive'}>
-                      {apiHealth?.ok ? t('settings.apiHealthOnline') : t('settings.apiHealthOffline')}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {t('settings.apiHealthPatients')}
-                  </div>
-                  <div className="mt-2 text-2xl font-semibold text-foreground">
-                    {apiHealth?.patientsCount ?? '—'}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {t('settings.apiHealthAppointments')}
-                  </div>
-                  <div className="mt-2 text-2xl font-semibold text-foreground">
-                    {apiHealth?.appointmentsCount ?? '—'}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {t('settings.apiHealthLastChecked')}
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-foreground break-words">
-                    {lastHealthCheck ? new Date(lastHealthCheck).toLocaleString() : '—'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-border/70 bg-background p-4">
-                  <Label>{t('settings.apiHealthEndpoint')}</Label>
-                  <p className="mt-2 break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-sm text-foreground">
-                    {apiHealthUrl}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/70 bg-background p-4">
-                  <Label>{t('settings.apiHealthDataDir')}</Label>
-                  <p className="mt-2 break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-sm text-foreground">
-                    {apiHealth?.dataDir ?? '—'}
-                  </p>
-                </div>
-              </div>
-
-              {apiHealthError && (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-                  <strong>{t('settings.apiHealthErrorLabel')}</strong> {apiHealthError}
-                </div>
-              )}
-
-              <div className="rounded-xl border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
-                <p><strong>{t('settings.apiHealthHowItWorks')}</strong></p>
-                <p>{t('settings.apiHealthHowItWorksText')}</p>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="space-y-1 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              <p><strong>{t('settings.exportHelp')}</strong> {t('settings.exportHelpText')}</p>
+              <p><strong>{t('settings.importHelp')}</strong> {t('settings.importHelpText')}</p>
+            </div>
+          </SettingsSection>
         </TabsContent>
 
-        {/* Save Button - Always visible */}
-        <Button onClick={handleSave} disabled={logoUploading} data-testid="save-settings-btn" className="w-full bg-gradient-to-r from-accent to-accent-hover">
-          <Save className="w-4 h-4 mr-2" />
-          {t('settings.save')}
-        </Button>
+        {/* API health */}
+        <TabsContent value="api-health" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsSection
+            icon={Server}
+            title={t('settings.apiHealthTitle')}
+            description={t('settings.apiHealthSubtitle')}
+            action={(
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={loadApiHealth}
+                disabled={apiHealthLoading}
+                aria-label={t('settings.apiHealthRefresh')}
+              >
+                <RefreshCw className={`h-4 w-4 sm:mr-2 ${apiHealthLoading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{t('settings.apiHealthRefresh')}</span>
+              </Button>
+            )}
+          >
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+              <HealthStat label={t('settings.apiHealthStatus')}>
+                <Badge variant={apiHealth?.ok ? 'default' : 'destructive'}>
+                  {apiHealth?.ok ? t('settings.apiHealthOnline') : t('settings.apiHealthOffline')}
+                </Badge>
+              </HealthStat>
+              <HealthStat label={t('settings.apiHealthPatients')}>
+                <span className="text-xl font-semibold sm:text-2xl">{apiHealth?.patientsCount ?? '—'}</span>
+              </HealthStat>
+              <HealthStat label={t('settings.apiHealthAppointments')}>
+                <span className="text-xl font-semibold sm:text-2xl">{apiHealth?.appointmentsCount ?? '—'}</span>
+              </HealthStat>
+              <HealthStat label={t('settings.apiHealthLastChecked')}>
+                <span className="break-words text-sm font-medium">
+                  {lastHealthCheck ? new Date(lastHealthCheck).toLocaleString() : '—'}
+                </span>
+              </HealthStat>
+            </div>
+
+            <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t('settings.apiHealthEndpoint')}</Label>
+                <p className="break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-foreground sm:text-sm">{apiHealthUrl}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('settings.apiHealthDataDir')}</Label>
+                <p className="break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-foreground sm:text-sm">{apiHealth?.dataDir ?? '—'}</p>
+              </div>
+            </div>
+
+            {apiHealthError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                <strong>{t('settings.apiHealthErrorLabel')}</strong> {apiHealthError}
+              </div>
+            )}
+
+            <div className="space-y-1 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              <p><strong>{t('settings.apiHealthHowItWorks')}</strong></p>
+              <p>{t('settings.apiHealthHowItWorksText')}</p>
+            </div>
+          </SettingsSection>
+        </TabsContent>
+
+        <div className="sticky bottom-0 z-10 -mx-4 border-t border-border/60 bg-background/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+          <Button onClick={handleSave} disabled={logoUploading} data-testid="save-settings-btn" className="h-11 w-full bg-gradient-to-r from-accent to-accent-hover">
+            <Save className="mr-2 h-4 w-4" />
+            {t('settings.save')}
+          </Button>
+        </div>
       </Tabs>
+    </div>
+  );
+}
+
+function SettingsSection({ icon: Icon, title, description, action, contentClassName, children }: Readonly<{
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  contentClassName?: string;
+  children: React.ReactNode;
+}>) {
+  return (
+    <Card className="min-w-0">
+      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 p-4 sm:p-6">
+        <div className="min-w-0 space-y-1">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+            <Icon className="h-5 w-5 shrink-0 text-primary" />
+            <span className="truncate">{title}</span>
+          </CardTitle>
+          {description && <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>}
+        </div>
+        {action}
+      </CardHeader>
+      <CardContent className={cn('space-y-4 p-4 pt-0 sm:p-6 sm:pt-0', contentClassName)}>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function HealthStat({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
+  return (
+    <div className="min-w-0 rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-4">
+      <div className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">{label}</div>
+      <div className="mt-1.5 sm:mt-2">{children}</div>
     </div>
   );
 }

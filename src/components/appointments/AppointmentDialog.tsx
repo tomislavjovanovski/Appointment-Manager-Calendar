@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/select";import { Switch } from '@/components/ui/switch';import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -102,7 +101,7 @@ function FreeStartTimes({ day, slots, duration, availableDurations, onSelect }: 
   const selectedIsAvailable = starts.some((start) => start.getTime() === day.getTime());
   const selectedEnd = addMinutes(day, duration);
   return (
-    <div className="w-full space-y-2 border-t border-border py-2" data-testid="available-starts">
+    <div className="w-full space-y-2 pb-1" data-testid="available-starts">
       <p className="text-sm font-medium">{t('appointment.availableTimes')}</p>
       <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(3.25rem,1fr))] gap-1.5">
         {slots.map((start) => {
@@ -607,7 +606,7 @@ export default function AppointmentDialog({
           <form onSubmit={handleSubmit(submit)}>
             <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: Title and Patient */}
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <section aria-label={t('appointment.title')} className="min-w-0 space-y-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
                     <div className="relative">
                       <Label htmlFor="title" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
@@ -778,7 +777,7 @@ export default function AppointmentDialog({
                         {t('appointment.addNewPatient')}
                       </Button>
                     ) : (
-                      <div data-testid="new-patient-panel" className="mt-2 grid grid-cols-2 gap-2 sm:mt-auto">
+                      <div data-testid="new-patient-panel" className="mt-2 grid grid-cols-2 gap-2 sm:mt-auto sm:grid-cols-3">
                         <Input
                           id="patient-first-name"
                           data-testid="patient-first-name"
@@ -809,7 +808,7 @@ export default function AppointmentDialog({
                           value={newPatientForm.phone}
                           disabled={saving || savingNewPatient || formState.isSubmitting}
                           onChange={(event) => setNewPatientForm((current) => ({ ...current, phone: event.target.value }))}
-                          className="col-span-2"
+                          className="col-span-2 sm:col-span-1"
                         />
                       </div>
                     )}
@@ -932,29 +931,14 @@ export default function AppointmentDialog({
               </section>
               </PickerAvailabilityContext.Provider>
 
-              {/* Google sync toggle and submission errors */}
-              <div className="px-3">
-                <div className="flex items-center gap-3">
-                  <input
-                    id="google-sync-toggle"
-                    data-testid="google-sync-toggle"
-                    type="checkbox"
-                    disabled
-                    checked={false}
-                  />
-                  <label htmlFor="google-sync-toggle" className="text-sm text-muted-foreground">{t('appointment.syncGoogle')}</label>
+              {submissionError && submissionErrorId === 'error-slot-conflict' && (
+                <div data-testid="error-slot-conflict" role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive-foreground">
+                  {submissionError}
                 </div>
-                {submissionError && submissionErrorId === 'error-slot-conflict' && (
-                  <div data-testid="error-slot-conflict" role="alert" className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive-foreground">
-                    {submissionError}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            <Separator />
-
-            <DialogFooter className="gap-3 px-5 py-2 sm:px-6">
+            <DialogFooter className="sticky bottom-0 z-10 flex-row gap-2 border-t border-border/60 bg-background/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur [&>button]:flex-1 sm:gap-3 sm:space-x-0 sm:px-6 sm:py-3 sm:[&>button]:flex-none">
               {effectiveMode === "edit" && onDelete && (
                 <Button
                   type="button"

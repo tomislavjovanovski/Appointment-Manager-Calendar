@@ -77,37 +77,37 @@ export function NotificationManager() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-primary" />
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+          <Bell className="h-5 w-5 shrink-0 text-primary" />
           {t('notifications.managerTitle')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 border border-border rounded-lg">
+      <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="rounded-lg border border-border p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{t('notifications.today')}</p>
-                <p className="text-2xl font-bold text-foreground">{todayCount}</p>
+                <p className="text-xl font-bold text-foreground sm:text-2xl">{todayCount}</p>
               </div>
-              <Clock className="w-8 h-8 text-blue-500" />
+              <Clock className="h-6 w-6 shrink-0 text-blue-500 sm:h-8 sm:w-8" />
             </div>
           </div>
 
-          <div className="p-4 border border-border rounded-lg">
+          <div className="rounded-lg border border-border p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{t('notifications.tomorrow')}</p>
-                <p className="text-2xl font-bold text-foreground">{tomorrowCount}</p>
+                <p className="text-xl font-bold text-foreground sm:text-2xl">{tomorrowCount}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
+              <CheckCircle className="h-6 w-6 shrink-0 text-green-500 sm:h-8 sm:w-8" />
             </div>
           </div>
         </div>
 
         <div className="space-y-2">
-          <h4 className="font-medium">{t('notifications.manualTitle')}</h4>
+          <h4 className="text-sm font-semibold">{t('notifications.manualTitle')}</h4>
           <p className="text-sm text-muted-foreground">
             {t('notifications.manualDesc')}
           </p>

@@ -142,12 +142,12 @@ export function GoogleCalendarSync() {
   };
 
   return (
-    <fieldset disabled className="space-y-6 opacity-60">
+    <fieldset disabled className="min-w-0 space-y-4 opacity-60 sm:space-y-6">
       {/* Connection Status */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold sm:text-lg">
+            <Calendar className="h-5 w-5 shrink-0 text-primary" />
             {t('google.title')}
             {isConnected ? (
               <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
@@ -162,10 +162,10 @@ export function GoogleCalendarSync() {
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
           {!isConnected ? (
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <div className="rounded-lg bg-blue-50 p-3 dark:bg-blue-950 sm:p-4">
                 <h4 className="font-medium mb-2">{t('google.setupTitle')}</h4>
                 <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                   <li>
@@ -211,8 +211,8 @@ export function GoogleCalendarSync() {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Button onClick={fetchGoogleEvents} disabled variant="outline">
                   <RotateCcw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? t('google.syncing') : t('google.refreshEvents')}

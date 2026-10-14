@@ -94,17 +94,17 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
     `${patient.firstName?.[0] ?? ''}${patient.lastName?.[0] ?? ''}`.toUpperCase() || 'P';
 
   return (
-    <div className="space-y-6" data-testid="patients-page">
+    <div className="space-y-4 md:space-y-6" data-testid="patients-page">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
+      <div className="flex items-center justify-between gap-3 sm:items-start">
+        <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <User className="h-5 w-5" strokeWidth={2} />
             </span>
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t('patients.title')}</h2>
+            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground md:text-2xl">{t('patients.title')}</h2>
           </div>
-          <p className="max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground">{t('patients.subtitle')}</p>
+          <p className="hidden max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground sm:block">{t('patients.subtitle')}</p>
         </div>
         <Button 
           data-testid="add-patient-btn"
@@ -116,52 +116,52 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:grid-cols-1 md:gap-4 lg:grid-cols-3">
         <Card className="border-border/80 shadow-soft">
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <CardContent className="flex items-center gap-4 p-3 md:p-5">
+            <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl md:flex bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('patients.title')}</div>
-              <div className="text-2xl font-semibold text-foreground">{filteredPatients.length}</div>
+            <div className="min-w-0">
+              <div className="line-clamp-2 text-[10px] font-medium uppercase leading-tight tracking-wide text-muted-foreground md:text-xs md:leading-normal">{t('patients.title')}</div>
+              <div className="text-lg font-semibold text-foreground md:text-2xl">{filteredPatients.length}</div>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/80 shadow-soft">
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+          <CardContent className="flex items-center gap-4 p-3 md:p-5">
+            <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl md:flex bg-emerald-500/10 text-emerald-600">
               <Activity className="h-5 w-5" />
             </div>
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('patients.withVisits')}</div>
-              <div className="text-2xl font-semibold text-foreground">{patientsWithVisits}</div>
+            <div className="min-w-0">
+              <div className="line-clamp-2 text-[10px] font-medium uppercase leading-tight tracking-wide text-muted-foreground md:text-xs md:leading-normal">{t('patients.withVisits')}</div>
+              <div className="text-lg font-semibold text-foreground md:text-2xl">{patientsWithVisits}</div>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/80 shadow-soft">
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+          <CardContent className="flex items-center gap-4 p-3 md:p-5">
+            <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl md:flex bg-amber-500/10 text-amber-600">
               <Calendar className="h-5 w-5" />
             </div>
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('createAppointment.appointmentDetails')}</div>
-              <div className="text-2xl font-semibold text-foreground">{totalAppointments}</div>
+            <div className="min-w-0">
+              <div className="line-clamp-2 text-[10px] font-medium uppercase leading-tight tracking-wide text-muted-foreground md:text-xs md:leading-normal">{t('createAppointment.appointmentDetails')}</div>
+              <div className="text-lg font-semibold text-foreground md:text-2xl">{totalAppointments}</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Card className="overflow-hidden border-border/80 shadow-soft">
-        <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-1">
+        <CardHeader className="border-b border-border/60 bg-muted/20 p-3 md:p-6 md:pb-4">
+          <div className="flex flex-col gap-3 md:gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="hidden space-y-1 md:block">
               <CardTitle className="text-lg font-semibold tracking-tight">{t('patients.directory')}</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {t('patients.directoryDescription')}
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-row items-center gap-2 sm:gap-3">
               <div className="relative min-w-0 flex-1 sm:w-80">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -169,10 +169,10 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
                   placeholder={t('patients.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-11 border-border/80 bg-background/80 pl-10 shadow-sm transition-colors focus-visible:ring-primary/25"
+                  className="h-10 border-border/80 bg-background/80 pl-10 text-base shadow-sm md:h-11 md:text-sm transition-colors focus-visible:ring-primary/25"
                 />
               </div>
-              <Badge variant="outline" className="h-11 rounded-xl px-4 text-sm font-medium">
+              <Badge variant="outline" className="h-10 shrink-0 rounded-xl px-2.5 text-xs font-medium md:h-11 md:px-4 md:text-sm">
                 {t('patients.shown', { count: filteredPatients.length })}
               </Badge>
             </div>
@@ -180,88 +180,85 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
         </CardHeader>
         <CardContent className="p-0">
           {/* Patient List */}
-          <div className="grid gap-4 p-4 md:hidden">
+          <div className="md:hidden">
             {filteredPatients.length === 0 ? (
-              <Card className="border-border/80 py-12 text-center shadow-none" data-testid="patients-empty-state">
-                <CardContent>
-                  <User className="mx-auto mb-4 h-16 w-16 text-muted-foreground opacity-50" />
-                  <h3 className="mb-2 text-lg font-medium">
-                    {searchQuery ? t('patients.noResults') : t('patients.noPatientsYet')}
-                  </h3>
-                  <p className="mb-4 text-muted-foreground">
-                    {searchQuery 
-                      ? t('patients.trySearch')
-                      : t('patients.addFirstHint')
-                    }
-                  </p>
-                  {!searchQuery && (
-                    <Button onClick={onCreatePatient} variant="outline">
-                      <Plus className="mr-2 h-4 w-4" />
-                      {t('patients.addFirst')}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="px-4 py-10 text-center" data-testid="patients-empty-state">
+                <User className="mx-auto mb-3 h-12 w-12 text-muted-foreground opacity-50" />
+                <h3 className="mb-1 text-base font-medium">
+                  {searchQuery ? t('patients.noResults') : t('patients.noPatientsYet')}
+                </h3>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {searchQuery ? t('patients.trySearch') : t('patients.addFirstHint')}
+                </p>
+                {!searchQuery && (
+                  <Button onClick={onCreatePatient} variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('patients.addFirst')}
+                  </Button>
+                )}
+              </div>
             ) : (
-              filteredPatients.map((patient) => {
-                const appointmentCount = getPatientAppointmentCount(patient.id);
-                const lastAppointment = getLastAppointmentDate(patient.id);
+              <ul className="divide-y divide-border/60">
+                {filteredPatients.map((patient) => {
+                  const appointmentCount = getPatientAppointmentCount(patient.id);
+                  const lastAppointment = getLastAppointmentDate(patient.id);
+                  const phone = patient.phone?.trim();
+                  const email = patient.email?.trim();
 
-                return (
-                  <Card
-                    key={patient.id}
-                    data-testid="patient-card"
-                    className="cursor-pointer border-border/70 shadow-sm transition-all hover:border-primary/25 hover:shadow-md"
-                    onClick={() => onPatientClick(patient)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-medical-blue text-sm font-semibold text-primary-foreground shadow-sm">
-                            {patientInitials(patient)}
-                          </div>
-                          <div className="min-w-0 space-y-2">
-                            <div>
-                              <div className="font-semibold text-foreground">
-                                {patient.firstName} {patient.lastName}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
+                  return (
+                    <li key={patient.id}>
+                      <button
+                        type="button"
+                        data-testid="patient-card"
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/40 active:bg-muted/60"
+                        onClick={() => onPatientClick(patient)}
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-medical-blue text-xs font-semibold text-primary-foreground">
+                          {patientInitials(patient)}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-foreground">
+                            {patient.firstName} {patient.lastName}
+                          </span>
+                          <span className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                            {phone && (
+                              <span className="inline-flex shrink-0 items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {phone}
+                              </span>
+                            )}
+                            {email && (
+                              <span className="inline-flex min-w-0 items-center gap-1">
+                                <Mail className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{email}</span>
+                              </span>
+                            )}
+                            {!phone && !email && (
+                              <span className="truncate">
                                 {patient.dateOfBirth
                                   ? t('patients.born', { date: format(new Date(patient.dateOfBirth), 'MMM d, yyyy', { locale: dateFnsLocale }) })
                                   : t('patients.noBirthDate')}
-                              </div>
-                            </div>
-                            <div className="space-y-1 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <Mail className="h-4 w-4" />
-                                <span className="truncate">{patient.email}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4" />
-                                <span>{patient.phone}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className="rounded-lg">
-                          {appointmentCount === 1
-                            ? t('patients.appointmentsCountOne')
-                            : t('patients.appointmentsCount', { count: appointmentCount })}
-                        </Badge>
-                        {lastAppointment && (
-                          <Badge variant="secondary" className="rounded-lg">
-                            {t('patients.last', { date: format(new Date(lastAppointment), 'MMM d', { locale: dateFnsLocale }) })}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                        <span className="flex shrink-0 flex-col items-end gap-0.5">
+                          <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px] font-medium">
+                            {appointmentCount === 1
+                              ? t('patients.appointmentsCountOne')
+                              : t('patients.appointmentsCount', { count: appointmentCount })}
                           </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
+                          {lastAppointment && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {t('patients.last', { date: format(new Date(lastAppointment), 'MMM d', { locale: dateFnsLocale }) })}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
 
