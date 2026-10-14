@@ -80,9 +80,16 @@ export function createDataStore({
   const ensureJsonFile = async (filePath, defaultValue) => {
     try {
       await fs.access(filePath);
-    } catch {
+    } catch (error) {
+      // Only create a default file when it is genuinely missing. Any other error (permissions,
+      // too many open files, I/O) must surface instead of risking an overwrite of real data.
+      if (error?.code !== 'ENOENT') throw error;
       await ensureDataDir();
-      await fs.writeFile(filePath, JSON.stringify(defaultValue, null, 2), 'utf8');
+      try {
+        await fs.writeFile(filePath, JSON.stringify(defaultValue, null, 2), { encoding: 'utf8', flag: 'wx' });
+      } catch (writeError) {
+        if (writeError?.code !== 'EEXIST') throw writeError;
+      }
     }
   };
 

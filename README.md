@@ -25,11 +25,11 @@ Starts both frontend and backend, reusing an already healthy backend. No separat
 - **Patients:** select an existing record or create one with name/surname during booking; complete other details later. On mobile, the patient picker opens as a searchable card that stays above the on-screen keyboard.
 - **Desktop:** seven equal day columns, compact rows, centered headers, and evenly inset appointment blocks showing patient and phone, left-aligned, color-coded by appointment type (the title text is no longer repeated on the block). Patient names wrap on separate first/surname lines. Non-working days/hours are shown with a clearly darker disabled background while keeping the half-hour grid lines visible.
 - **Mobile:** compact cards with approximately 15% for start/end times and 85% for full name, phone, and title. Name stays inline without a separate background; status badges are removed.
-- **Overview:** Today / This Week / This Month / All Time appointments, today's clickable list, total patients, and patients added this month.
+- **Overview:** the desktop sidebar shows the menu plus statistics only: Today / This Week / This Month / All Time appointment counts, total patients, and patients added this month.
 - **Editing:** reschedule or delete with confirmation. Deletion frees the slot and keeps the patient; Cancel closes without saving. No duplicate details panel or status selector.
 - **Branding:** saved practice name controls navigation/tab title. Upload or remove a PNG/JPEG/WebP logo up to 128 KB; stored in Settings JSON.
 - **Settings:** working days, default hours plus optional hours per day, desktop calendar row interval (display only), language, export/import, and email/SMS webhook configuration.
-- **Google Calendar:** disabled for this version; controls remain visible but inactive and backend routes return 503.
+- **Google Calendar:** disabled for this version; controls remain visible but inactive and backend `/api/google/*` routes return 503. The `googleapis` dependency has been removed from the backend.
 
 ## Data and Deployment
 
@@ -47,6 +47,15 @@ Migration is not implemented yet. Restrict file permissions and LAN/VPN access t
 
 Backend defaults: `HOST=0.0.0.0`, `PORT=3000`. Frontend API override: `VITE_API_BASE_URL`. Changing backend port also requires updating the development proxy/launcher.
 
+### cPanel / Phusion Passenger
+
+- Backend files: [server/index.js](server/index.js) (startup file), [server/app.js](server/app.js) (routes), [server/startup.js](server/startup.js) (startup logging/retry), [server/dataStore.js](server/dataStore.js), and [server/package.json](server/package.json) (only `express` and `cors`).
+- Under Passenger, do not set `PORT`. Passenger replaces `http.Server#listen`, ignores the port and host, and binds its own Unix socket. `app.listen(PORT, HOST)` must be called exactly once, and `index.js` must not use top-level `await` because Passenger loads it with `require()`.
+- Startup writes one JSON log line per step to the Passenger log: `startup.begin` (including `moduleLoadMs`), `datastore.init.attempt` / `.ok` / `.failed`, `server.listening`, `server.listen.failed`, `startup.failed`, and `process.uncaughtException`. No patient data or tokens are logged.
+- Data-store initialization retries only transient file-system errors (`EMFILE`, `ENFILE`, `EAGAIN`, `EBUSY`, `EIO`, `ETIMEDOUT`, …) or a per-attempt timeout, then exits with status 1. Permission and configuration errors such as `EACCES` fail immediately. Optional environment variables, all bounded: `STARTUP_INIT_ATTEMPTS` (default 3, max 5), `STARTUP_INIT_RETRY_DELAY_MS` (default 500), `STARTUP_INIT_TIMEOUT_MS` (default 10000).
+- Missing JSON files are created with defaults only when they truly do not exist (`ENOENT`); existing files are never overwritten during initialization.
+- `/api/health` still returns `dataDir`, `patientsCount`, and `appointmentsCount` for the Settings panel. That reveals the server path and patient count to anyone who can reach the API, so keep the API restricted, or remove those fields together with the Settings health panel.
+
 ## Known Limits
 
 - Availability checks are not atomic reservations; simultaneous-device booking still needs server-side overlap enforcement.
@@ -62,6 +71,7 @@ React 18, TypeScript, Vite, Tailwind, Radix/shadcn, MUI pickers, React Scheduler
 npm run lint
 npm run test:e2e
 npm run test:e2e:backend
+npm run test:server   # Node-only backend startup/health tests, no browser or dev server
 ```
 
 See [docs/Testing.md](docs/Testing.md). Default E2E configuration selects smoke tests; some legacy tests need updating for current controls and `/app/`. Recent UI changes do not have a verified full regression pass.
@@ -69,6 +79,18 @@ See [docs/Testing.md](docs/Testing.md). Default E2E configuration selects smoke 
 `npm run build` creates deployment artifacts. `npm run preview` serves only the frontend, not the API.
 
 ## Changelog
+
+### 2026-10-14 - Sidebar Cleanup
+
+- Removed the "Today Overview" appointment list from the desktop sidebar. The sidebar now holds only the menu, appointment statistics, and patient statistics. The "Today" count remains as a statistic.
+
+### 2026-10-14 - Backend Startup Reliability (Passenger)
+
+- Removed the unused `googleapis` import and dependency. Its routes were already unreachable behind the 503 handler, yet it added about 2.3 s and about 100 MB to every cold start. Module loading now takes about 0.15 s.
+- Split the backend into `app.js` (routes, unchanged behavior) and `startup.js` (structured startup logs with durations, bounded initialization retry with a per-attempt timeout, and a non-zero exit on failure). `index.js` is now a thin, Passenger-compatible entry point.
+- Data store initialization no longer rewrites a JSON file with defaults when `fs.access` fails for reasons other than "file missing", and it never overwrites an existing file.
+- `server/package.json` now declares its real dependencies (`express`, `cors`) with a lockfile.
+- Added `npm run test:server` startup and health tests.
 
 ### 2026-10-13 - Mobile Patient Picker
 

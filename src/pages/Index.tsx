@@ -85,9 +85,6 @@ const Index = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const todayAppointments = sidebarAppointments
-    .filter((appointment) => isValid(new Date(appointment.startTime)) && isSameDay(new Date(appointment.startTime), today))
-    .sort((first, second) => new Date(first.startTime).getTime() - new Date(second.startTime).getTime());
 
   useEffect(() => {
     let isMounted = true;
@@ -150,12 +147,12 @@ const Index = () => {
 
   const sidebarStatItems = useMemo(
     () => [
-      { label: t('sidebar.today'), value: todayAppointments.length },
+      { label: t('sidebar.today'), value: sidebarAppointments.filter((appointment) => isValid(new Date(appointment.startTime)) && isSameDay(new Date(appointment.startTime), today)).length },
       { label: t('sidebar.thisWeek'), value: sidebarAppointments.filter((appointment) => isSameWeek(new Date(appointment.startTime), today, { weekStartsOn: 1 })).length },
       { label: t('sidebar.thisMonth'), value: sidebarAppointments.filter((appointment) => isSameMonth(new Date(appointment.startTime), today)).length },
       { label: t('sidebar.allTime'), value: sidebarStats.totalVisits },
     ],
-    [sidebarStats, sidebarAppointments, today, todayAppointments.length, t]
+    [sidebarStats, sidebarAppointments, today, t]
   );
 
   const patientStatItems = [
@@ -357,10 +354,8 @@ const Index = () => {
         patientStatsError={patientStatsError || overviewError}
         brandName={brandName}
         logoDataUrl={brandSettings.logoDataUrl}
-        todayAppointments={todayAppointments}
         overviewLoading={overviewLoading}
         overviewError={overviewError}
-        onAppointmentClick={handleAppointmentClick}
         onOverviewRetry={handleRefresh}
         className="hidden md:flex"
       />

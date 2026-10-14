@@ -329,14 +329,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
 
   return (
     <div className="space-y-6" data-testid="scheduler-grid">
-      {appointments.length === 0 && (
-        <div
-          data-testid="scheduler-empty-state"
-          className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground"
-        >
-          {t('scheduler.noData')}
-        </div>
-      )}
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">

@@ -1,6 +1,4 @@
 import { Calendar, Users, Settings, Stethoscope, RefreshCw } from 'lucide-react';
-import { format } from 'date-fns';
-import type { Appointment } from '@/types/appointment';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n';
@@ -19,10 +17,8 @@ interface SidebarProps {
   className?: string;
   brandName?: string;
   logoDataUrl?: string;
-  todayAppointments?: Appointment[];
   overviewLoading?: boolean;
   overviewError?: boolean;
-  onAppointmentClick?: (appointment: Appointment) => void;
   onOverviewRetry?: () => void;
 }
 
@@ -33,7 +29,7 @@ const navigation = [
 ];
 
 export function Sidebar({ activeTab, onTabChange, stats = [], className, brandName, logoDataUrl,
-  todayAppointments, overviewLoading, overviewError, onAppointmentClick, onOverviewRetry, patientStats = [], patientStatsError }: Readonly<SidebarProps>) {
+  overviewLoading, overviewError, onOverviewRetry, patientStats = [], patientStatsError }: Readonly<SidebarProps>) {
   const { t } = useI18n();
   return (
     <div className={cn('flex w-64 flex-col border-r border-sidebar-border/80 bg-sidebar shadow-soft', className)}>
@@ -86,10 +82,10 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
           })}
         </div>
 
-        {todayAppointments && (
-          <section className="mt-5 border-t border-sidebar-border/60 pt-4" aria-label={t('sidebar.todayOverview')} data-testid="today-overview">
+        {stats.length > 0 && (
+          <section className="mt-5 border-t border-sidebar-border/60 pt-4" aria-label={t('sidebar.appointmentStats')} data-testid="appointment-stats">
             <h2 className="mb-2 px-2 text-sm font-semibold">{t('sidebar.appointmentStats')}</h2>
-            <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 border-b border-sidebar-border/60 px-2 pb-3">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 px-2">
               {stats.map((stat) => (
                 <div key={stat.label} className="min-w-0">
                   <dt className="text-[11px] text-muted-foreground">{stat.label}</dt>
@@ -99,10 +95,8 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
                 </div>
               ))}
             </dl>
-            <h3 className="mb-2 px-2 text-xs font-medium text-muted-foreground">{t('sidebar.todayOverview')}</h3>
-            {overviewLoading && <output className="block px-2 text-xs text-muted-foreground">{t('mobile.loading')}</output>}
-            {!overviewLoading && overviewError && (
-              <div className="space-y-2 px-2">
+            {!overviewLoading && overviewError && onOverviewRetry && (
+              <div className="mt-3 space-y-2 px-2">
                 <p role="alert" className="text-xs text-destructive">{t('sidebar.overviewFailed')}</p>
                 <Button type="button" variant="outline" size="sm" onClick={onOverviewRetry}>
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
@@ -110,45 +104,6 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
                 </Button>
               </div>
             )}
-            {!overviewLoading && !overviewError && todayAppointments.length === 0 && (
-              <p className="px-2 text-xs text-muted-foreground">{t('sidebar.noAppointmentsToday')}</p>
-            )}
-            {!overviewLoading && !overviewError && (
-              <div className="max-h-64 space-y-1 overflow-y-auto">
-                {todayAppointments.map((appointment) => (
-                  <Button
-                    key={appointment.id}
-                    type="button"
-                    variant="ghost"
-                    data-testid="today-overview-appointment"
-                    className="h-auto min-h-12 w-full items-start justify-start gap-2 rounded-md px-2 py-2 text-left font-normal"
-                    onClick={() => onAppointmentClick?.(appointment)}
-                  >
-                    <time dateTime={appointment.startTime} className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                      {format(new Date(appointment.startTime), 'HH:mm')}
-                    </time>
-                    <span className="min-w-0 whitespace-normal">
-                      <span className="block break-words text-xs font-medium">{appointment.patientName || t('common.unknown')}</span>
-                      <span className="block break-words text-[11px] text-muted-foreground">{appointment.title}</span>
-                    </span>
-                  </Button>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {!todayAppointments && stats.length > 0 && (
-          <section className="mt-5 space-y-2 border-t border-sidebar-border/60 px-2 pt-3">
-            <h2 className="text-sm font-semibold">{t('sidebar.appointmentStats')}</h2>
-            <dl className="space-y-2">
-            {stats.map((stat) => (
-              <div key={stat.label} className="flex items-center justify-between text-sm">
-                <dt className="text-muted-foreground">{stat.label}</dt>
-                <dd className="font-semibold tabular-nums">{overviewLoading || overviewError ? '--' : stat.value}</dd>
-              </div>
-            ))}
-            </dl>
           </section>
         )}
         {patientStats.length > 0 && (

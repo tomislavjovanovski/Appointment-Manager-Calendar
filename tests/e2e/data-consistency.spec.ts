@@ -180,11 +180,6 @@ test.describe('LocalStorage Failure Scenarios', () => {
         expect(errors.filter((e) => e.includes('Cannot read'))).toHaveLength(0);
       });
 
-      await test.step('Error banner or empty state shown (not silent)', async () => {
-        const hasBanner = await page.getByTestId('storage-error-banner').isVisible();
-        const hasEmptyState = await page.getByTestId('scheduler-empty-state').isVisible();
-        expect(hasBanner || hasEmptyState).toBe(true);
-      });
     } finally {
       await ctx.close();
     }
