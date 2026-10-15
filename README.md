@@ -36,6 +36,7 @@ Starts both frontend and backend, reusing an already healthy backend. No separat
 - **Editing:** reschedule or delete with confirmation. Deletion frees the slot and keeps the patient; Cancel closes without saving. No duplicate details panel or status selector.
 - **Branding:** saved practice name controls navigation/tab title. Upload or remove a PNG/JPEG/WebP logo up to 128 KB; stored in Settings JSON.
 - **Settings:** working days, default hours plus optional hours per day, desktop calendar row interval (display only), language, export/import, and email/SMS webhook configuration.
+- **Statistics:** pick a month to see days worked (days with appointments out of the working days in Settings), appointments, patients (new on their first visit vs returning), and hours worked. A table breaks appointments and hours down by type and compares counts with the previous month. Cancelled and no-show appointments are not counted. Plain tables, no charts.
 - **Google Calendar:** disabled for this version; the desktop calendar header control has been removed, while integration controls remain visible but inactive in Settings. Backend `/api/google/*` routes return 503. The `googleapis` dependency has been removed from the backend.
 
 ## Data and Deployment
@@ -138,6 +139,13 @@ See [docs/Testing.md](docs/Testing.md). Default E2E configuration selects smoke 
 `npm run build` creates deployment artifacts. `npm run preview` serves only the frontend, not the API.
 
 ## Changelog
+
+### 2026-10-15 - Monthly Statistics
+
+- Added a Statistics tab (desktop tabs and mobile menu) with a month picker, four summary boxes (days worked, appointments, patients new/returning, hours worked) and a per-type table with hours, last month's count and the difference. Only whole numbers and hours/minutes; no averages, percentages or chart library.
+- Calculations live in `src/lib/statistics.ts`; the page loads existing appointments and settings, so no backend change is needed.
+- Added `tests/e2e/statistics.spec.ts` and Statistics to the navigation smoke test.
+- The app now redirects plain `http://` to `https://` (except local and private-network hosts). The production session cookie is `Secure`, so over HTTP a fresh login was immediately reported as "session expired" on mobile.
 
 ### 2026-10-14 - Personal Sidebar and Booking Defaults
 

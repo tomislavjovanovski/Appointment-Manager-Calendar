@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { APP_NAVIGATION, Sidebar } from '@/components/layout/Sidebar';
 import { WeeklyScheduler } from '@/components/dashboard/WeeklyScheduler';
 import { PatientList } from '@/components/patients/PatientList';
+import { MonthlyStatistics } from '@/components/statistics/MonthlyStatistics';
 import { TabbedSettingsPanel } from '@/components/settings/TabbedSettingsPanel';
 import AppointmentDialog from '@/components/appointments/AppointmentDialog';
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
@@ -164,6 +165,7 @@ const Index = () => {
   const activeTabTitle = {
     dashboard: t('sidebar.dashboard'),
     patients: t('sidebar.patients'),
+    statistics: t('sidebar.statistics'),
     settings: t('sidebar.settings'),
   }[activeTab] ?? t('sidebar.dashboard');
 
@@ -359,6 +361,8 @@ const Index = () => {
             refreshTrigger={refreshTrigger}
           />
         );
+      case 'statistics':
+        return <MonthlyStatistics navigation={renderNavigationTabs()} refreshTrigger={refreshTrigger} />;
       case 'settings':
         return <TabbedSettingsPanel navigation={renderNavigationTabs()} onSettingsSaved={setBrandSettings} />;
       default:

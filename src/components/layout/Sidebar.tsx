@@ -1,4 +1,4 @@
-import { Calendar, Users, Settings, Stethoscope, RefreshCw, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Calendar, Users, Settings, Stethoscope, RefreshCw, LogOut, PanelLeftClose, PanelLeftOpen, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n';
@@ -29,6 +29,7 @@ interface SidebarProps {
 export const APP_NAVIGATION = [
   { id: 'dashboard', nameKey: 'sidebar.dashboard' as const, icon: Calendar, testId: 'nav-scheduler' },
   { id: 'patients', nameKey: 'sidebar.patients' as const, icon: Users, testId: 'nav-patients' },
+  { id: 'statistics', nameKey: 'sidebar.statistics' as const, icon: BarChart3, testId: 'nav-statistics' },
   { id: 'settings', nameKey: 'sidebar.settings' as const, icon: Settings, testId: 'nav-settings' },
 ];
 

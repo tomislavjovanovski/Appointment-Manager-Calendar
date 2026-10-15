@@ -96,6 +96,7 @@ test.describe('Smoke — Application Loads', () => {
     const navItems = [
       { testId: 'nav-scheduler', pageTestId: 'scheduler-grid' },
       { testId: 'nav-patients', pageTestId: 'patients-page' },
+      { testId: 'nav-statistics', pageTestId: 'statistics-page' },
       { testId: 'nav-settings', pageTestId: 'settings-page' },
     ];
 
