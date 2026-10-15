@@ -164,7 +164,10 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
           start: start,
           end: end,
           color: appointmentTypeColor(apt.type),
-          appointment: apt
+          appointment: apt,
+          // The scheduler keeps its first eventRenderer, so patient data must travel with the event.
+          patient: patients?.find((record) => record.id === apt.patientId),
+          patientsLoaded: patients !== null,
         };
       } catch (e) {
         console.warn('Failed to map appointment:', apt, e);
@@ -417,7 +420,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
 
                 const apt: Appointment | undefined = appointments.find((record) => record.id === String(schedulerEvent?.event_id ?? schedulerEvent?.appointment?.id ?? schedulerEvent?.id))
                   ?? schedulerEvent?.appointment ?? schedulerEvent;
-                const patient = patients?.find((record) => record.id === apt?.patientId);
+                const patient: Patient | undefined = schedulerEvent?.patient;
                 const patientName =
                   (patient ? `${patient.firstName} ${patient.lastName}`.trim() : undefined) ||
                   apt?.patientName ||
@@ -429,7 +432,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 const displayTitle = patientName;
                 const firstName = patient?.firstName?.trim() || displayTitle;
                 const lastName = patient?.lastName?.trim();
-                const patientPhone = patient?.phone?.trim() || (patients === null ? t('dashboard.phoneUnavailable') : '');
+                const patientPhone = patient?.phone?.trim() || (schedulerEvent?.patientsLoaded === false ? t('dashboard.phoneUnavailable') : '');
                 const bgColor = schedulerEvent?.color || '#3b82f6';
                 const isDragging = draggingEventId === apt?.id;
                 const isCurrent = Boolean(apt && isCurrentAppointment(apt));

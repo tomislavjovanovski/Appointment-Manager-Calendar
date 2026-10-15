@@ -51,7 +51,7 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
       <div className={cn('border-b border-sidebar-border/60 bg-sidebar-accent/30 py-4', collapsed ? 'px-2' : 'px-3')}>
         <div className="flex items-center gap-2.5">
           {logoDataUrl ? (
-            <img src={logoDataUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl bg-background/70 p-1 object-contain" />
+            <img src={logoDataUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-contain" />
           ) : (
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-teal-500 shadow-sm ring-1 ring-white/40">
               <Stethoscope className="h-4 w-4 text-white" />
