@@ -1,4 +1,5 @@
-import { Calendar, Users, Settings, Stethoscope, RefreshCw, LogOut, PanelLeftClose, PanelLeftOpen, BarChart3 } from 'lucide-react';
+import ITerminLogo from '@/components/brand/ITerminLogo';
+import { Calendar, Users, Settings, RefreshCw, LogOut, PanelLeftClose, PanelLeftOpen, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n';
@@ -54,9 +55,7 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
           {logoDataUrl ? (
             <img src={logoDataUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-contain" />
           ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-teal-500 shadow-sm ring-1 ring-white/40">
-              <Stethoscope className="h-4 w-4 text-white" />
-            </div>
+            <ITerminLogo size={36} />
           )}
           {!collapsed && <div className="min-w-0">
             <h1 className="break-words text-sm font-semibold text-sidebar-foreground">

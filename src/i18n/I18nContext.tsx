@@ -41,7 +41,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .then((s) => {
         if (!isMounted) return;
         setLocaleState(s.locale === 'mk' ? 'mk' : 'en');
-        document.title = s.practiceName?.trim() || 'ClinicCalendar';
+        document.title = s.practiceName?.trim() || 'iTermin';
         setInitialSettings(s);
       })
       .catch(() => {

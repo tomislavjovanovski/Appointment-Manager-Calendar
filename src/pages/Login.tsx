@@ -8,9 +8,9 @@ import {
   EyeOff,
   Loader2,
   ShieldCheck,
-  Stethoscope,
   UsersRound,
 } from 'lucide-react';
+import ITerminLogo from '@/components/brand/ITerminLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -107,12 +107,7 @@ export default function Login() {
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -left-36 h-96 w-96 rounded-full bg-indigo-500/30 blur-3xl" />
 
           <div className="relative">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
-                <Stethoscope className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <span className="text-lg font-semibold tracking-tight">{t('sidebar.appName')}</span>
-            </div>
+            <ITerminLogo variant="horizontal" size={44} className="gap-3" iconClassName="text-current" wordmarkClassName="text-lg" />
 
             <div className="mt-6 max-w-md">
               <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium tracking-wide text-blue-50">
@@ -165,11 +160,8 @@ export default function Login() {
         </aside>
 
         <div className="login-form-panel flex min-w-0 flex-col justify-center px-5 py-5 sm:px-10 sm:py-7 lg:px-10 xl:px-14">
-          <div className="login-mobile-brand mb-5 flex items-center gap-3 lg:hidden">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-medical-purple text-primary-foreground shadow-md shadow-blue-600/20">
-              <Stethoscope className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span className="font-semibold tracking-tight text-slate-900">{t('sidebar.appName')}</span>
+          <div className="login-mobile-brand mb-5 flex items-center lg:hidden">
+            <ITerminLogo variant="horizontal" size={44} className="gap-3" wordmarkClassName="text-slate-900" />
           </div>
 
           <div className="mb-5">

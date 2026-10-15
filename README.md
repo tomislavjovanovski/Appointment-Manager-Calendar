@@ -1,14 +1,14 @@
-# ClinicCalendar
+# iTermin
 
 **A lightweight appointment and patient management app for a dental practice.**
 
-ClinicCalendar provides a weekly scheduling view, patient records, appointment statistics, and configurable clinic settings in an English/Macedonian interface. It is designed for a single clinic, with a desktop calendar and a compact mobile agenda.
+iTermin provides a weekly scheduling view, patient records, appointment statistics, and configurable clinic settings in an English/Macedonian interface. It is designed for a single clinic, with a desktop calendar and a compact mobile agenda.
 
 > **Current architecture:** React + TypeScript frontend, Express backend, and JSON-file storage. Google Calendar integration is currently disabled.
 
 ## ✨ At a glance
 
-**ClinicCalendar** is a lightweight appointment and patient management application designed for dental clinics, featuring a bilingual interface in English and Macedonian.
+**iTermin** is a lightweight appointment and patient management application designed for dental clinics, featuring a bilingual interface in English and Macedonian.
 
 - 📅 **Smart scheduling** — Weekly calendar, configurable appointment durations, and availability checks.
 - 🦷 **Patient management** — Create, search, and manage patient records.
@@ -167,7 +167,7 @@ The command prompts for a password. Authentication files are stored in the priva
 
 ### Data storage and file layout
 
-ClinicCalendar currently uses **JSON files**, not a database.
+iTermin currently uses **JSON files**, not a database.
 
 | Data | Storage |
 |---|---|
@@ -343,7 +343,7 @@ The private auth directory can remain in place; the old code does not use it. **
 
 ## Authentication and security
 
-ClinicCalendar currently supports **one clinic with one or more administrator accounts**. It does not yet support registration, password reset, social login, or account switching.
+iTermin currently supports **one clinic with one or more administrator accounts**. It does not yet support registration, password reset, social login, or account switching.
 
 - **Storage:** `users.json` and `sessions.json` live in `AUTH_DATA_DIR`, defaulting to `../private/auth` relative to the backend. On cPanel, use `/home/devforge/private/auth`, outside `public_html` and outside `public/data`.
 - **Permissions:** the auth directory should use `0700` permissions and its files `0600`. Writes are atomic (temporary file plus rename) and protected by a lock file shared by Passenger processes.
