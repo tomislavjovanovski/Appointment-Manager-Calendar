@@ -75,7 +75,8 @@ test.describe('Smoke — Application Loads', () => {
     await expect(page.getByTestId('duration-select')).toContainText('45');
   });
 
-  test('app renders without console errors', async ({ page }) => {
+  // pageClean mocks the data endpoints; without them the real backend answers 401 and the browser logs it.
+  test('app renders without console errors', async ({ pageClean: page }) => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     page.on('console', (msg) => {

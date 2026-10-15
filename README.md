@@ -145,7 +145,7 @@ See [docs/Testing.md](docs/Testing.md). Default E2E configuration selects smoke 
 - Added a Statistics tab (desktop tabs and mobile menu) with a month picker, four summary boxes (days worked, appointments, patients new/returning, hours worked) and a per-type table with hours, last month's count and the difference. Only whole numbers and hours/minutes; no averages, percentages or chart library.
 - Calculations live in `src/lib/statistics.ts`; the page loads existing appointments and settings, so no backend change is needed.
 - Added `tests/e2e/statistics.spec.ts` and Statistics to the navigation smoke test.
-- Fixed two smoke tests that opened Settings ("all main navigation items are reachable", "settings page allows saving practice name"): `/api/health/details` is now mocked with the test session, so a running backend no longer answers 401 and sends the app back to the login page.
+- Fixed two smoke tests that opened Settings ("all main navigation items are reachable", "settings page allows saving practice name"): `/api/health/details` is now mocked with the test session, so a running backend no longer answers 401 and sends the app back to the login page. The console-errors smoke test now uses the mocked-data fixture for the same reason.
 - E2E tests now run on Chromium only, locally and in CI; the statistics spec is included in the default run.
 - The app now redirects plain `http://` to `https://` (except local and private-network hosts). The production session cookie is `Secure`, so over HTTP a fresh login was immediately reported as "session expired" on mobile.
 
