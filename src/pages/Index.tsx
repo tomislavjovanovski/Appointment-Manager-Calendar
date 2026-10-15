@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { APP_NAVIGATION, Sidebar } from '@/components/layout/Sidebar';
 import { WeeklyScheduler } from '@/components/dashboard/WeeklyScheduler';
 import { PatientList } from '@/components/patients/PatientList';
 import { TabbedSettingsPanel } from '@/components/settings/TabbedSettingsPanel';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MobileAgenda } from '@/components/dashboard/MobileAgenda';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Menu, Plus } from 'lucide-react';
 import { isSameDay, isSameMonth, isSameWeek, isValid } from 'date-fns';
 
@@ -255,7 +256,7 @@ const Index = () => {
           title: data.title,
           patientId: data.patientId,
           patientName: patientName,
-          type: data.type || 'consultation',
+          type: data.type || 'procedure',
           startTime: startISO,
           endTime: endISO,
           duration: validDuration,
@@ -310,6 +311,25 @@ const Index = () => {
     }
   };
 
+  const renderNavigationTabs = () => (
+    <TabsList aria-label={t('sidebar.menu')} className="hidden h-auto justify-start gap-0.5 rounded-lg border border-border/60 bg-background/80 p-0.5 shadow-sm md:inline-flex">
+      {APP_NAVIGATION.map((item) => {
+        const Icon = item.icon;
+        return (
+          <TabsTrigger
+            key={item.id}
+            value={item.id}
+            data-testid={item.testId}
+            className="gap-1.5 rounded-md px-2.5 py-1.5 text-xs hover:bg-muted hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            {t(item.nameKey)}
+          </TabsTrigger>
+        );
+      })}
+    </TabsList>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -322,6 +342,7 @@ const Index = () => {
             />
             <div className="hidden md:block">
               <WeeklyScheduler
+                navigation={renderNavigationTabs()}
                 onCreateAppointment={handleCreateAppointment}
                 onAppointmentClick={handleAppointmentClick}
                 refreshTrigger={refreshTrigger}
@@ -332,13 +353,14 @@ const Index = () => {
       case 'patients':
         return (
           <PatientList
+            navigation={renderNavigationTabs()}
             onPatientClick={handlePatientClick}
             onCreatePatient={handleCreatePatient}
             refreshTrigger={refreshTrigger}
           />
         );
       case 'settings':
-        return <TabbedSettingsPanel onSettingsSaved={setBrandSettings} />;
+        return <TabbedSettingsPanel navigation={renderNavigationTabs()} onSettingsSaved={setBrandSettings} />;
       default:
         return <div>{t('notFound.message')}</div>;
     }
@@ -357,6 +379,7 @@ const Index = () => {
         overviewLoading={overviewLoading}
         overviewError={overviewError}
         onOverviewRetry={handleRefresh}
+        showNavigation={false}
         className="hidden md:flex"
       />
       <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
@@ -367,7 +390,7 @@ const Index = () => {
           <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} patientStats={patientStatItems} patientStatsError={patientStatsError || overviewError} overviewLoading={overviewLoading} overviewError={overviewError} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="h-full w-full border-r-0" />
         </SheetContent>
       </Sheet>
-      <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:p-8 lg:px-10 lg:py-9">
+      <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:px-3 md:py-4">
         <header className="mb-5 flex items-center justify-between md:hidden">
           <Button
             type="button"
@@ -390,7 +413,9 @@ const Index = () => {
             <Plus className="h-5 w-5" />
           </Button>
         </header>
-        <div className="mx-auto max-w-[1600px]">{renderContent()}</div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsContent value={activeTab} className="mt-0">{renderContent()}</TabsContent>
+        </Tabs>
       </main>
       
       <AppointmentDialog

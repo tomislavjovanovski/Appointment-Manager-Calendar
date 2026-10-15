@@ -108,6 +108,8 @@ npx playwright test --debug tests/e2e/drag-drop-rescheduling.spec.ts
 npx playwright show-report
 ```
 
+**Login:** the app requires a session. UI tests mock `/api/auth/me` automatically. Tests that call the real backend need a test account: set `E2E_AUTH_EMAIL` and `E2E_AUTH_PASSWORD` (create it with `node server/manage-users.js create`), and the fixtures sign in before each test. `tests/e2e/concurrency.spec.ts` imports `@playwright/test` directly and does not sign in yet. Backend auth and API-protection tests run without a browser: `npm run test:server`.
+
 ---
 
 ### Required `data-testid` Attributes

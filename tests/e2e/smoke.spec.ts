@@ -6,8 +6,75 @@ import { test, expect } from '../fixtures/base';
 import { bookingHelper } from '../utils/bookingHelper';
 import { patientHelper } from '../utils/patientHelper';
 import { PATIENTS, nextWorkingSlot } from '../test-data/seed';
+import { E2E_USER } from '../utils/authHelper';
 
 test.describe('Smoke — Application Loads', () => {
+  test('desktop sidebar preference persists and never collapses the mobile menu', async ({ pageWithPatients: page }) => {
+    let collapsed = false;
+    await page.route('**/api/auth/me', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ user: { ...E2E_USER, preferences: { desktopSidebarCollapsed: collapsed } }, csrfToken: 'e2e-csrf-token' }),
+    }));
+    await page.route('**/api/auth/preferences', async (route) => {
+      collapsed = route.request().postDataJSON().desktopSidebarCollapsed;
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ user: { ...E2E_USER, preferences: { desktopSidebarCollapsed: collapsed } } }),
+      });
+    });
+    await page.route('**/api/health/details', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ok: true, dataDir: 'test', patientsCount: 2, appointmentsCount: 0 }),
+    }));
+    await page.goto('/app/');
+    await page.getByTestId('sidebar-toggle').click();
+    await expect(page.getByTestId('desktop-sidebar')).toHaveAttribute('data-collapsed', 'true');
+    await expect(page.getByTestId('desktop-sidebar').getByTestId('appointment-stats')).toBeHidden();
+    await page.reload();
+    await expect(page.getByTestId('desktop-sidebar')).toHaveAttribute('data-collapsed', 'true');
+    await page.getByTestId('nav-settings').click();
+    await expect(page.getByTestId('settings-sidebar-collapsed')).toBeChecked();
+    await page.getByTestId('settings-sidebar-collapsed').click();
+    await expect(page.getByTestId('desktop-sidebar')).toHaveAttribute('data-collapsed', 'false');
+    await page.getByTestId('sidebar-toggle').click();
+    await expect(page.getByTestId('desktop-sidebar')).toHaveAttribute('data-collapsed', 'true');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(page.getByTestId('mobile-sidebar')).toHaveAttribute('data-collapsed', 'false');
+    await expect(page.getByTestId('mobile-sidebar').getByTestId('appointment-stats')).toBeVisible();
+    await expect(page.getByTestId('mobile-sidebar').getByTestId('sidebar-toggle')).toHaveCount(0);
+  });
+
+  test('type duration defaults are configurable and booking durations stay editable', async ({ pageWithPatients: page }) => {
+    await page.route('**/api/health/details', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, dataDir: 'test', patientsCount: 2, appointmentsCount: 0 }),
+    }));
+    await page.goto('/app/');
+    await page.getByTestId('nav-settings').click();
+    await expect(page.getByTestId('settings-type-duration-procedure')).toContainText('30');
+    await expect(page.getByTestId('settings-type-duration-prosthetics-orthodontics')).toContainText('60');
+    await page.getByTestId('settings-type-duration-procedure').click();
+    await page.getByRole('option', { name: '45 minutes', exact: true }).click();
+    await expect(page.getByTestId('settings-default-type-procedure')).toBeChecked();
+    await page.getByTestId('settings-default-type-prosthetics-orthodontics').click();
+    const saved = page.waitForResponse((response) => response.url().endsWith('/api/settings') && response.request().method() === 'PUT');
+    await page.getByTestId('save-settings-btn').click();
+    expect((await saved).ok()).toBe(true);
+
+    await page.getByTestId('nav-scheduler').click();
+    await page.getByTestId('new-appointment-btn').click();
+    await expect(page.getByTestId('appointment-type-select')).toContainText('Prosthetics');
+    await expect(page.getByTestId('duration-select')).toContainText('60');
+    await bookingHelper.selectRadixOption(page, 'duration-select', 'duration-option-90');
+    await expect(page.getByTestId('duration-select')).toContainText('90');
+    await page.getByTestId('appointment-notes').fill('Manual duration is preserved');
+    await expect(page.getByTestId('duration-select')).toContainText('90');
+    await bookingHelper.selectRadixOption(page, 'appointment-type-select', 'appointment-type-option-procedure');
+    await expect(page.getByTestId('duration-select')).toContainText('45');
+  });
+
   test('app renders without console errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));

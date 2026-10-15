@@ -17,10 +17,15 @@ import { NotificationManager } from '@/components/notifications/NotificationMana
 import { useI18n } from '@/i18n';
 import type { AppLocale } from '@/i18n/types';
 import { buildApiUrl } from '@/lib/storage';
+import { authFetch } from '@/lib/auth';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { format, isValid, parse } from 'date-fns';
 import { getDayHours } from '@/lib/appointmentAvailability';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/auth/AuthProvider';
+import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES, APPOINTMENT_DURATIONS, DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
 
 function SettingsTimeInput({ id, testId, value, onChange }: Readonly<{
   id: string;
@@ -85,10 +90,12 @@ type ApiHealthResponse = {
   appointmentsCount: number;
 };
 
-export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
+export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
   onSettingsSaved?: (settings: AppointmentSettings) => void;
+  navigation?: React.ReactNode;
 }>) {
   const { t, setLocale } = useI18n();
+  const { user, saveSidebarCollapsed, savingSidebarPreference } = useAuth();
   const [settings, setSettings] = useState<AppointmentSettings>(() => settingsStorage.getCached() ?? {
     locale: 'en',
     workingDays: [1, 2, 3, 4, 5],
@@ -127,7 +134,7 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
     setApiHealthError(null);
 
     try {
-      const response = await fetch(buildApiUrl('/health'));
+      const response = await authFetch(buildApiUrl('/health/details'));
       const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
@@ -279,6 +286,7 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
 
   return (
     <div className="w-full space-y-4 sm:space-y-6" data-testid="settings-page">
+      <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="space-y-1">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -287,6 +295,8 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
           <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t('settings.title')}</h2>
         </div>
         <p className="hidden max-w-2xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground sm:block">{t('settings.subtitle')}</p>
+      </div>
+      <div className="ml-auto flex items-center justify-end sm:pt-0.5">{navigation}</div>
       </div>
 
       <Tabs defaultValue="general" className="space-y-4 sm:space-y-6">
@@ -370,6 +380,72 @@ export function TabbedSettingsPanel({ onSettingsSaved }: Readonly<{
               </Select>
             </SettingsSection>
           </div>
+
+          <SettingsSection icon={Settings} title={t('settings.desktopSidebar')} description={t('settings.desktopSidebarHint')}>
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="desktop-sidebar-collapsed">{t('settings.collapseSidebar')}</Label>
+              <Switch
+                id="desktop-sidebar-collapsed"
+                data-testid="settings-sidebar-collapsed"
+                checked={user?.preferences?.desktopSidebarCollapsed === true}
+                disabled={savingSidebarPreference}
+                onCheckedChange={(collapsed) => {
+                  void saveSidebarCollapsed(collapsed).catch(() => {
+                    toast({ title: t('settings.saveErrorTitle'), description: t('settings.sidebarSaveError'), variant: 'destructive' });
+                  });
+                }}
+              />
+            </div>
+          </SettingsSection>
+
+          <SettingsSection icon={Clock} title={t('settings.typeDurations')} description={t('settings.typeDurationsHint')}>
+            <p className="text-sm text-muted-foreground">{t('settings.defaultAppointmentTypeHint')}</p>
+            <RadioGroup
+              aria-label={t('settings.defaultAppointmentType')}
+              value={settings.defaultAppointmentType ?? 'procedure'}
+              onValueChange={(value) => {
+                const type = APPOINTMENT_TYPE_VALUES.find((type) => type === value);
+                if (!type) throw new Error('Invalid default appointment type');
+                setSettings((current) => ({ ...current, defaultAppointmentType: type }));
+              }}
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {APPOINTMENT_TYPE_VALUES.map((type) => (
+                <div key={type} className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor={`default-duration-${type}`} className="flex min-w-0 items-center gap-2 leading-snug">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: APPOINTMENT_TYPES[type].color }} aria-hidden="true" />
+                      {t(APPOINTMENT_TYPES[type].labelKey)}
+                    </Label>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <RadioGroupItem value={type} id={`default-type-${type}`} data-testid={`settings-default-type-${type}`} aria-label={`${t(APPOINTMENT_TYPES[type].labelKey)} — ${t('settings.defaultAppointmentType')}`} />
+                      <Label htmlFor={`default-type-${type}`} className="cursor-pointer text-xs">{t('settings.defaultTypeShort')}</Label>
+                    </div>
+                  </div>
+                  <Select
+                    value={String(settings.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type])}
+                    onValueChange={(value) => {
+                      const duration = APPOINTMENT_DURATIONS.find((minutes) => String(minutes) === value);
+                      if (duration === undefined) throw new Error('Invalid appointment duration');
+                      setSettings((current) => ({
+                        ...current,
+                        appointmentTypeDurations: { ...current.appointmentTypeDurations, [type]: duration },
+                      }));
+                    }}
+                  >
+                    <SelectTrigger id={`default-duration-${type}`} data-testid={`settings-type-duration-${type}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {APPOINTMENT_DURATIONS.map((minutes) => (
+                        <SelectItem key={minutes} value={String(minutes)}>{t('settings.minutes', { n: minutes })}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </RadioGroup>
+          </SettingsSection>
 
           <SettingsSection icon={Clock} title={t('settings.workingHours')} contentClassName="space-y-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">

@@ -50,12 +50,13 @@ import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } fro
 import type { Appointment, AppointmentSettings, Patient as StoredPatient } from "@/types/appointment";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from '@/i18n';
+import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES, APPOINTMENT_DURATIONS, DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
 
 const appointmentSchema = z.object({
   title: z.string(),
   patientId: z.string().nullable(),
   syncToGoogle: z.boolean().optional(),
-  type: z.enum(["consultation", "follow-up", "procedure"]).optional(),
+  type: z.enum(APPOINTMENT_TYPE_VALUES).optional(),
   status: z.enum(["scheduled", "completed", "cancelled", "no-show"]).optional(),
   duration: z.enum(["30", "45", "60", "90", "120"]).optional(),
   start: z.string().min(1),
@@ -286,12 +287,18 @@ export default function AppointmentDialog({
     const defaultStart = appointment || selectedDate
       ? new Date(mergedInitial?.start ?? rawDefaultStart)
       : roundToInterval(rawDefaultStart, 15);
-    const duration = String(mergedInitial?.duration ?? "30") as AppointmentDuration;
+    const type = mergedInitial?.type ?? (effectiveMode === "create"
+      ? settingsStorage.getCached()?.defaultAppointmentType ?? "procedure"
+      : "consultation");
+    const duration = String(mergedInitial?.duration ??
+      (effectiveMode === "create"
+        ? settingsStorage.getCached()?.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type]
+        : 30)) as AppointmentDuration;
 
     return {
       title: mergedInitial?.title ?? "",
       patientId: mergedInitial?.patientId ?? null,
-      type: (mergedInitial?.type ?? "consultation") as AppointmentType,
+      type,
       status: (mergedInitial?.status ?? "scheduled") as AppointmentStatus,
       duration,
       start: mergedInitial?.start
@@ -303,7 +310,7 @@ export default function AppointmentDialog({
       notes: mergedInitial?.notes ?? "",
       syncToGoogle: false,
     };
-  }, [appointment, mergedInitial, selectedDate]);
+  }, [appointment, effectiveMode, mergedInitial, selectedDate]);
 
   const { register, handleSubmit, setValue, watch, formState, reset } = useForm<FormData>({
     resolver: zodResolver(appointmentSchema),
@@ -395,16 +402,24 @@ export default function AppointmentDialog({
   }, [open, reset, defaultValues]);
 
   useEffect(() => {
-    if (!open || effectiveMode !== 'create' || !selectedDate || availabilityLoading ||
+    if (!open || effectiveMode !== 'create' || availabilityLoading ||
         availabilityError || !availabilitySettings || initialSlotSelectedRef.current) return;
     initialSlotSelectedRef.current = true;
+    const type = mergedInitial?.type ?? availabilitySettings.defaultAppointmentType ?? 'procedure';
+    if (!formState.dirtyFields.type) {
+      setValue('type', type, { shouldValidate: true });
+    }
+    if (mergedInitial?.duration || formState.dirtyFields.duration || formState.dirtyFields.type) return;
     const start = new Date(defaultValues.start);
-    const fittingDuration = getAvailableStartDurations(start, 30, availabilitySettings, occupiedAppointments).get(start.getTime());
+    const preferredDuration = availabilitySettings.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type];
+    const fittingDuration = selectedDate
+      ? getAvailableStartDurations(start, preferredDuration, availabilitySettings, occupiedAppointments).get(start.getTime())
+      : preferredDuration;
     if (fittingDuration === undefined) return;
     setValue('duration', String(fittingDuration) as AppointmentDuration, { shouldValidate: true });
     setValue('start', toDateTimeLocal(start), { shouldValidate: true });
     setValue('end', toDateTimeLocal(addMinutes(start, fittingDuration)), { shouldValidate: true });
-  }, [open, effectiveMode, selectedDate, availabilityLoading, availabilityError, availabilitySettings, occupiedAppointments, defaultValues, setValue]);
+  }, [open, effectiveMode, selectedDate, availabilityLoading, availabilityError, availabilitySettings, occupiedAppointments, defaultValues, mergedInitial, formState.dirtyFields.duration, formState.dirtyFields.type, setValue]);
 
   useEffect(() => {
     const selectedPatientId = mergedInitial?.patientId ?? null;
@@ -517,7 +532,7 @@ export default function AppointmentDialog({
     const type = data.type ?? 'consultation';
     const enrichedData: AppointmentDialogSubmitData = {
       ...data,
-      title: data.title.trim() || t(`appointment.types.${type === 'follow-up' ? 'followUp' : type}`),
+      title: data.title.trim() || t(APPOINTMENT_TYPES[type].labelKey),
       patientName: patient ? patient.name : undefined,
       syncToGoogle: false,
     };
@@ -616,7 +631,7 @@ export default function AppointmentDialog({
                         id="title"
                         data-testid="appointment-title-input"
                         {...register("title")}
-                        placeholder={t(`appointment.types.${watch("type") === 'follow-up' ? 'followUp' : watch("type") ?? 'consultation'}`)}
+                        placeholder={t(APPOINTMENT_TYPES[watch("type") ?? 'procedure'].labelKey)}
                         className="h-10 border-border bg-background shadow-sm"
                       />
                     </div>
@@ -624,19 +639,36 @@ export default function AppointmentDialog({
                       <div className="relative min-w-0">
                         <Label id="appointment-type-label" htmlFor="type" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">{t('createAppointment.type')}</Label>
                         <Select
-                          onValueChange={(val) => setValue("type", (val ?? "consultation") as AppointmentType, {
-                            shouldDirty: true,
-                            shouldValidate: true,
-                          })}
-                          value={watch("type") ?? "consultation"}
+                          disabled={availabilityLoading || availabilityError}
+                          onValueChange={(val) => {
+                            const type = APPOINTMENT_TYPE_VALUES.find((type) => type === val);
+                            if (!type) throw new Error('Invalid appointment type');
+                            setValue("type", type, { shouldDirty: true, shouldValidate: true });
+                            const duration = availabilitySettings?.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type];
+                            setValue("duration", String(duration) as AppointmentDuration, { shouldDirty: true, shouldValidate: true });
+                          }}
+                          value={watch("type") ?? "procedure"}
                         >
                           <SelectTrigger id="type" aria-labelledby="appointment-type-label" data-testid="appointment-type-select" className="h-10 border-border bg-background shadow-sm">
-                            <SelectValue placeholder={t('appointment.selectType')} />
+                            <SelectValue placeholder={t('appointment.selectType')}>
+                              <span className="inline-flex min-w-0 items-center gap-2">
+                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: APPOINTMENT_TYPES[watch("type") ?? "procedure"].color }} aria-hidden="true" />
+                                <span className="truncate">{t(APPOINTMENT_TYPES[watch("type") ?? "procedure"].labelKey)}</span>
+                              </span>
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="consultation" data-testid="appointment-type-option-consultation">{t('appointment.types.consultation')}</SelectItem>
-                            <SelectItem value="follow-up" data-testid="appointment-type-option-follow-up">{t('appointment.types.followUp')}</SelectItem>
-                            <SelectItem value="procedure" data-testid="appointment-type-option-procedure">{t('appointment.types.procedure')}</SelectItem>
+                            {APPOINTMENT_TYPE_VALUES.map((type) => (
+                              <SelectItem key={type} value={type} data-testid={`appointment-type-option-${type}`} className="focus:bg-muted focus:text-foreground data-[highlighted]:bg-muted data-[highlighted]:text-foreground">
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: APPOINTMENT_TYPES[type].color }} aria-hidden="true" />
+                                  <span className="flex flex-col">
+                                    <span>{t(APPOINTMENT_TYPES[type].labelKey)}</span>
+                                    <span className="text-xs text-muted-foreground">{t(APPOINTMENT_TYPES[type].descriptionKey)}</span>
+                                  </span>
+                                </span>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -653,7 +685,7 @@ export default function AppointmentDialog({
                             <SelectValue placeholder={t('appointment.selectDuration')} />
                           </SelectTrigger>
                           <SelectContent>
-                            {[30, 45, 60, 90, 120].map((minutes) => (
+                            {APPOINTMENT_DURATIONS.map((minutes) => (
                               <SelectItem key={minutes} value={String(minutes)} data-testid={`duration-option-${minutes}`}>
                                 {t('settings.minutes', { n: minutes })}
                               </SelectItem>

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
 import type { AppLocale } from './types';
 import { translate } from './dictionary';
+import { rememberLocale } from './storedLocale';
 
 type I18nContextValue = {
   locale: AppLocale;
@@ -40,7 +41,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .then((s) => {
         if (!isMounted) return;
         setLocaleState(s.locale === 'mk' ? 'mk' : 'en');
-        document.title = s.practiceName?.trim() || 'MediCal';
+        document.title = s.practiceName?.trim() || 'ClinicCalendar';
         setInitialSettings(s);
       })
       .catch(() => {
@@ -51,6 +52,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = locale === 'mk' ? 'mk' : 'en';
+    // Remembered so the login page can use the clinic's language before settings are readable.
+    rememberLocale(locale);
   }, [locale]);
 
   const setLocale = useCallback((l: AppLocale) => {

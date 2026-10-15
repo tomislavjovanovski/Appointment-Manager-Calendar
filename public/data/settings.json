@@ -25,6 +25,15 @@
   },
   "breakTime": 15,
   "timeSlotMinutes": 30,
+  "defaultAppointmentType": "procedure",
+  "appointmentTypeDurations": {
+    "consultation": 30,
+    "follow-up": 30,
+    "procedure": 30,
+    "prevention": 30,
+    "prosthetics-orthodontics": 90,
+    "urgent": 30
+  },
   "notifications": {
     "emailWebhookUrl": "",
     "smsWebhookUrl": "",
@@ -41,5 +50,6 @@
       "startTime": "12:00",
       "endTime": "20:00"
     }
-  }
+  },
+  "practiceName": "ВГ-Дентал"
 }

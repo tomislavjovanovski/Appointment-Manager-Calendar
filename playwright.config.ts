@@ -33,7 +33,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /e2e\/smoke\.spec\.ts/,
+      testMatch: /e2e\/(smoke|login)\.spec\.ts/,
     },
     // ── Cross-browser smoke (CI only) ──────────────────────────────────────────
     ...(process.env.CI
@@ -41,12 +41,12 @@ export default defineConfig({
           {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
-            testMatch: /e2e\/smoke\.spec\.ts/,
+            testMatch: /e2e\/(smoke|login)\.spec\.ts/,
           },
           {
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
-            testMatch: /e2e\/smoke\.spec\.ts/,
+            testMatch: /e2e\/(smoke|login)\.spec\.ts/,
           },
         ] as const)
       : []),

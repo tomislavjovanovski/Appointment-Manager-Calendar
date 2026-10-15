@@ -1,6 +1,8 @@
 import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
 import type { AppLocale } from '@/i18n/types';
 import { normalizePatientForm, normalizePatientUpdates } from '@/lib/patientForm';
+import { authFetch } from '@/lib/auth';
+import { DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const LOCAL_HOST_PATTERN = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|::1|\[::1\])$/i;
@@ -61,7 +63,7 @@ const apiCall = (endpoint: string, options: RequestInit = {}): Promise<any> => {
 };
 
 const performApiCall = async (endpoint: string, options: RequestInit = {}) => {
-  const response = await fetch(buildApiUrl(endpoint), {
+  const response = await authFetch(buildApiUrl(endpoint), {
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -115,6 +117,8 @@ const DEFAULT_SETTINGS: AppointmentSettings = {
   },
   breakTime: 10,
   timeSlotMinutes: 30,
+  appointmentTypeDurations: { ...DEFAULT_APPOINTMENT_TYPE_DURATIONS },
+  defaultAppointmentType: 'procedure',
   notifications: {
     emailWebhookUrl: '',
     smsWebhookUrl: '',
@@ -137,6 +141,7 @@ export function normalizeSettings(data: Partial<AppointmentSettings> | null | un
     locale,
     workingDays: Array.isArray(d.workingDays) ? d.workingDays : DEFAULT_SETTINGS.workingDays,
     notifications: { ...DEFAULT_SETTINGS.notifications, ...d.notifications },
+    appointmentTypeDurations: { ...DEFAULT_APPOINTMENT_TYPE_DURATIONS, ...d.appointmentTypeDurations },
     appointmentSizes: {
       half: { ...DEFAULT_SETTINGS.appointmentSizes.half, ...d.appointmentSizes?.half },
       full: { ...DEFAULT_SETTINGS.appointmentSizes.full, ...d.appointmentSizes?.full },
@@ -227,6 +232,14 @@ export const appointmentsStorage = {
 let cachedSettings: AppointmentSettings | null = null;
 let settingsCachedAt = 0;
 let settingsRevision = 0;
+
+/** Drops cached API data, e.g. after logout, so the next user never sees the previous session's data. */
+export const resetApiCaches = () => {
+  pendingReads.clear();
+  cachedSettings = null;
+  settingsCachedAt = 0;
+  settingsRevision += 1;
+};
 
 const cacheSettings = (settings: AppointmentSettings) => {
   cachedSettings = settings;

@@ -9,23 +9,23 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 213 27% 16%;
+    --foreground: 213 27% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 213 27% 16%;
+    --card-foreground: 213 27% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 213 27% 16%;
+    --popover-foreground: 213 27% 12%;
 
     --primary: 212 100% 47%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 212 100% 42%;
 
     --secondary: 210 40% 98%;
-    --secondary-foreground: 213 27% 16%;
+    --secondary-foreground: 213 27% 12%;
 
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 16% 38%;
 
     --accent: 142 76% 36%;
     --accent-foreground: 0 0% 100%;
@@ -37,8 +37,9 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
+    --border: 214 24% 82%;
+    --input: 214 24% 78%;
+    --calendar-grid: 214 20% 65%;
     --ring: 212 100% 47%;
 
     --medical-blue: 212 100% 47%;
@@ -59,19 +60,19 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 210 40% 96%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 213 27% 18%;
 
     --sidebar-primary: 240 5.9% 10%;
 
     --sidebar-primary-foreground: 0 0% 98%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 210 40% 91%;
 
     --sidebar-accent-foreground: 240 5.9% 10%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 214 24% 82%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
@@ -103,12 +104,13 @@ All colors MUST be HSL.
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
+    --calendar-grid: 215 20% 45%;
     --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
+    --sidebar-background: 215 30% 12%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent: 215 28% 18%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
@@ -127,6 +129,53 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  .login-calendar-pattern {
+    background-image:
+      linear-gradient(to right, hsl(0 0% 100% / 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(0 0% 100% / 0.08) 1px, transparent 1px);
+    background-size: 3rem 3rem;
+  }
+
+  @media (max-height: 700px) {
+    .login-page {
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+
+    .login-card {
+      max-width: 28rem;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .login-preview {
+      display: none;
+    }
+
+    .login-mobile-brand {
+      display: flex;
+      margin-bottom: 16px;
+    }
+
+    .login-form-panel {
+      padding-top: 16px;
+      padding-bottom: 16px;
+    }
+
+    .login-footer {
+      margin-top: 12px;
+    }
+  }
+
+  .weekly-scheduler div:has(> .rs__cell),
+  .weekly-scheduler .rs__cell {
+    border-color: hsl(var(--calendar-grid)) !important;
+  }
+
+  .weekly-scheduler .rs__header,
+  .weekly-scheduler .rs__time .MuiTypography-root {
+    color: hsl(var(--foreground));
+  }
+
   .weekly-scheduler div:has(> .rs__cell) {
     grid-template-columns: 72px repeat(7, minmax(0, 1fr)) !important;
   }
@@ -135,9 +184,20 @@ All colors MUST be HSL.
     min-width: 0 !important;
   }
 
+  /* The scheduler's current-time marker has two empty children: dot and line. */
+  .weekly-scheduler .rs__cell > div[style*="top:"]:has(> div:empty + div:empty) {
+    display: none;
+  }
+
+  /* Scheduler event offsets count each row's border outside its content height. */
+  .weekly-scheduler .rs__cell {
+    box-sizing: content-box;
+  }
+
   .weekly-scheduler .rs__event__item {
     box-sizing: border-box;
     padding: 3px;
+    height: auto !important;
   }
 
   .weekly-scheduler .rs__event__item:not([style*="calc("]) {
@@ -146,6 +206,7 @@ All colors MUST be HSL.
 
   .weekly-scheduler .rs__event__item > div {
     width: 100% !important;
+    height: auto !important;
     box-sizing: border-box;
   }
 

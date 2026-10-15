@@ -14,6 +14,15 @@ export const DEFAULT_SETTINGS = {
   },
   breakTime: 15,
   timeSlotMinutes: 30,
+  defaultAppointmentType: 'procedure',
+  appointmentTypeDurations: {
+    consultation: 30,
+    'follow-up': 30,
+    procedure: 30,
+    prevention: 30,
+    'prosthetics-orthodontics': 60,
+    urgent: 30,
+  },
   notifications: {
     emailWebhookUrl: '',
     smsWebhookUrl: '',
@@ -28,6 +37,25 @@ export const DEFAULT_SETTINGS = {
 };
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
+
+const validateTypeDurations = (settings) => {
+  if (settings.defaultAppointmentType !== undefined &&
+      !Object.hasOwn(DEFAULT_SETTINGS.appointmentTypeDurations, settings.defaultAppointmentType)) {
+    const error = new Error('Default appointment type must be a known appointment type.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const durations = settings.appointmentTypeDurations;
+  if (durations === undefined) return;
+  if (!durations || typeof durations !== 'object' || Array.isArray(durations) ||
+      Object.entries(durations).some(([type, duration]) =>
+        !Object.hasOwn(DEFAULT_SETTINGS.appointmentTypeDurations, type) ||
+        ![30, 45, 60, 90, 120].includes(duration))) {
+    const error = new Error('Appointment type defaults must use a known type and a duration of 30, 45, 60, 90, or 120 minutes.');
+    error.statusCode = 400;
+    throw error;
+  }
+};
 
 const validateBrandLogo = (settings) => {
   const logo = settings.logoDataUrl;
@@ -44,6 +72,10 @@ const validateBrandLogo = (settings) => {
 const mergeSettings = (partial = {}) => ({
   ...DEFAULT_SETTINGS,
   ...partial,
+  appointmentTypeDurations: {
+    ...DEFAULT_SETTINGS.appointmentTypeDurations,
+    ...partial.appointmentTypeDurations,
+  },
   appointmentSizes: {
     half: {
       ...DEFAULT_SETTINGS.appointmentSizes.half,
@@ -188,7 +220,7 @@ export function createDataStore({
       error.statusCode = 400;
       throw error;
     }
-    if (!['consultation', 'follow-up', 'procedure'].includes(type)) {
+    if (!['consultation', 'follow-up', 'procedure', 'prevention', 'prosthetics-orthodontics', 'urgent'].includes(type)) {
       const error = new Error('Appointment type is invalid.');
       error.statusCode = 400;
       throw error;
@@ -386,6 +418,7 @@ export function createDataStore({
 
     async saveSettings(nextSettings) {
       validateBrandLogo(nextSettings);
+      validateTypeDurations(nextSettings);
       const settings = mergeSettings(nextSettings);
       await writeJsonFile(settingsFile, settings);
       return settings;
@@ -393,10 +426,15 @@ export function createDataStore({
 
     async updateSettings(partialSettings) {
       validateBrandLogo(partialSettings);
+      validateTypeDurations(partialSettings);
       const current = await readSettings();
       const next = mergeSettings({
         ...current,
         ...partialSettings,
+        appointmentTypeDurations: {
+          ...current.appointmentTypeDurations,
+          ...partialSettings.appointmentTypeDurations,
+        },
         appointmentSizes: {
           ...current.appointmentSizes,
           ...partialSettings.appointmentSizes,

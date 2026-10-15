@@ -1,46 +1,35 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Scheduler } from '@aldabil/react-scheduler';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, ChevronLeft, ChevronRight, Clock, Phone, Plus, RotateCcw, UserRound } from 'lucide-react';
+import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Clock, Phone, Plus, UserRound } from 'lucide-react';
 import { addDays, addWeeks, endOfWeek, format, startOfWeek } from 'date-fns';
 import { Appointment, Patient } from '@/types/appointment';
-import { appointmentsStorage, buildApiUrl, patientsStorage, settingsStorage } from '@/lib/storage';
+import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
 import { getDayHours, parseTimeMinutes } from '@/lib/appointmentAvailability';
-import { GoogleCalendarSync } from './GoogleCalendarSync';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
-
-function appointmentTypeKey(type: Appointment['type']): 'consultation' | 'followUp' | 'procedure' {
-  if (type === 'follow-up') return 'followUp';
-  return type;
-}
+import { useCurrentAppointment } from '@/hooks/use-current-appointment';
+import { APPOINTMENT_TYPES, darkenHexColor } from '@/lib/appointmentTypes';
 
 function appointmentTypeColor(type: Appointment['type'] | undefined): string {
-  switch (type) {
-    case 'consultation':
-      return '#2563eb';
-    case 'follow-up':
-      return '#0f766e';
-    case 'procedure':
-      return '#c2410c';
-    default:
-      return '#64748b';
-  }
+  return type ? APPOINTMENT_TYPES[type]?.color ?? '#64748b' : '#64748b';
 }
 
 interface WeeklySchedulerProps {
   onCreateAppointment: (date: Date) => void;
   onAppointmentClick: (appointment: Appointment) => void;
   refreshTrigger?: number;
+  navigation?: React.ReactNode;
 }
 
-export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0 }: WeeklySchedulerProps) {
+export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, navigation }: WeeklySchedulerProps) {
   const { toast } = useToast();
+  const isCurrentAppointment = useCurrentAppointment();
   const { t, dateFnsLocale, initialSettings } = useI18n();
   const initialLoadDoneRef = useRef(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -52,11 +41,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     timeSlotMinutes: 30
   });
   const [loading, setLoading] = useState(true);
-  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
-  const [showGoogleSync, setShowGoogleSync] = useState(false);
-  const [googleReauthRequired, setGoogleReauthRequired] = useState(false);
-  const [googleDetailEvent, setGoogleDetailEvent] = useState<any | null>(null);
-
   const [viewDate, setViewDate] = useState<Date>(() => new Date());
 
   const weekStart = useMemo(
@@ -145,30 +129,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     };
   }, [refreshTrigger, initialSettings]);
 
-  const fetchGoogleEvents = async () => {
-    setGoogleReauthRequired(false);
-    try {
-      const response = await fetch(
-        `${buildApiUrl('/google/events')}?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
-      );
-      if (response.status === 401) {
-        setGoogleReauthRequired(true);
-        return;
-      }
-      if (!response.ok) {
-        throw new Error(`Google events fetch failed: ${response.status}`);
-      }
-      const data = await response.json();
-      setGoogleEvents(Array.isArray(data?.items) ? data.items : []);
-    } catch (error) {
-      toast({
-        title: t('toast.syncFailedTitle'),
-        description: t('toast.syncFailedDesc'),
-        variant: "destructive",
-      });
-    }
-  };
-
   const appointmentEvents = appointments
     .map((apt: any) => {
       try {
@@ -191,7 +151,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
         }
         
         const patientName = apt.patientName || 'Unknown Patient';
-        const typeTranslation = t(`appointment.types.${appointmentTypeKey(apt.type)}`);
+        const typeTranslation = t(APPOINTMENT_TYPES[apt.type as Appointment['type']].labelKey);
         const title = t('dashboard.eventTitle', {
           name: patientName,
           type: typeTranslation,
@@ -213,17 +173,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     })
     .filter((e: any) => e !== null);
 
-  const googleCalendarEvents = googleEvents.map(event => ({
-    event_id: `google-${event.id}`,
-    title: event.summary || t('dashboard.googleEventDefault'),
-    start: new Date(event.start.dateTime || event.start.date),
-    end: new Date(event.end.dateTime || event.end.date),
-    color: '#9333ea',
-    editable: false,
-    google: true
-  }));
-
-  const events = [...appointmentEvents, ...googleCalendarEvents];
+  const events = appointmentEvents;
 
   const dayHourRanges = workingDays.map((weekday) => {
     const hours = getDayHours(settings, weekday);
@@ -243,12 +193,11 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       : 24
   ));
   const step = typeof settings.timeSlotMinutes === 'number' ? settings.timeSlotMinutes : 30;
+  const schedulerHeight = 600;
+  const rowCount = Math.ceil((visibleEndHour - visibleStartHour) * 60 / step);
+  const slotHeight = Math.ceil(Math.max(schedulerHeight / rowCount, 60));
 
   const handleEventClick = (event: any) => {
-    if (event.google) {
-      setGoogleDetailEvent(event);
-      return;
-    }
     const appointment = event?.appointment ?? event;
     if (appointment?.id) {
       onAppointmentClick(appointment);
@@ -316,6 +265,8 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
 
   if (loading) {
     return (
+      <div className="space-y-6">
+      {navigation}
       <Card className="overflow-hidden border-border/80 shadow-soft">
         <CardContent className="flex h-96 flex-col items-center justify-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
@@ -324,49 +275,38 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
           <p className="text-sm font-medium text-muted-foreground">{t('dashboard.loadingScheduler')}</p>
         </CardContent>
       </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6" data-testid="scheduler-grid">
+    <div className="space-y-3" data-testid="scheduler-grid">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CalendarIcon className="h-5 w-5" strokeWidth={2} />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <CalendarIcon className="h-4 w-4" strokeWidth={2} />
             </span>
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">
               {t('dashboard.weeklySchedule')}
             </h2>
           </div>
-          <p className="max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground">
+          <p className="max-w-xl pl-10 text-xs leading-snug text-muted-foreground">
             {t('dashboard.workingHours', {
               start: `${String(Math.floor(earliestStart / 60)).padStart(2, '0')}:${String(earliestStart % 60).padStart(2, '0')}`,
               end: `${String(Math.floor(latestEnd / 60)).padStart(2, '0')}:${String(latestEnd % 60).padStart(2, '0')}`,
             })}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 sm:pt-0.5">
-          <Button
-            data-testid="sync-google-btn"
-            disabled
-            onClick={async () => {
-              setShowGoogleSync(true);
-              await fetchGoogleEvents();
-            }}
-            variant="outline"
-            className="h-10 border-border/80 bg-background/80 shadow-sm transition-colors hover:bg-muted/50"
-          >
-            <RotateCcw className="mr-2 h-4 w-4 opacity-80" />
-            {t('dashboard.googleCalendar')}
-          </Button>
+        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:pt-0.5">
+          {navigation}
           <Button
             data-testid="new-appointment-btn"
             onClick={() => onCreateAppointment(getNextWorkingDate(new Date()))}
-            className="h-10 shadow-sm transition-shadow hover:shadow-md"
+            className="h-8 px-2.5 text-xs shadow-sm transition-shadow hover:shadow-md"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
             {t('dashboard.newAppointment')}
           </Button>
         </div>
@@ -375,28 +315,35 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       {/* Scheduler */}
       <Card className="overflow-hidden border-border/80 shadow-soft ring-1 ring-border/40">
         <CardContent className="p-0">
-          <div className="flex flex-col gap-3 border-b border-border/60 bg-muted/30 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-start">
-              <div className="inline-flex items-center rounded-xl border border-border/70 bg-background p-0.5 shadow-sm">
+          <div className="flex flex-wrap items-center gap-1 border-b border-border/60 bg-muted/30 px-2.5 py-1.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 rounded-md px-2 text-xs font-medium text-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => setViewDate(new Date())}
+                title={t('dashboard.goToThisWeek')}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {t('scheduler.nav.today')}
+              </Button>
+              <div className="inline-flex items-center">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="h-7 w-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                   onClick={() => setViewDate((d) => addWeeks(d, -1))}
                   aria-label={t('dashboard.previousWeek')}
                   title={t('dashboard.previousWeek')}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="min-w-[11rem] px-2 text-center text-sm font-semibold tabular-nums text-foreground sm:min-w-[14rem] sm:px-4">
-                  {weekRangeLabel}
-                </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="h-7 w-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                   onClick={() => setViewDate((d) => addWeeks(d, 1))}
                   aria-label={t('dashboard.nextWeek')}
                   title={t('dashboard.nextWeek')}
@@ -404,31 +351,21 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="h-9 rounded-lg font-medium shadow-sm"
-                onClick={() => setViewDate(new Date())}
-              >
-                {t('dashboard.goToThisWeek')}
-              </Button>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="h-9 rounded-lg border-border/80 bg-background shadow-sm"
+                    className="h-7 gap-1.5 rounded-md px-2 text-xs font-semibold tabular-nums text-foreground hover:bg-muted hover:text-foreground"
                     title={t('dashboard.pickWeek')}
+                    aria-label={`${weekRangeLabel}, ${t('dashboard.pickWeek')}`}
                   >
-                    <CalendarIcon className="mr-1.5 h-4 w-4 opacity-90" />
-                    <span className="hidden sm:inline">{t('dashboard.pickWeek')}</span>
+                    {weekRangeLabel}
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 shadow-medium" align="end">
+                <PopoverContent className="w-auto p-0 shadow-medium" align="start">
                   <Calendar
                     mode="single"
                     weekStartsOn={1}
@@ -441,12 +378,12 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   />
                 </PopoverContent>
               </Popover>
-            </div>
           </div>
-          <div className="weekly-scheduler bg-muted/5" style={{ zoom: 0.8, width: '100%' }}>
+          <div className="weekly-scheduler bg-muted/5" style={{ zoom: 44 / 60, width: '100%' }}>
             <Scheduler
               key={weekStart.toISOString()}
               view="week"
+              height={schedulerHeight}
               events={events}
               selectedDate={viewDate}
               navigation={false}
@@ -462,6 +399,8 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
               customEditor={() => null}
               eventRenderer={(props: any) => {
                 const schedulerEvent = props?.event ?? props;
+                const durationMinutes = (schedulerEvent.end.getTime() - schedulerEvent.start.getTime()) / 60000;
+                const blockHeight = durationMinutes / step * (slotHeight + 1) - 1 - 6 + 2;
 
                 if (schedulerEvent?.google) {
                   return (
@@ -469,7 +408,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       data-testid="gcal-event-block"
                       data-source="google"
                       className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-white"
-                      style={{ backgroundColor: schedulerEvent.color || '#9333ea' }}
+                      style={{ backgroundColor: schedulerEvent.color || '#9333ea', height: blockHeight }}
                     >
                       {schedulerEvent.title || 'Google Event'}
                     </div>
@@ -490,17 +429,22 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 const displayTitle = patientName;
                 const firstName = patient?.firstName?.trim() || displayTitle;
                 const lastName = patient?.lastName?.trim();
-                const patientPhone = patient?.phone?.trim() || t(patients === null ? 'dashboard.phoneUnavailable' : 'dashboard.noPhone');
+                const patientPhone = patient?.phone?.trim() || (patients === null ? t('dashboard.phoneUnavailable') : '');
                 const bgColor = schedulerEvent?.color || '#3b82f6';
                 const isDragging = draggingEventId === apt?.id;
+                const isCurrent = Boolean(apt && isCurrentAppointment(apt));
                 
                 return (
                   <div
                     data-testid="appointment-block"
                     data-status={apt?.status ?? 'scheduled'}
                     data-source="local"
-                    className={`h-full w-full overflow-hidden rounded-md text-left text-white shadow-sm ${isDragging ? 'pointer-events-none opacity-35' : 'cursor-pointer'}`}
-                    style={{ backgroundColor: bgColor }}
+                    data-current={isCurrent ? 'true' : 'false'}
+                    className={cn(
+                      'relative h-full w-full overflow-hidden rounded-md text-left text-white shadow-sm',
+                      isDragging ? 'pointer-events-none opacity-35' : 'cursor-pointer'
+                    )}
+                    style={{ backgroundColor: isCurrent ? darkenHexColor(bgColor) : bgColor, height: blockHeight }}
                     title={`${displayTitle}\n${patientPhone}\n${t('dashboard.dragAppointment')}`}
                     draggable={props?.draggable}
                     onDragStart={(event) => {
@@ -519,29 +463,34 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       handleEventClick(schedulerEvent);
                     }}
                   >
+                    {isCurrent && (
+                      <span className="pointer-events-none absolute right-1 top-1 z-10" role="img" aria-label={t('dashboard.currentAppointment')}>
+                        <Clock className="h-4 w-4 motion-safe:animate-pulse" aria-hidden="true" />
+                      </span>
+                    )}
                     {(apt?.duration ?? 30) < step * 2 ? (
                       <div className="flex h-full flex-col gap-0.5 p-0.5 text-left">
-                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-semibold leading-tight">
-                          <UserRound className="h-4 w-4 shrink-0 text-white/75" />
+                        <div className={cn('flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-semibold leading-tight', isCurrent && 'pr-6')}>
+                          <UserRound className="h-4 w-4 shrink-0 text-white" />
                           <span className="truncate">{[firstName, lastName].filter(Boolean).join(' ')}</span>
                         </div>
-                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[15px] leading-tight text-white/90">
+                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[15px] leading-tight text-white">
                           <Phone className="h-4 w-4 shrink-0" />
-                          <span className="shrink-0" data-testid="appointment-phone">{patientPhone}</span>
+                          {patientPhone && <span className="shrink-0" data-testid="appointment-phone">{patientPhone}</span>}
                         </div>
                       </div>
                     ) : (
                     <div className="flex h-full flex-col gap-1 p-1 text-left">
-                      <div className="flex min-w-0 shrink-0 items-start justify-start gap-1.5">
-                        <UserRound className="h-5 w-5 shrink-0 text-white/75" />
+                      <div className={cn('flex min-w-0 shrink-0 items-start justify-start gap-1.5', isCurrent && 'pr-6')}>
+                        <UserRound className="h-5 w-5 shrink-0 text-white" />
                         <div className="min-w-0 whitespace-normal text-left text-[17.5px] font-semibold leading-tight [overflow-wrap:anywhere]">
                           <div>{firstName}</div>
                           {lastName && <div>{lastName}</div>}
                         </div>
                       </div>
-                      <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-medium leading-tight text-white/90">
+                      <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-medium leading-tight text-white">
                         <Phone className="h-5 w-5 shrink-0" />
-                        <span className="truncate" data-testid="appointment-phone">{patientPhone}</span>
+                        {patientPhone && <span className="truncate" data-testid="appointment-phone">{patientPhone}</span>}
                       </div>
                     </div>
                     )}
@@ -618,7 +567,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                         if (isEnabled && start && end && onClick) onClick(start, end);
                       }}
                       className={cn(
-                        'h-full w-full rounded-sm border-b border-border/60 transition-colors',
+                        'h-full w-full transition-colors',
                         isEnabled
                           ? 'cursor-pointer bg-transparent hover:bg-primary/5'
                           : 'cursor-not-allowed bg-muted-foreground/10 hover:bg-muted-foreground/10'
@@ -654,56 +603,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 loading: t('scheduler.loading')
               }}
             />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Google Calendar Integration */}
-      {showGoogleSync && <GoogleCalendarSync />}
-
-      {googleReauthRequired && (
-        <div data-testid="google-reauth-banner" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-          {t('toast.syncFailedDesc')}
-        </div>
-      )}
-
-      {googleDetailEvent && (
-        <div data-testid="gcal-detail-panel" className="rounded-lg border border-border/60 bg-background p-4 shadow-soft">
-          <div className="text-sm font-semibold">{googleDetailEvent.title}</div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            {new Date(googleDetailEvent.start).toLocaleString()} – {new Date(googleDetailEvent.end).toLocaleString()}
-          </div>
-          <Button variant="outline" className="mt-3" onClick={() => setGoogleDetailEvent(null)}>
-            Close
-          </Button>
-        </div>
-      )}
-
-      {/* Legend */}
-      <Card className="border-border/80 shadow-soft">
-        <CardHeader className="pb-3 pt-4">
-          <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Appointment Types
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-4 pt-0">
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm shadow-sm" style={{ backgroundColor: appointmentTypeColor('consultation'), boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.2)' }} />
-              {t('appointment.types.consultation')}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm shadow-sm" style={{ backgroundColor: appointmentTypeColor('follow-up'), boxShadow: '0 0 0 4px rgba(15, 118, 110, 0.2)' }} />
-              {t('appointment.types.followUp')}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm shadow-sm" style={{ backgroundColor: appointmentTypeColor('procedure'), boxShadow: '0 0 0 4px rgba(194, 65, 12, 0.2)' }} />
-              {t('appointment.types.procedure')}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/25 px-3 py-1.5 text-xs font-medium text-foreground">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-violet-500 shadow-sm ring-2 ring-violet-500/20" />
-              {t('dashboard.googleCalendarLegend')}
-            </span>
           </div>
         </CardContent>
       </Card>

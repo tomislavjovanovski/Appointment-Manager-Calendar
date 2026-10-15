@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
+import { useCurrentAppointment } from '@/hooks/use-current-appointment';
+import { APPOINTMENT_TYPES, darkenHexColor } from '@/lib/appointmentTypes';
 
 interface MobileAgendaProps {
   onCreateAppointment: (date: Date) => void;
@@ -17,6 +19,7 @@ interface MobileAgendaProps {
 
 export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0 }: MobileAgendaProps) {
   const { dateFnsLocale, t, initialSettings } = useI18n();
+  const isCurrentAppointment = useCurrentAppointment();
   const [settings, setSettings] = useState<AppointmentSettings | null>(() => settingsStorage.getCached() ?? initialSettings);
   const today = useMemo(() => startOfDay(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -212,15 +215,26 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
             const firstName = patient?.firstName?.trim() || appointment.patientName || t('common.unknown');
             const lastName = patient?.lastName?.trim();
             const phone = patient?.phone?.trim() || t(patients === null ? 'dashboard.phoneUnavailable' : 'dashboard.noPhone');
+            const isCurrent = isCurrentAppointment(appointment);
             return (
             <button
               key={appointment.id}
               data-testid="mobile-appointment"
+              data-current={isCurrent ? 'true' : 'false'}
               type="button"
               onClick={() => onAppointmentClick(appointment)}
-              className="flex w-full items-stretch overflow-hidden rounded-2xl border border-border/70 bg-card text-left shadow-soft transition-transform active:scale-[0.99]"
+              className={cn(
+                'relative flex w-full items-stretch overflow-hidden rounded-2xl border border-border/70 bg-card text-left shadow-soft transition-transform active:scale-[0.99]',
+                isCurrent && 'text-white [&_.text-muted-foreground]:text-white/90 [&_.text-foreground]:text-white'
+              )}
+              style={isCurrent ? { backgroundColor: darkenHexColor(APPOINTMENT_TYPES[appointment.type].color) } : undefined}
             >
-              <div className="w-1 shrink-0 bg-primary" />
+              {isCurrent && (
+                <span className="pointer-events-none absolute right-2.5 top-2.5" role="img" aria-label={t('dashboard.currentAppointment')}>
+                  <Clock3 className="h-4 w-4 motion-safe:animate-pulse" aria-hidden="true" />
+                </span>
+              )}
+              <div className="w-1 shrink-0" style={{ backgroundColor: APPOINTMENT_TYPES[appointment.type].color }} />
               <div className="grid min-w-0 flex-1 grid-cols-[minmax(3.25rem,15fr)_minmax(0,85fr)]">
                 <div className="flex flex-col items-center justify-center gap-1 border-r border-border/70 bg-muted/20 px-1 py-2 text-xs tabular-nums">
                   <time dateTime={appointment.startTime} className="font-semibold text-foreground">{format(new Date(appointment.startTime), 'HH:mm')}</time>
@@ -229,7 +243,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
                 </div>
                 <div className="flex min-w-0 items-start justify-between gap-2 p-2.5">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-1.5 text-sm font-semibold">
+                    <div className={cn('flex items-start gap-1.5 text-sm font-semibold', isCurrent && 'pr-6')}>
                       <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 [overflow-wrap:anywhere]">{[firstName, lastName].filter(Boolean).join(' ')}</span>
                     </div>
@@ -237,7 +251,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
                       <Phone className="h-4 w-4 shrink-0" />
                       <span className="min-w-0 break-words">{phone}</span>
                     </p>
-                    <p className="mt-1 border-t border-border/70 pt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">{appointment.title || t(`appointment.types.${appointment.type === 'follow-up' ? 'followUp' : appointment.type}`)}</p>
+                    <p className="mt-1 border-t border-border/70 pt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">{appointment.title || t(APPOINTMENT_TYPES[appointment.type].labelKey)}</p>
                   </div>
                 </div>
               </div>

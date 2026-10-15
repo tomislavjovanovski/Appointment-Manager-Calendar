@@ -13,14 +13,47 @@ const requireObjectPayload = (payload, entityName) => {
   }
 };
 
-export function createApp({ dataStore, dataDir }) {
-  const app = express();
+const LOCAL_ORIGIN = /^https?:\/\/(localhost|127(?:\.\d{1,3}){3}|\[::1\]|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/i;
 
-  app.use(cors());
+const createCorsOptions = (config) => ({
+  credentials: true,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, false);
+    const allowed = config.allowedOrigins.includes(origin) || (config.allowLocalOrigins && LOCAL_ORIGIN.test(origin));
+    return callback(null, allowed);
+  },
+});
+
+export function createApp({ dataStore, dataDir, auth }) {
+  // Fail closed: the API must never start without authentication.
+  if (!auth?.router || !auth?.requireSession || !auth?.requireCsrf || !auth?.config) {
+    throw new Error('createApp requires the auth module.');
+  }
+
+  const app = express();
+  app.disable('x-powered-by');
+
+  app.use('/api', cors(createCorsOptions(auth.config)));
+
+  // Public, lightweight liveness check: no file reads, no data, no paths.
+  app.get('/api/health', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true });
+  });
+
+  app.use('/api/auth', auth.router);
+
+  // Everything else under /api requires a valid session (and a CSRF token for writes).
+  // Registered before the body parsers so unauthenticated bodies are never parsed.
+  app.use('/api', auth.requireSession, auth.requireCsrf, (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   app.use('/api/settings', express.json({ limit: '512kb' }));
   app.use(express.json());
 
-  app.get('/api/health', asyncRoute(async (_req, res) => {
+  app.get('/api/health/details', asyncRoute(async (_req, res) => {
     const [patients, appointments] = await Promise.all([
       dataStore.getPatients(),
       dataStore.getAppointments(),
@@ -94,13 +127,24 @@ export function createApp({ dataStore, dataDir }) {
     res.status(503).json({ error: 'Google Calendar integration is disabled in this version.' });
   });
 
-  app.use((error, req, res, _next) => {
-    const statusCode = error.statusCode || 500;
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'Not found.' });
+  });
 
-    console.error(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`, error);
+  app.use((error, req, res, _next) => {
+    const statusCode = error.statusCode || error.status || 500;
+    // Only client errors and explicitly exposable errors return their message; 5xx stay generic.
+    const expose = error.expose ?? statusCode < 500;
+
+    console.error(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`, {
+      name: error.name,
+      code: error.code,
+      message: error.message,
+      stack: statusCode >= 500 ? error.stack : undefined,
+    });
 
     res.status(statusCode).json({
-      error: error.message || 'Internal server error.',
+      error: expose && error.message ? error.message : 'Internal server error.',
     });
   });
 

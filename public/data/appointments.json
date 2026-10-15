@@ -255,7 +255,7 @@
     "startTime": "2026-10-14T09:30:00.000Z",
     "endTime": "2026-10-14T10:00:00.000Z",
     "duration": 30,
-    "type": "consultation",
+    "type": "procedure",
     "status": "scheduled",
     "notes": ""
   },
@@ -268,7 +268,7 @@
     "startTime": "2026-10-14T10:00:00.000Z",
     "endTime": "2026-10-14T10:30:00.000Z",
     "duration": 30,
-    "type": "consultation",
+    "type": "procedure",
     "status": "scheduled",
     "notes": ""
   },
@@ -301,11 +301,11 @@
   {
     "id": "2a2a9b6d-65f3-46d6-96e1-9e92fa23040c",
     "createdAt": "2026-10-12T15:44:07.732Z",
-    "patientId": "f2a7ecc6-20c2-4efa-9220-f893105dcec5",
-    "patientName": "Duplicate User",
+    "patientId": "677bde43-cbe8-445d-9b50-b0ad8996868c",
+    "patientName": "МЕХРУШЕ АЈРУЛИ",
     "title": "Консултација",
-    "startTime": "2026-10-15T10:15:00.000Z",
-    "endTime": "2026-10-15T11:15:00.000Z",
+    "startTime": "2026-10-15T10:30:00.000Z",
+    "endTime": "2026-10-15T11:30:00.000Z",
     "duration": 60,
     "type": "consultation",
     "status": "scheduled",
@@ -321,6 +321,32 @@
     "endTime": "2026-10-14T09:30:00.000Z",
     "duration": 30,
     "type": "consultation",
+    "status": "scheduled",
+    "notes": ""
+  },
+  {
+    "id": "d8bda838-e267-493e-b488-324d1c2ae879",
+    "createdAt": "2026-10-14T10:00:16.919Z",
+    "patientId": "4296f5ca-e73b-40cf-b24d-4bbb8ee882e3",
+    "patientName": "ЌАМИЉЕ АДЕМИ",
+    "title": "Процедура",
+    "startTime": "2026-10-15T09:00:00.000Z",
+    "endTime": "2026-10-15T09:30:00.000Z",
+    "duration": 30,
+    "type": "procedure",
+    "status": "scheduled",
+    "notes": ""
+  },
+  {
+    "id": "400af800-7115-4615-a1b5-fcb005e79ac2",
+    "createdAt": "2026-10-14T10:24:42.034Z",
+    "patientId": "553320be-a53d-4d05-8bbe-0c75d97c9b10",
+    "patientName": "ДАФИНА АЈДАРИ",
+    "title": "Процедура",
+    "startTime": "2026-10-14T14:30:00.000Z",
+    "endTime": "2026-10-14T15:00:00.000Z",
+    "duration": 30,
+    "type": "procedure",
     "status": "scheduled",
     "notes": ""
   }

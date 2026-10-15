@@ -6,6 +6,7 @@ import { storageHelper } from '../utils/storageHelper';
 import { bookingHelper } from '../utils/bookingHelper';
 import { patientHelper } from '../utils/patientHelper';
 import { apiMockHelper } from '../utils/apiMockHelper';
+import { prepareAuth } from '../utils/authHelper';
 import { PATIENTS } from '../test-data/seed';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,6 +28,12 @@ interface MedicalFixtures {
 // ── Fixture implementation ────────────────────────────────────────────────────
 
 export const test = base.extend<MedicalFixtures>({
+  // Every default context gets a session (mocked, or real when E2E_AUTH_* is set).
+  context: async ({ context, baseURL }, use) => {
+    await prepareAuth(context, baseURL);
+    await use(context);
+  },
+
   // Expose helpers as fixtures for dependency injection
   storage: async ({}, use) => { await use(storageHelper); },
   booking: async ({}, use) => { await use(bookingHelper); },
@@ -36,6 +43,7 @@ export const test = base.extend<MedicalFixtures>({
   // Page with Alice & Bob pre-seeded — most tests start here
   pageWithPatients: async ({ browser }, use) => {
     const ctx = await browser.newContext();
+    await prepareAuth(ctx);
     const _patients = [structuredClone(PATIENTS.alice), structuredClone(PATIENTS.bob)];
     const _appointments: any[] = [];
     let _settings: any = { startTime: '08:00', endTime: '18:00', workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30 };
@@ -235,6 +243,7 @@ export const test = base.extend<MedicalFixtures>({
   // Completely clean page — for tests that need to verify empty states
   pageClean: async ({ browser }, use) => {
     const ctx = await browser.newContext();
+    await prepareAuth(ctx);
     const _patients: any[] = [];
     const _appointments: any[] = [];
     let _settings: any = { startTime: '08:00', endTime: '18:00', workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30 };
@@ -359,6 +368,7 @@ export const test = base.extend<MedicalFixtures>({
   // Page with Google Calendar mocked successfully
   pageWithGoogleMock: async ({ browser }, use) => {
     const ctx = await browser.newContext();
+    await prepareAuth(ctx);
     await ctx.route('**/api/patients', async (route) => {
       await route.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify([PATIENTS.alice, PATIENTS.bob]) });
     });
@@ -407,6 +417,7 @@ export const test = base.extend<MedicalFixtures>({
   // Page with Google Calendar returning 500
   pageWithGoogleError: async ({ browser }, use) => {
     const ctx = await browser.newContext();
+    await prepareAuth(ctx);
     await ctx.route('**/api/patients', async (route) => {
       await route.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify([PATIENTS.alice, PATIENTS.bob]) });
     });

@@ -1,6 +1,10 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createApp } from './app.js';
+import { createAuth, readAuthConfig } from './auth/index.js';
+import { createAuthStore } from './auth/authStore.js';
+import { bootstrapAdminFromEnv } from './auth/bootstrap.js';
+import { reportAuthStatus, resolveAuthDir } from './auth/paths.js';
 import { createDataStore } from './dataStore.js';
 import { createLogger, exitWithFailure, serializeError, startServer } from './startup.js';
 
@@ -25,14 +29,22 @@ const dataStore = createDataStore({
   googleTokensFile: path.join(DATA_DIR, 'google-tokens.json'),
 });
 
-const app = createApp({ dataStore, dataDir: DATA_DIR });
+// Authentication data (users, sessions) lives outside the web root and outside the patient data directory.
+const AUTH_DIR = resolveAuthDir();
+const authStore = createAuthStore({ authDir: AUTH_DIR, logger });
+const auth = createAuth({ store: authStore, config: readAuthConfig(), logger });
+
+const app = createApp({ dataStore, dataDir: DATA_DIR, auth });
 
 process.on('uncaughtException', (error, origin) => {
   logger.error('process.uncaughtException', { origin, error: serializeError(error) });
   exitWithFailure();
 });
 
-startServer({ app, dataStore, port: PORT, host: HOST, logger }).catch((error) => {
-  logger.error('startup.failed', { error: serializeError(error) });
-  exitWithFailure();
-});
+startServer({ app, dataStore, port: PORT, host: HOST, logger })
+  .then(() => bootstrapAdminFromEnv({ authStore, logger }))
+  .then(() => reportAuthStatus({ authStore, authDir: AUTH_DIR, logger }))
+  .catch((error) => {
+    logger.error('startup.failed', { error: serializeError(error) });
+    exitWithFailure();
+  });

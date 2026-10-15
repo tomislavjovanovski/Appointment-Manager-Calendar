@@ -7,6 +7,7 @@ import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 import { createApp } from '../../server/app.js';
 import { createDataStore } from '../../server/dataStore.js';
+import { login, makeAuth, TEST_EMAIL, TEST_PASSWORD } from './authHelpers';
 import { initializeDataStore, isRetryableInitError, readStartupOptions, startServer } from '../../server/startup.js';
 
 type LogEntry = { level: string; event: string; fields: Record<string, unknown> };
@@ -52,9 +53,11 @@ const baseUrl = (server: Server) => `http://127.0.0.1:${(server.address() as Add
 test.describe('backend startup', () => {
   test('starts, initializes the data store, and serves /api/health', async () => {
     const { dir, store } = await makeDataDir();
+    const { auth, store: authStore, dir: authDir } = await makeAuth();
+    await authStore.createUser({ email: TEST_EMAIL, password: TEST_PASSWORD });
     const { entries, logger } = memoryLogger();
     const server: Server = await startServer({
-      app: createApp({ dataStore: store, dataDir: dir }),
+      app: createApp({ dataStore: store, dataDir: dir, auth }),
       dataStore: store,
       port: 0,
       host: '127.0.0.1',
@@ -76,21 +79,28 @@ test.describe('backend startup', () => {
 
       const response = await fetch(`${baseUrl(server)}/api/health`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ ok: true, dataDir: dir, patientsCount: 0, appointmentsCount: 0 });
+      expect(await response.json()).toEqual({ ok: true });
 
-      const google = await fetch(`${baseUrl(server)}/api/google/status`);
+      const { cookie } = await login(baseUrl(server));
+      const details = await fetch(`${baseUrl(server)}/api/health/details`, { headers: { cookie } });
+      expect(await details.json()).toEqual({ ok: true, dataDir: dir, patientsCount: 0, appointmentsCount: 0 });
+
+      const google = await fetch(`${baseUrl(server)}/api/google/status`, { headers: { cookie } });
       expect(google.status).toBe(503);
     } finally {
       await closeServer(server);
       await fs.rm(dir, { recursive: true, force: true });
+      await fs.rm(authDir, { recursive: true, force: true });
     }
   });
 
-  test('health reports a 500 JSON error when the data store cannot be read', async () => {
+  test('health details report a generic 500 JSON error when the data store cannot be read', async () => {
     const { dir, store } = await makeDataDir();
+    const { auth, store: authStore, dir: authDir } = await makeAuth();
+    await authStore.createUser({ email: TEST_EMAIL, password: TEST_PASSWORD });
     const failingStore = { ...store, getPatients: async () => { throw fsError('EIO'); } };
     const server: Server = await startServer({
-      app: createApp({ dataStore: failingStore, dataDir: dir }),
+      app: createApp({ dataStore: failingStore, dataDir: dir, auth }),
       dataStore: failingStore,
       port: 0,
       host: '127.0.0.1',
@@ -99,12 +109,14 @@ test.describe('backend startup', () => {
     });
 
     try {
-      const response = await fetch(`${baseUrl(server)}/api/health`);
+      const { cookie } = await login(baseUrl(server));
+      const response = await fetch(`${baseUrl(server)}/api/health/details`, { headers: { cookie } });
       expect(response.status).toBe(500);
-      expect(await response.json()).toEqual({ error: 'EIO: simulated' });
+      expect(await response.json()).toEqual({ error: 'Internal server error.' });
     } finally {
       await closeServer(server);
       await fs.rm(dir, { recursive: true, force: true });
+      await fs.rm(authDir, { recursive: true, force: true });
     }
   });
 
@@ -201,11 +213,12 @@ test.describe('backend startup', () => {
     const { port } = blocker.address() as AddressInfo;
     const { dir, store } = await makeDataDir();
     const { entries, logger } = memoryLogger();
+    const { auth, dir: authDir } = await makeAuth();
 
     try {
       await expect(
         startServer({
-          app: createApp({ dataStore: store, dataDir: dir }),
+          app: createApp({ dataStore: store, dataDir: dir, auth }),
           dataStore: store,
           port,
           host: '127.0.0.1',
@@ -217,6 +230,7 @@ test.describe('backend startup', () => {
     } finally {
       await new Promise<void>((resolve) => blocker.close(() => resolve()));
       await fs.rm(dir, { recursive: true, force: true });
+      await fs.rm(authDir, { recursive: true, force: true });
     }
   });
 });

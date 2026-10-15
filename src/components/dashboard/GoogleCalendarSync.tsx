@@ -8,6 +8,7 @@ import { Calendar, CheckCircle, ExternalLink, Settings, RotateCcw, XCircle } fro
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
 import { buildApiUrl } from '@/lib/storage';
+import { authFetch } from '@/lib/auth';
 
 interface GoogleCalendarEvent {
   id: string;
@@ -29,7 +30,7 @@ export function GoogleCalendarSync() {
 
   const checkConnectionStatus = async () => {
     try {
-      const response = await fetch(buildApiUrl('/google/status'));
+      const response = await authFetch(buildApiUrl('/google/status'));
       const data = await response.json();
       setIsConnected(data.connected);
       if (data.connected) {
@@ -52,7 +53,7 @@ export function GoogleCalendarSync() {
 
     setLoading(true);
     try {
-      const response = await fetch(buildApiUrl('/google/auth'), {
+      const response = await authFetch(buildApiUrl('/google/auth'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientId, clientSecret }),
@@ -79,7 +80,7 @@ export function GoogleCalendarSync() {
 
   const handleDisconnect = async () => {
     try {
-      await fetch(buildApiUrl('/google/disconnect'), { method: 'DELETE' });
+      await authFetch(buildApiUrl('/google/disconnect'), { method: 'DELETE' });
       setIsConnected(false);
       setGoogleEvents([]);
       toast({
@@ -102,7 +103,7 @@ export function GoogleCalendarSync() {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 30); // Next 30 days
 
-      const response = await fetch(
+      const response = await authFetch(
         `${buildApiUrl('/google/events')}?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       );
       
@@ -119,7 +120,7 @@ export function GoogleCalendarSync() {
 
   const syncAppointmentToGoogle = async (appointment: any) => {
     try {
-      const response = await fetch(buildApiUrl('/google/events'), {
+      const response = await authFetch(buildApiUrl('/google/events'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appointment }),

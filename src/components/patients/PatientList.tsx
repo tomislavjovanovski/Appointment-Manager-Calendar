@@ -21,9 +21,10 @@ interface PatientListProps {
   onPatientClick: (patient: Patient) => void;
   onCreatePatient: () => void;
   refreshTrigger?: number;
+  navigation?: React.ReactNode;
 }
 
-export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }: PatientListProps) {
+export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, navigation }: PatientListProps) {
   const { t, dateFnsLocale } = useI18n();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,7 +97,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
   return (
     <div className="space-y-4 md:space-y-6" data-testid="patients-page">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 sm:items-start">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:items-start">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -106,14 +107,17 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger }:
           </div>
           <p className="hidden max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground sm:block">{t('patients.subtitle')}</p>
         </div>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:pt-0.5">
+        {navigation}
         <Button 
           data-testid="add-patient-btn"
           onClick={onCreatePatient}
-          className="h-10 shrink-0 shadow-sm transition-shadow hover:shadow-md"
+          className="h-10 shrink-0 shadow-sm transition-shadow hover:shadow-md md:h-8 md:px-2.5 md:text-xs"
         >
           <Plus className="mr-2 h-4 w-4" />
           {t('patients.addPatient')}
         </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 md:grid-cols-1 md:gap-4 lg:grid-cols-3">
