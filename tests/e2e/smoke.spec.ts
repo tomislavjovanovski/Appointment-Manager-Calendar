@@ -1,5 +1,5 @@
 // tests/e2e/smoke.spec.ts
-// Fast sanity checks run across all browsers in CI.
+// Fast sanity checks run on Chromium in CI.
 // Each test is self-contained and completes in < 10 seconds.
 
 import { test, expect } from '../fixtures/base';

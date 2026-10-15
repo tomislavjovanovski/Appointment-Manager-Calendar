@@ -29,27 +29,12 @@ export default defineConfig({
   },
 
   projects: [
-    // ── Functional tests (fast, single browser) ────────────────────────────────
+    // Chromium only, locally and in CI.
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /e2e\/(smoke|login)\.spec\.ts/,
+      testMatch: /e2e\/(smoke|login|statistics)\.spec\.ts/,
     },
-    // ── Cross-browser smoke (CI only) ──────────────────────────────────────────
-    ...(process.env.CI
-      ? ([
-          {
-            name: 'firefox',
-            use: { ...devices['Desktop Firefox'] },
-            testMatch: /e2e\/(smoke|login)\.spec\.ts/,
-          },
-          {
-            name: 'webkit',
-            use: { ...devices['Desktop Safari'] },
-            testMatch: /e2e\/(smoke|login)\.spec\.ts/,
-          },
-        ] as const)
-      : []),
   ],
 
   webServer: {

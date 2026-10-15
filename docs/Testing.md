@@ -37,7 +37,8 @@ Time/timezone logic      →  Unit (date-fns helpers) + E2E (ISO format assertio
 ```
 tests/
 ├── e2e/
-│   ├── smoke.spec.ts              # Cross-browser sanity (< 10s each)
+│   ├── smoke.spec.ts              # Chromium sanity checks (< 10s each)
+│   ├── statistics.spec.ts         # Monthly statistics page
 │   ├── appointment-booking.spec.ts # Critical path + validation + lifecycle
 │   ├── patient-management.spec.ts  # Standalone + inline creation, search
 │   ├── drag-drop-rescheduling.spec.ts # D&D correctness + conflict + cancel
@@ -83,8 +84,8 @@ The `concurrency` Playwright project sets `fullyParallel: false`. The multi-cont
 ### Running the Suite
 
 ```bash
-# Install Playwright browsers (first time)
-npx playwright install
+# Install the Chromium browser (first time; the suite and CI run Chromium only)
+npx playwright install chromium
 
 # All tests
 npx playwright test
@@ -95,7 +96,7 @@ npx playwright test tests/e2e/appointment-booking.spec.ts
 # Concurrency tests only
 npx playwright test --project=concurrency
 
-# Cross-browser smoke
+# Smoke tests
 npx playwright test tests/e2e/smoke.spec.ts
 
 # Headed (watch the browser)
