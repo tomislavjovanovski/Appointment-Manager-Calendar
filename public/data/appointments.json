@@ -349,5 +349,18 @@
     "type": "procedure",
     "status": "scheduled",
     "notes": ""
+  },
+  {
+    "id": "3de0cf06-62d7-4bd9-825d-7f55c22dcd57",
+    "createdAt": "2026-10-15T06:55:12.376Z",
+    "patientId": "a3df69a4-81ef-41ea-a576-424301f88674",
+    "patientName": "234342324 34234342",
+    "title": "Процедура",
+    "startTime": "2026-10-16T09:00:00.000Z",
+    "endTime": "2026-10-16T09:30:00.000Z",
+    "duration": 30,
+    "type": "procedure",
+    "status": "scheduled",
+    "notes": ""
   }
 ]
