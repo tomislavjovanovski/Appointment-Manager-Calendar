@@ -75,7 +75,7 @@ test.describe('Login', () => {
     await page.locator('button[aria-controls="login-password"]').click();
     await expect(password).toHaveAttribute('type', 'text');
     await page.getByTestId('login-submit').click();
-    await expect(page.getByTestId('login-error')).toHaveText('Invalid email or password.');
+    await expect(page.getByTestId('login-error')).toHaveText('Погрешна е-пошта или лозинка.');
     await expect(password).toHaveValue('');
 
     await password.fill('correct password');
