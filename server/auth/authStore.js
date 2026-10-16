@@ -172,7 +172,7 @@ export function createAuthStore({ authDir, hashParams, logger, now = () => Date.
       const data = await readSessions();
       const currentTime = now();
       for (const [key, session] of Object.entries(data.sessions)) {
-        if (!session || session.expiresAt <= currentTime) delete data.sessions[key];
+        if (!session || (session.expiresAt != null && session.expiresAt <= currentTime)) delete data.sessions[key];
       }
       const result = await mutator(data.sessions, currentTime);
       await writeJsonFileAtomic(sessionsFile, data);
@@ -186,7 +186,8 @@ export function createAuthStore({ authDir, hashParams, logger, now = () => Date.
         userId,
         createdAt: currentTime,
         lastSeenAt: currentTime,
-        expiresAt: currentTime + absoluteTtlMs,
+        // null = no absolute lifetime; the session lives until logout.
+        expiresAt: absoluteTtlMs > 0 ? currentTime + absoluteTtlMs : null,
       };
     });
     return sessionId;

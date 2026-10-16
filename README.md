@@ -136,8 +136,8 @@ The production frontend build excludes `public/data` from `dist/`, so patient JS
 | `PORT` | Backend port; defaults to `3000` for a normal Node.js process |
 | `VITE_API_BASE_URL` | Optional frontend API base URL |
 | `AUTH_DATA_DIR` | Private directory for `users.json` and `sessions.json` |
-| `AUTH_SESSION_IDLE_HOURS` | Session idle timeout; defaults to 8 hours |
-| `AUTH_SESSION_MAX_HOURS` | Maximum session lifetime; defaults to 24 hours |
+| `AUTH_SESSION_IDLE_HOURS` | Session idle timeout; defaults to 0 (disabled — sessions last until logout) |
+| `AUTH_SESSION_MAX_HOURS` | Maximum session lifetime; defaults to 0 (disabled — the cookie is kept for up to 400 days and refreshed on activity) |
 | `AUTH_MAX_FAILURES_PER_EMAIL` | Failed-login limit per email |
 | `AUTH_MAX_FAILURES_PER_IP` | Failed-login limit per client address |
 | `CORS_ORIGINS` | Exact production origins permitted for cross-origin access |

@@ -115,7 +115,7 @@ test.describe('login', () => {
       expect(setCookie).toContain('HttpOnly');
       expect(setCookie).toContain('SameSite=Strict');
       expect(setCookie).toContain('Path=/');
-      expect(setCookie).toContain(`Max-Age=${config.absoluteTimeoutMs / 1000}`);
+      expect(setCookie).toContain(`Max-Age=${config.persistentCookieMaxAgeMs / 1000}`);
       expect(response.headers.get('cache-control')).toBe('no-store');
     });
   });
@@ -232,9 +232,29 @@ test.describe('sessions', () => {
     }
   });
 
-  test('expire after the idle timeout', async () => {
+  test('never expire by default and slide the cookie forward while active', async () => {
     let clock = Date.now();
     await withHarness({ now: () => clock }, async ({ url, config }) => {
+      expect(config.idleTimeoutMs).toBe(0);
+      expect(config.absoluteTimeoutMs).toBe(0);
+      const { cookie } = await login(url);
+      clock += 90 * 24 * HOUR;
+      const response = await fetch(`${url}/api/auth/me`, { headers: { cookie } });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('set-cookie')).toContain(`Max-Age=${config.persistentCookieMaxAgeMs / 1000}`);
+      clock += 365 * 24 * HOUR;
+      expect((await fetch(`${url}/api/auth/me`, { headers: { cookie } })).status).toBe(200);
+      const me = await fetch(`${url}/api/auth/me`, { headers: { cookie } });
+      const { csrfToken } = await me.json();
+      const logout = await fetch(`${url}/api/auth/logout`, { method: 'POST', headers: { cookie, 'X-CSRF-Token': csrfToken } });
+      expect(logout.status).toBe(204);
+      expect((await fetch(`${url}/api/auth/me`, { headers: { cookie } })).status).toBe(401);
+    });
+  });
+
+  test('expire after the idle timeout', async () => {
+    let clock = Date.now();
+    await withHarness({ env: { AUTH_SESSION_IDLE_HOURS: '8' }, now: () => clock }, async ({ url, config }) => {
       const { cookie } = await login(url);
       clock += config.idleTimeoutMs - 60_000;
       expect((await fetch(`${url}/api/auth/me`, { headers: { cookie } })).status).toBe(200);
@@ -247,8 +267,9 @@ test.describe('sessions', () => {
 
   test('expire after the absolute lifetime even when active', async () => {
     let clock = Date.now();
-    await withHarness({ now: () => clock }, async ({ url, config }) => {
-      const { cookie } = await login(url);
+    await withHarness({ env: { AUTH_SESSION_MAX_HOURS: '24' }, now: () => clock }, async ({ url, config }) => {
+      const { cookie, response } = await login(url);
+      expect(response.headers.get('set-cookie')).toContain(`Max-Age=${config.absoluteTimeoutMs / 1000}`);
       const steps = Math.ceil(config.absoluteTimeoutMs / HOUR);
       for (let step = 1; step < steps; step += 1) {
         clock += HOUR;

@@ -30,8 +30,11 @@ export function readAuthConfig(env = process.env, { isPassenger = typeof globalT
     cookieSecure,
     // The __Host- prefix makes browsers reject the cookie unless it is Secure, host-only and Path=/.
     cookieName: cookieSecure ? '__Host-medical_sid' : 'medical_sid',
-    idleTimeoutMs: readNumber(env.AUTH_SESSION_IDLE_HOURS, 8, 0.25, 24 * 7) * HOUR_MS,
-    absoluteTimeoutMs: readNumber(env.AUTH_SESSION_MAX_HOURS, 24, 1, 24 * 30) * HOUR_MS,
+    // 0 disables the timeout: sessions then last until the user logs out.
+    idleTimeoutMs: readNumber(env.AUTH_SESSION_IDLE_HOURS, 0, 0, 24 * 7) * HOUR_MS,
+    absoluteTimeoutMs: readNumber(env.AUTH_SESSION_MAX_HOURS, 0, 0, 24 * 30) * HOUR_MS,
+    // Browsers cap persistent cookies at 400 days; without a timeout the cookie is refreshed on activity.
+    persistentCookieMaxAgeMs: 400 * 24 * HOUR_MS,
     touchIntervalMs: 5 * MINUTE_MS,
     allowedOrigins: parseList(env.CORS_ORIGINS),
     allowLocalOrigins: !production,
@@ -122,6 +125,11 @@ export function createAuth({ store, config, logger, now = () => Date.now() }) {
 
   const clearCookie = (res) => res.clearCookie(config.cookieName, cookieOptions());
 
+  const sessionCookieMaxAgeMs = config.absoluteTimeoutMs > 0 ? config.absoluteTimeoutMs : config.persistentCookieMaxAgeMs;
+
+  const setSessionCookie = (res, sessionId) =>
+    res.cookie(config.cookieName, sessionId, cookieOptions(sessionCookieMaxAgeMs));
+
   /** Resolves the session cookie to an active user, or null. Expired sessions are removed. */
   const resolveSession = async (req) => {
     const sessionId = parseCookies(req.headers.cookie)[config.cookieName];
@@ -130,8 +138,9 @@ export function createAuth({ store, config, logger, now = () => Date.now() }) {
     if (!session) return null;
 
     const currentTime = now();
-    const idleExpired = currentTime - session.lastSeenAt >= config.idleTimeoutMs;
-    if (idleExpired || session.expiresAt <= currentTime) {
+    const idleExpired = config.idleTimeoutMs > 0 && currentTime - session.lastSeenAt >= config.idleTimeoutMs;
+    const absoluteExpired = session.expiresAt != null && session.expiresAt <= currentTime;
+    if (idleExpired || absoluteExpired) {
       await store.deleteSession(sessionId);
       return null;
     }
@@ -142,11 +151,15 @@ export function createAuth({ store, config, logger, now = () => Date.now() }) {
       return null;
     }
 
-    if (currentTime - session.lastSeenAt >= config.touchIntervalMs) {
-      await store.touchSession(sessionId);
-    }
+    const touched = currentTime - session.lastSeenAt >= config.touchIntervalMs;
+    if (touched) await store.touchSession(sessionId);
 
-    return { sessionId, user };
+    return { sessionId, user, touched };
+  };
+
+  // Slides the browser cookie forward so sessions without an absolute lifetime never expire client-side.
+  const refreshSessionCookie = (res, resolved) => {
+    if (resolved.touched && !(config.absoluteTimeoutMs > 0)) setSessionCookie(res, resolved.sessionId);
   };
 
   const requireSession = asyncRoute(async (req, res, next) => {
@@ -156,6 +169,7 @@ export function createAuth({ store, config, logger, now = () => Date.now() }) {
       sendError(res, 401, 'Authentication required.');
       return;
     }
+    refreshSessionCookie(res, resolved);
     req.auth = { ...toPublicUser(resolved.user), userId: resolved.user.id, sessionId: resolved.sessionId };
     next();
   });
@@ -231,7 +245,7 @@ export function createAuth({ store, config, logger, now = () => Date.now() }) {
     if (previousSessionId && previousSessionId.length <= 200) await store.deleteSession(previousSessionId);
     const sessionId = await store.createSession({ userId: user.id, absoluteTtlMs: config.absoluteTimeoutMs });
 
-    res.cookie(config.cookieName, sessionId, cookieOptions(config.absoluteTimeoutMs));
+    setSessionCookie(res, sessionId);
     logger?.info?.('auth.login.succeeded', { userId: user.id });
     res.json({ user: toPublicUser(user), csrfToken: createCsrfToken(sessionId) });
   }));
@@ -243,6 +257,7 @@ export function createAuth({ store, config, logger, now = () => Date.now() }) {
       sendError(res, 401, 'Authentication required.');
       return;
     }
+    refreshSessionCookie(res, resolved);
     res.json({ user: toPublicUser(resolved.user), csrfToken: createCsrfToken(resolved.sessionId) });
   }));
 
