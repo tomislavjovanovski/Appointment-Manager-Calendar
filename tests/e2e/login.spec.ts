@@ -58,7 +58,7 @@ test.describe('Login', () => {
     });
 
     await page.goto('/');
-    const email = page.getByLabel(/email/i);
+    const email = page.locator('#login-email');
     const password = page.locator('#login-password');
 
     await page.getByTestId('login-submit').click();
@@ -100,6 +100,6 @@ test.describe('Login', () => {
     await context.route('**/api/patients', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
     await page.getByTestId('nav-patients').first().click();
 
-    await expect(page.getByTestId('login-error')).toContainText(/session has expired/i);
+    await expect(page.getByTestId('login-error')).toHaveText('Вашата сесија истече. Најавете се повторно.');
   });
 });
