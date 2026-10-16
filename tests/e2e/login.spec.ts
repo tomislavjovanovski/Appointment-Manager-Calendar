@@ -72,7 +72,7 @@ test.describe('Login', () => {
 
     await email.fill(E2E_USER.email);
     await password.fill('wrong password');
-    await page.getByRole('button', { name: /show password/i }).click();
+    await page.locator('button[aria-controls="login-password"]').click();
     await expect(password).toHaveAttribute('type', 'text');
     await page.getByTestId('login-submit').click();
     await expect(page.getByTestId('login-error')).toHaveText('Invalid email or password.');

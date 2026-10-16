@@ -56,7 +56,7 @@ test.describe('Smoke — Application Loads', () => {
     await expect(page.getByTestId('settings-type-duration-procedure')).toContainText('30');
     await expect(page.getByTestId('settings-type-duration-prosthetics-orthodontics')).toContainText('60');
     await page.getByTestId('settings-type-duration-procedure').click();
-    await page.getByRole('option', { name: '45 minutes', exact: true }).click();
+    await page.getByTestId('settings-duration-option-45').click();
     await expect(page.getByTestId('settings-default-type-procedure')).toBeChecked();
     await page.getByTestId('settings-default-type-prosthetics-orthodontics').click();
     const saved = page.waitForResponse((response) => response.url().endsWith('/api/settings') && response.request().method() === 'PUT');
@@ -65,7 +65,7 @@ test.describe('Smoke — Application Loads', () => {
 
     await page.getByTestId('nav-scheduler').click();
     await page.getByTestId('new-appointment-btn').click();
-    await expect(page.getByTestId('appointment-type-select')).toContainText('Prosthetics');
+    await expect(page.getByTestId('appointment-type-select')).toContainText('Протетика и ортодонција');
     await expect(page.getByTestId('duration-select')).toContainText('60');
     await bookingHelper.selectRadixOption(page, 'duration-select', 'duration-option-90');
     await expect(page.getByTestId('duration-select')).toContainText('90');

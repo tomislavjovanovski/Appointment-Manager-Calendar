@@ -37,7 +37,7 @@ test.describe('Critical User Flows', () => {
     await page.getByTestId('appointment-block').filter({ hasText: PATIENTS.alice.firstName }).first().click();
     await expect(page.getByTestId('booking-dialog')).toBeVisible();
 
-    await page.getByLabel('Title').fill('Edited follow-up visit');
+    await page.getByTestId('appointment-title-input').fill('Edited follow-up visit');
     await bookingHelper.selectRadixOption(
       page,
       'appointment-type-select',
@@ -170,7 +170,7 @@ test.describe('Critical User Flows', () => {
       duration: 30,
       notes: 'Persisted through backend',
     });
-    await page.getByLabel('Title').fill(`Backend appointment ${uniqueId}`);
+    await page.getByTestId('appointment-title-input').fill(`Backend appointment ${uniqueId}`);
     await bookingHelper.submit(page);
 
     const createdAppointmentsResponse = await fetch('http://127.0.0.1:3000/api/appointments');
@@ -329,13 +329,13 @@ test.describe('Critical User Flows', () => {
     const appointment = before.find((item) => item.patientId === PATIENTS.alice.id);
 
     await page.getByTestId('appointment-block').filter({ hasText: PATIENTS.alice.firstName }).first().click();
-    await page.getByLabel('Title').fill('Unsaved edit title');
+    await page.getByTestId('appointment-title-input').fill('Unsaved edit title');
     await page.getByTestId('appointment-notes').fill('Unsaved edit note');
-    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByTestId('cancel-booking-btn').click();
     await expect(page.getByTestId('booking-dialog')).not.toBeVisible();
 
     await page.getByTestId('appointment-block').filter({ hasText: PATIENTS.alice.firstName }).first().click();
-    await expect(page.getByLabel('Title')).not.toHaveValue('Unsaved edit title');
+    await expect(page.getByTestId('appointment-title-input')).not.toHaveValue('Unsaved edit title');
     await expect(page.getByTestId('appointment-notes')).not.toHaveValue('Unsaved edit note');
 
     const after = await storageHelper.getAll(page, 'appointments') as Array<{

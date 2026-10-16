@@ -62,9 +62,9 @@ test.describe('Monthly statistics', () => {
   test('shows the work done this month by type, compared with last month', async ({ page }) => {
     await openStatistics(page);
     await page.getByTestId('nav-statistics').click();
-    await expect(page.getByTestId('statistics-month-label')).toHaveText('October 2026');
+    await expect(page.getByTestId('statistics-month-label')).toHaveText('октомври 2026');
 
-    await expect(card(page, 'days-worked').getByTestId('stat-value')).toHaveText('3 of 22');
+    await expect(card(page, 'days-worked').getByTestId('stat-value')).toHaveText('3 од 22');
     await expect(card(page, 'appointments').getByTestId('stat-value')).toHaveText('4');
     await expect(card(page, 'patients').getByTestId('stat-value')).toHaveText('3');
     await expectPatients(page, ['2', '67%'], ['1', '33%']);
@@ -74,7 +74,7 @@ test.describe('Monthly statistics', () => {
     await expectChange(card(page, 'patients').getByTestId('stat-change'), '+2');
     await expectChange(card(page, 'hours-worked').getByTestId('stat-change'), '+2 h 30 min');
     await expect(card(page, 'hours-worked').getByTitle('September: 1 h')).toBeVisible();
-    await expect(page.getByTestId('statistics-compared-with')).toContainText('September');
+    await expect(page.getByTestId('statistics-compared-with')).toContainText('септември');
 
     await expectTypeRow(page, 'consultation', ['0', '−1', '0 h', '−1 h']);
     await expectTypeRow(page, 'follow-up', ['2', '+2', '1 h', '+1 h']);
@@ -89,8 +89,8 @@ test.describe('Monthly statistics', () => {
     await page.getByTestId('nav-statistics').click();
 
     await page.getByTestId('statistics-prev-month').click();
-    await expect(page.getByTestId('statistics-month-label')).toHaveText('September 2026');
-    await expect(card(page, 'days-worked').getByTestId('stat-value')).toHaveText('1 of 22');
+    await expect(page.getByTestId('statistics-month-label')).toHaveText('септември 2026');
+    await expect(card(page, 'days-worked').getByTestId('stat-value')).toHaveText('1 од 22');
     await expectPatients(page, ['1', '100%'], ['0', '0%']);
     await expectChange(card(page, 'appointments').getByTestId('stat-change'), '+1');
     await expectTypeRow(page, 'consultation', ['1', '+1', '1 h', '+1 h']);
@@ -100,7 +100,7 @@ test.describe('Monthly statistics', () => {
     await expectPatients(page, ['0', '0%'], ['0', '0%']);
 
     await page.getByTestId('statistics-this-month').click();
-    await expect(page.getByTestId('statistics-month-label')).toHaveText('October 2026');
+    await expect(page.getByTestId('statistics-month-label')).toHaveText('октомври 2026');
     await expect(page.getByTestId('statistics-this-month')).toHaveCount(0);
   });
 
@@ -111,7 +111,7 @@ test.describe('Monthly statistics', () => {
     await page.getByTestId('mobile-sidebar').getByTestId('nav-statistics').click();
 
     await expect(page.getByTestId('statistics-by-type')).toBeVisible();
-    await expect(page.locator('header h1')).toHaveText('Statistics');
+    await expect(page.locator('header h1')).toHaveText('Статистика');
     const width = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(width).toBeLessThanOrEqual(375);
   });

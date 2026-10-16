@@ -982,7 +982,7 @@ export default function AppointmentDialog({
                   {t('appointment.delete')}
                 </Button>
               )}
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-10 border-border/70">
+              <Button type="button" variant="outline" data-testid="cancel-booking-btn" onClick={() => onOpenChange(false)} className="h-10 border-border/70">
                 {t('editAppointment.cancel')}
               </Button>
               <Button

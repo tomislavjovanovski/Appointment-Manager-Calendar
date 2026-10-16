@@ -438,7 +438,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
                     </SelectTrigger>
                     <SelectContent>
                       {APPOINTMENT_DURATIONS.map((minutes) => (
-                        <SelectItem key={minutes} value={String(minutes)}>{t('settings.minutes', { n: minutes })}</SelectItem>
+                        <SelectItem key={minutes} value={String(minutes)} data-testid={`settings-duration-option-${minutes}`}>{t('settings.minutes', { n: minutes })}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
