@@ -1,5 +1,5 @@
 import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
-import type { AppLocale } from '@/i18n/types';
+import { normalizeLocale, type AppLocale } from '@/i18n/types';
 import { normalizePatientForm, normalizePatientUpdates } from '@/lib/patientForm';
 import { authFetch } from '@/lib/auth';
 import { DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
@@ -106,7 +106,7 @@ const performApiCall = async (endpoint: string, options: RequestInit = {}) => {
 };
 
 const DEFAULT_SETTINGS: AppointmentSettings = {
-  locale: 'en',
+  locale: 'mk',
   workingDays: [1, 2, 3, 4, 5],
   startTime: '08:00',
   endTime: '18:00',
@@ -134,7 +134,7 @@ const DEFAULT_SETTINGS: AppointmentSettings = {
 
 export function normalizeSettings(data: Partial<AppointmentSettings> | null | undefined): AppointmentSettings {
   const d = data ?? {};
-  const locale: AppLocale = d.locale === 'mk' ? 'mk' : 'en';
+  const locale: AppLocale = normalizeLocale(d.locale);
   return {
     ...DEFAULT_SETTINGS,
     ...d,

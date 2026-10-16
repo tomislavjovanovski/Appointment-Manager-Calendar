@@ -35,7 +35,7 @@ export function NotificationManager() {
         appointments,
         patients,
         settings.notifications,
-        settings.locale ?? 'en'
+        settings.locale ?? 'mk'
       );
 
       toast({

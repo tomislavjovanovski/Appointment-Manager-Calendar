@@ -1,4 +1,4 @@
-import type { AppLocale } from './types';
+import { DEFAULT_LOCALE, type AppLocale } from './types';
 
 const en: Record<string, string> = {
   'sidebar.menu': 'Menu',
@@ -25,15 +25,15 @@ const en: Record<string, string> = {
 
   'auth.title': 'Sign in',
   'auth.subtitle': 'Sign in to manage appointments and patients.',
-  'auth.workspace': 'Appointments and patients',
-  'auth.workspaceHeadline': 'A simpler way to run your clinic.',
-  'auth.workspaceDescription': 'Keep appointments and patient details together, and know what your day looks like.',
+  'auth.workspace': 'Your work, organized',
+  'auth.workspaceHeadline': 'A simpler way to organize your workday.',
+  'auth.workspaceDescription': 'Keep appointments, contacts, and daily tasks together so you can plan your time with confidence.',
   'auth.schedulePreview': 'Today’s schedule',
   'auth.appointmentsToday': '3 appointments today',
   'auth.schedulePatientOne': 'Patient visit',
   'auth.schedulePatientTwo': 'Follow-up',
   'auth.schedulePatientThree': 'Consultation',
-  'auth.secureAccess': 'Sign in to view your clinic schedule.',
+  'auth.secureAccess': 'Sign in to open your iTermin workspace.',
   'auth.welcomeBack': 'Welcome back',
   'auth.signInPrompt': 'Enter your details to open your account.',
   'auth.email': 'Email',
@@ -51,6 +51,29 @@ const en: Record<string, string> = {
   'auth.serverError': 'Sign-in is temporarily unavailable. Please try again later.',
   'auth.sessionExpired': 'Your session has expired. Please sign in again.',
   'auth.checkingSession': 'Checking session…',
+  'public.footerLabel': 'Helpful links',
+  'public.backToLogin': 'Back to sign in',
+  'public.placeholder': 'Placeholder content — this page will be finalized before launch.',
+  'public.faq.link': 'FAQ',
+  'public.privacy.link': 'Privacy',
+  'public.terms.link': 'Terms',
+  'public.contact.link': 'Contact',
+  'public.faq.title': 'Frequently asked questions',
+  'public.faq.intro': 'Find answers about getting started with iTermin, organizing your schedule, and managing your workspace.',
+  'public.faq.sectionTitle': 'What can iTermin help me organize?',
+  'public.faq.sectionText': 'iTermin is designed for teams and independent professionals who need a clear view of appointments, contacts, availability, and day-to-day work.',
+  'public.privacy.title': 'Privacy policy',
+  'public.privacy.intro': 'This page will explain what information iTermin collects, why it is used, and how it is protected.',
+  'public.privacy.sectionTitle': 'Information and data protection',
+  'public.privacy.sectionText': 'The final policy will cover account information, workspace data, retention, access controls, and your rights.',
+  'public.terms.title': 'Terms of service',
+  'public.terms.intro': 'These terms will describe the rules for using iTermin and the responsibilities of account owners and users.',
+  'public.terms.sectionTitle': 'Using iTermin',
+  'public.terms.sectionText': 'The final terms will cover acceptable use, account security, service availability, billing, and changes to the service.',
+  'public.contact.title': 'Contact us',
+  'public.contact.intro': 'Have a question, need help, or want to share feedback? We are preparing the best way to reach the iTermin team.',
+  'public.contact.sectionTitle': 'Support and feedback',
+  'public.contact.sectionText': 'A support email address and contact form will be added here. Until then, please contact your workspace administrator.',
 
   'dashboard.weeklySchedule': 'Weekly schedule',
   'settings.typeDurations': 'Default duration by appointment type',
@@ -531,15 +554,15 @@ const mk: Record<string, string> = {
 
   'auth.title': 'Најава',
   'auth.subtitle': 'Најавете се за да управувате со термини и пациенти.',
-  'auth.workspace': 'Термини и пациенти',
-  'auth.workspaceHeadline': 'Полесно организирајте ја ординацијата.',
-  'auth.workspaceDescription': 'Чувајте ги термините и податоците за пациентите на едно место и лесно испланирајте го денот.',
+  'auth.workspace': 'Вашата работа, организирана',
+  'auth.workspaceHeadline': 'Полесно организирајте го работното време.',
+  'auth.workspaceDescription': 'Чувајте ги термините, контактите и дневните задачи на едно место и планирајте го времето со сигурност.',
   'auth.schedulePreview': 'Денешен распоред',
   'auth.appointmentsToday': '3 термини денес',
   'auth.schedulePatientOne': 'Посета на пациент',
   'auth.schedulePatientTwo': 'Контролен преглед',
   'auth.schedulePatientThree': 'Консултација',
-  'auth.secureAccess': 'Најавете се за да го видите распоредот на ординацијата.',
+  'auth.secureAccess': 'Најавете се за да го отворите вашиот работен простор во iTermin.',
   'auth.welcomeBack': 'Добредојдовте назад',
   'auth.signInPrompt': 'Внесете ги податоците за да ја отворите сметката.',
   'auth.email': 'Е-пошта',
@@ -557,6 +580,29 @@ const mk: Record<string, string> = {
   'auth.serverError': 'Најавата моментално не е достапна. Обидете се подоцна.',
   'auth.sessionExpired': 'Вашата сесија истече. Најавете се повторно.',
   'auth.checkingSession': 'Проверка на сесијата…',
+  'public.footerLabel': 'Корисни врски',
+  'public.backToLogin': 'Назад на најава',
+  'public.placeholder': 'Placeholder содржина — оваа страница ќе биде финализирана пред објавување.',
+  'public.faq.link': 'Најчести прашања',
+  'public.privacy.link': 'Приватност',
+  'public.terms.link': 'Услови',
+  'public.contact.link': 'Контакт',
+  'public.faq.title': 'Најчести прашања',
+  'public.faq.intro': 'Најдете одговори за почеток со iTermin, организирање на распоредот и управување со работниот простор.',
+  'public.faq.sectionTitle': 'Што може да организирате со iTermin?',
+  'public.faq.sectionText': 'iTermin е наменет за тимови и самостојни професионалци на кои им треба јасен преглед на термините, контактите, достапноста и секојдневната работа.',
+  'public.privacy.title': 'Политика за приватност',
+  'public.privacy.intro': 'Оваа страница ќе објасни кои податоци ги собира iTermin, зошто се користат и како се заштитуваат.',
+  'public.privacy.sectionTitle': 'Информации и заштита на податоците',
+  'public.privacy.sectionText': 'Конечната политика ќе опфати податоци за сметката, податоци во работниот простор, чување, контрола на пристап и вашите права.',
+  'public.terms.title': 'Услови за користење',
+  'public.terms.intro': 'Овие услови ќе ги опишат правилата за користење на iTermin и одговорностите на сопствениците и корисниците на сметките.',
+  'public.terms.sectionTitle': 'Користење на iTermin',
+  'public.terms.sectionText': 'Конечните услови ќе опфатат прифатливо користење, безбедност на сметката, достапност на услугата, наплата и промени во услугата.',
+  'public.contact.title': 'Контактирајте нè',
+  'public.contact.intro': 'Имате прашање, ви треба помош или сакате да споделите мислење? Го подготвуваме најдобриот начин да стапите во контакт со iTermin тимот.',
+  'public.contact.sectionTitle': 'Поддршка и мислења',
+  'public.contact.sectionText': 'Адреса за поддршка и контакт форма ќе бидат додадени тука. Дотогаш, обратете се кај администраторот на вашиот работен простор.',
 
   'dashboard.weeklySchedule': 'Неделен распоред',
   'settings.typeDurations': 'Стандардно времетраење според видот на термин',
@@ -1019,8 +1065,8 @@ export function translate(
   key: string,
   vars?: Record<string, string | number>
 ): string {
-  const table = dicts[locale] ?? dicts.en;
-  let s = table[key] ?? dicts.en[key] ?? key;
+  const table = dicts[locale] ?? dicts[DEFAULT_LOCALE];
+  let s = table[key] ?? dicts[DEFAULT_LOCALE][key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       s = s.replace(new RegExp(`{{\\s*${k}\\s*}}`, 'g'), String(v));

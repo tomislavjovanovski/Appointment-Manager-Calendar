@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { GoogleCalendarSync } from '@/components/dashboard/GoogleCalendarSync';
 import { NotificationManager } from '@/components/notifications/NotificationManager';
 import { useI18n } from '@/i18n';
-import type { AppLocale } from '@/i18n/types';
+import { normalizeLocale, type AppLocale } from '@/i18n/types';
 import { buildApiUrl } from '@/lib/storage';
 import { authFetch } from '@/lib/auth';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
@@ -97,7 +97,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
   const { t, setLocale } = useI18n();
   const { user, saveSidebarCollapsed, savingSidebarPreference } = useAuth();
   const [settings, setSettings] = useState<AppointmentSettings>(() => settingsStorage.getCached() ?? {
-    locale: 'en',
+    locale: 'mk',
     workingDays: [1, 2, 3, 4, 5],
     startTime: '09:00',
     endTime: '17:00',
@@ -193,7 +193,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
     try {
       const savedSettings = await settingsStorage.save(settings);
       onSettingsSaved?.(savedSettings);
-      setLocale(settings.locale === 'mk' ? 'mk' : 'en');
+      setLocale(normalizeLocale(settings.locale));
       toast({
         title: t('settings.savedTitle'),
         description: t('settings.savedDesc'),
@@ -237,7 +237,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
         const newSettings = await settingsStorage.get();
         setSettings(newSettings);
         onSettingsSaved?.(newSettings);
-        setLocale(newSettings.locale === 'mk' ? 'mk' : 'en');
+        setLocale(normalizeLocale(newSettings.locale));
         toast({
           title: t('settings.importToastTitle'),
           description: t('settings.importToastDesc'),
@@ -367,7 +367,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
 
             <SettingsSection icon={Languages} title={t('settings.language')} description={t('settings.languageHint')}>
               <Select
-                value={settings.locale ?? 'en'}
+                value={settings.locale ?? 'mk'}
                 onValueChange={(value) => setSettings({ ...settings, locale: value as AppLocale })}
               >
                 <SelectTrigger data-testid="settings-locale-select" aria-label={t('settings.language')}>

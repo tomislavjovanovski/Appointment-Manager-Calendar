@@ -1,7 +1,7 @@
 import { Appointment, Patient, NotificationSettings } from '@/types/appointment';
 import { useToast } from '@/hooks/use-toast';
 import { translate } from '@/i18n/dictionary';
-import type { AppLocale } from '@/i18n/types';
+import { DEFAULT_LOCALE, type AppLocale } from '@/i18n/types';
 
 export class NotificationService {
   private toast: any;
@@ -15,7 +15,7 @@ export class NotificationService {
     patient: Patient,
     settings: NotificationSettings,
     isReminderType: 'day-before' | 'same-day',
-    locale: AppLocale = 'en'
+    locale: AppLocale = DEFAULT_LOCALE
   ) {
     if (!settings.emailWebhookUrl) {
       console.warn('Email webhook URL not configured');
@@ -68,7 +68,7 @@ export class NotificationService {
     appointment: Appointment,
     patient: Patient,
     settings: NotificationSettings,
-    locale: AppLocale = 'en'
+    locale: AppLocale = DEFAULT_LOCALE
   ) {
     if (!settings.smsWebhookUrl) {
       console.warn('SMS webhook URL not configured');
@@ -203,7 +203,7 @@ export class NotificationService {
     appointments: Appointment[],
     patients: Patient[],
     settings: NotificationSettings,
-    locale: AppLocale = 'en'
+    locale: AppLocale = DEFAULT_LOCALE
   ) {
     const today = new Date();
     const tomorrow = new Date();

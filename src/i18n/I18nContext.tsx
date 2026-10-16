@@ -13,7 +13,7 @@ import { settingsStorage } from '@/lib/storage';
 import type { AppointmentSettings } from '@/types/appointment';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
-import type { AppLocale } from './types';
+import { normalizeLocale, type AppLocale } from './types';
 import { translate } from './dictionary';
 import { rememberLocale } from './storedLocale';
 
@@ -28,7 +28,7 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<AppLocale>('en');
+  const [locale, setLocaleState] = useState<AppLocale>(() => normalizeLocale(undefined));
   const [initialSettings, setInitialSettings] = useState<AppointmentSettings | null>(null);
   const [settingsError, setSettingsError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -40,7 +40,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .get()
       .then((s) => {
         if (!isMounted) return;
-        setLocaleState(s.locale === 'mk' ? 'mk' : 'en');
+        setLocaleState(normalizeLocale(s.locale));
         document.title = s.practiceName?.trim() || 'iTermin';
         setInitialSettings(s);
       })
@@ -51,13 +51,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [retry]);
 
   useEffect(() => {
-    document.documentElement.lang = locale === 'mk' ? 'mk' : 'en';
+    document.documentElement.lang = locale;
     // Remembered so the login page can use the clinic's language before settings are readable.
     rememberLocale(locale);
   }, [locale]);
 
   const setLocale = useCallback((l: AppLocale) => {
-    setLocaleState(l === 'mk' ? 'mk' : 'en');
+    setLocaleState(normalizeLocale(l));
   }, []);
 
   const t = useCallback(

@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ArrowUpRight,
   CalendarCheck2,
@@ -92,7 +93,7 @@ export default function Login() {
       <div aria-hidden="true" className="pointer-events-none absolute -left-40 -top-44 h-96 w-96 rounded-full bg-blue-100/70 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 -right-40 h-[30rem] w-[30rem] rounded-full bg-violet-100/60 blur-3xl" />
 
-      <section className="login-card relative grid w-full max-w-5xl overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.24)] lg:grid-cols-[1.03fr_0.97fr]">
+      <section className="login-card relative grid w-full max-w-5xl overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.24)] lg:h-[650px] lg:grid-cols-[1.03fr_0.97fr]">
         <aside className="login-preview relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-blue-700 via-blue-700 to-indigo-800 p-6 text-white lg:flex xl:p-8">
           <div aria-hidden="true" className="login-calendar-pattern pointer-events-none absolute -right-14 -top-10 h-60 w-[21rem] rotate-12 rounded-2xl border border-white/15">
             <div className="absolute inset-x-0 top-0 h-12 rounded-t-2xl border-b border-white/15 bg-white/5" />
@@ -153,9 +154,23 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="relative mt-4 flex items-center gap-2 text-xs text-blue-100/90">
-            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-            {t('auth.secureAccess')}
+          <div className="relative">
+            <div className="flex items-center gap-2 text-xs text-blue-100/90">
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              {t('auth.secureAccess')}
+            </div>
+            <nav aria-label={t('public.footerLabel')} className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-blue-100/90">
+              {[
+                ['faq', t('public.faq.link')],
+                ['privacy', t('public.privacy.link')],
+                ['terms', t('public.terms.link')],
+                ['contact', t('public.contact.link')],
+              ].map(([path, label]) => (
+                <Link key={path} to={`/${path}`} className="transition-colors hover:text-white hover:underline">
+                  {label}
+                </Link>
+              ))}
+            </nav>
           </div>
         </aside>
 

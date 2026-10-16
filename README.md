@@ -1,19 +1,19 @@
 # iTermin
 
-**A lightweight appointment and patient management app for a dental practice.**
+**A lightweight appointment and contact management app for independent professionals and small teams.**
 
-iTermin provides a weekly scheduling view, patient records, appointment statistics, and configurable clinic settings in an English/Macedonian interface. It is designed for a single clinic, with a desktop calendar and a compact mobile agenda.
+iTermin provides a weekly scheduling view, contact records, appointment statistics, and configurable workspace settings in an English/Macedonian interface. It is designed for a single workspace, with a desktop calendar and a compact mobile agenda.
 
 > **Current architecture:** React + TypeScript frontend, Express backend, and JSON-file storage. Google Calendar integration is currently disabled.
 
 ## ✨ At a glance
 
-**iTermin** is a lightweight appointment and patient management application designed for dental clinics, featuring a bilingual interface in English and Macedonian.
+**iTermin** is a lightweight appointment and contact management application for service-based teams, featuring a bilingual interface in English and Macedonian.
 
 - 📅 **Smart scheduling** — Weekly calendar, configurable appointment durations, and availability checks.
-- 🦷 **Patient management** — Create, search, and manage patient records.
-- 📊 **Clinic statistics** — Appointment summaries, patient insights, and monthly reports.
-- ⚙️ **Flexible settings** — Configure working hours, appointment defaults, language, and clinic branding.
+- 👥 **Contact management** — Create, search, and manage contact records.
+- 📊 **Workspace statistics** — Appointment summaries, contact insights, and monthly reports.
+- ⚙️ **Flexible settings** — Configure working hours, appointment defaults, language, and workspace branding.
 - 🔐 **Secure authentication** — Administrator accounts, protected API routes, server-side sessions, and CSRF protection.
 - 📱 **Responsive interface** — Full weekly calendar on desktop and a compact agenda on mobile.
 - 💾 **JSON-based storage** — Lightweight file-based persistence without a database.
