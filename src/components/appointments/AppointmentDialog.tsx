@@ -220,6 +220,7 @@ type Props = {
   onAppointmentCreated?: (data: AppointmentDialogSubmitData) => void;
   onUpdated?: (data: AppointmentDialogSubmitData) => void;
   onDelete?: () => Promise<void> | void;
+  onBlockSlot?: (start: Date, end: Date) => Promise<void>;
   // if provided, dialog acts as edit form
   appointment?: AppointmentDialogAppointment;
   refreshTrigger?: number;
@@ -256,6 +257,7 @@ export default function AppointmentDialog({
   onAppointmentCreated,
   onUpdated,
   onDelete,
+  onBlockSlot,
   appointment,
   refreshTrigger = 0,
 }: Props) {
@@ -329,6 +331,7 @@ export default function AppointmentDialog({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState(createEmptyPatientForm);
   const [savingNewPatient, setSavingNewPatient] = useState(false);
+  const [blockingSlot, setBlockingSlot] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionErrorId, setSubmissionErrorId] = useState<string | null>(null);
   const pickerContainerRef = useRef<HTMLDivElement>(null);
@@ -339,6 +342,21 @@ export default function AppointmentDialog({
   const [availabilityError, setAvailabilityError] = useState(false);
   const initialSlotSelectedRef = useRef(false);
   const { toast } = useToast();
+
+  const blockSelectedSlot = async () => {
+    if (!selectedDate || !onBlockSlot || !availabilitySettings) return;
+    const end = new Date(selectedDate);
+    end.setMinutes(end.getMinutes() + availabilitySettings.timeSlotMinutes);
+    setBlockingSlot(true);
+    try {
+      await onBlockSlot(selectedDate, end);
+      onOpenChange(false);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : t('appointment.blockFailed'));
+    } finally {
+      setBlockingSlot(false);
+    }
+  };
 
   const getStarts = (day: Date) => availabilitySettings && !availabilityLoading && !availabilityError
     ? getAvailableStarts(day, Number(durationValue ?? '30'), availabilitySettings, occupiedAppointments, appointment?.id)
@@ -980,6 +998,18 @@ export default function AppointmentDialog({
                   className="h-10"
                 >
                   {t('appointment.delete')}
+                </Button>
+              )}
+              {effectiveMode === "create" && selectedDate && onBlockSlot && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  data-testid="block-slot-btn"
+                  disabled={blockingSlot || saving || availabilityLoading}
+                  onClick={() => void blockSelectedSlot()}
+                  className="h-10 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  {blockingSlot ? t('appointment.blockingSlot') : t('appointment.blockSlot')}
                 </Button>
               )}
               <Button type="button" variant="outline" data-testid="cancel-booking-btn" onClick={() => onOpenChange(false)} className="h-10 border-border/70">

@@ -107,6 +107,7 @@ const performApiCall = async (endpoint: string, options: RequestInit = {}) => {
 
 const DEFAULT_SETTINGS: AppointmentSettings = {
   locale: 'mk',
+  blockedSlots: [],
   workingDays: [1, 2, 3, 4, 5],
   startTime: '08:00',
   endTime: '18:00',
@@ -140,6 +141,7 @@ export function normalizeSettings(data: Partial<AppointmentSettings> | null | un
     ...d,
     locale,
     workingDays: Array.isArray(d.workingDays) ? d.workingDays : DEFAULT_SETTINGS.workingDays,
+    blockedSlots: Array.isArray(d.blockedSlots) ? d.blockedSlots : [],
     notifications: { ...DEFAULT_SETTINGS.notifications, ...d.notifications },
     appointmentTypeDurations: { ...DEFAULT_APPOINTMENT_TYPE_DURATIONS, ...d.appointmentTypeDurations },
     appointmentSizes: {

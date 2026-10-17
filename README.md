@@ -35,6 +35,7 @@ iTermin provides a weekly scheduling view, contact records, appointment statisti
   - 🟣 Purple — Prosthetics & orthodontics
   - 🔴 Red — Urgent appointment
 - **Availability guidance** based on working days and hours, with overlap checks, 15-minute suggestions, and highlighted time ranges.
+- **One-off unavailable slots:** mark a specific desktop or mobile time slot as non-working from the booking dialog; it is persisted without creating an appointment and removed from future booking suggestions.
 - **Appointment management:** edit or reschedule appointments, or delete them with confirmation.
 - **Current appointment indicator:** an appointment in progress is highlighted with a darker shade of its type color and a clock indicator.
 
@@ -56,6 +57,7 @@ iTermin provides a weekly scheduling view, contact records, appointment statisti
 ### ⚙️ Settings and personalization
 
 - Configure working days, default working hours, and optional hours for individual days.
+- Manage one-off unavailable time slots without changing recurring working-day settings.
 - Set the desktop calendar row interval.
 - Switch between English and Macedonian.
 - Configure the practice name and upload or remove a PNG, JPEG, or WebP logo (up to 128 KB).
@@ -226,14 +228,42 @@ The backend is designed to run under **Phusion Passenger** on cPanel. Passenger 
 Passenger startup logs are written as one JSON line per step. Relevant events include:
 
 - `startup.begin` (including `moduleLoadMs`)
+- `auth.init.begin` and `auth.init.ok`
 - `datastore.init.attempt`, `datastore.init.ok`, and `datastore.init.failed`
 - `server.listening` and `server.listen.failed`
+- `auth.request.completed` for `/api/auth/me` and `/api/auth/login`, including status and duration
 - `startup.failed`
 - `process.uncaughtException`
 
 No patient data or tokens are logged.
 
 Data-store initialization retries transient filesystem errors (such as `EMFILE`, `ENFILE`, `EAGAIN`, `EBUSY`, `EIO`, and `ETIMEDOUT`) or a per-attempt timeout. Permission/configuration errors such as `EACCES` fail immediately. Missing JSON files are created with defaults only when they truly do not exist (`ENOENT`); existing files are not overwritten during initialization.
+
+### Local synthetic performance data
+
+The repository includes a local-only generator for creating 1,000 synthetic patients and 2,000 synthetic appointments. It starts with the previous, current, and next calendar month, then extends the end date when the read-only current schedule does not have enough non-overlapping capacity. This keeps the current settings unchanged while ensuring the requested appointment count can be scheduled.
+
+The generator writes only to a dedicated directory below `.local/` and defaults to `.local/synthetic-data`. It refuses writes unless `NODE_ENV=development`, `ITERMIN_LOCAL_ONLY=1`, and the process is not running under Passenger. The default mode is a dry-run preview:
+
+```bash
+npm run generate:synthetic
+```
+
+To explicitly write the isolated dataset:
+
+```bash
+ITERMIN_LOCAL_ONLY=1 NODE_ENV=development npm run generate:synthetic -- --write --confirm-synthetic-data
+```
+
+Use `--seed <value>` for a repeatable alternative schedule. A manifest records generated IDs and prevents silent repair or duplication if generated records are changed or removed. The generator preserves unrelated records in the target directory and rejects unsafe targets; it does not delete or replace data. Inspect the preview, including the computed first and last dates, before writing, and remove `.local/synthetic-data` manually when the isolated dataset is no longer needed. The date range changes with the local calendar date even when the seed stays the same.
+
+To run the local app against that isolated dataset, start the existing development workflow with the guarded override:
+
+```bash
+ITERMIN_LOCAL_ONLY=1 NODE_ENV=development ITERMIN_LOCAL_DATA_DIR="$PWD/.local/synthetic-data" npm run dev
+```
+
+This override is rejected outside development, under Passenger, or for directories outside `.local/`. The repository's normal `public/data` directory and its `settings.json` remain unchanged.
 
 The public `/api/health` endpoint returns only `{"ok":true}` and does not read data files. The detailed health panel in Settings uses `/api/health/details`, which requires login and reports the data directory and record counts.
 

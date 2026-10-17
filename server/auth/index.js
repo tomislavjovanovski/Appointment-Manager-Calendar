@@ -192,6 +192,22 @@ export function createAuth({ store, config, logger, now = () => Date.now() }) {
   };
 
   const router = express.Router();
+  router.use((req, res, next) => {
+    if (req.path !== '/me' && req.path !== '/login') {
+      next();
+      return;
+    }
+    const startedAt = performance.now();
+    res.once('finish', () => {
+      logger?.info?.('auth.request.completed', {
+        route: req.path,
+        method: req.method,
+        statusCode: res.statusCode,
+        durationMs: Math.round(performance.now() - startedAt),
+      });
+    });
+    next();
+  });
   router.use(express.json({ limit: '10kb' }));
   router.use((_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');

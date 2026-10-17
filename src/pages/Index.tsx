@@ -6,8 +6,8 @@ import { MonthlyStatistics } from '@/components/statistics/MonthlyStatistics';
 import { TabbedSettingsPanel } from '@/components/settings/TabbedSettingsPanel';
 import AppointmentDialog from '@/components/appointments/AppointmentDialog';
 import { CreatePatientDialog } from '@/components/patients/CreatePatientDialog';
-import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
-import { appointmentsStorage, patientsStorage } from '@/lib/storage';
+import { Patient, Appointment, AppointmentSettings, BlockedSlot } from '@/types/appointment';
+import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
 import { useI18n } from '@/i18n';
 import { useToast } from '@/hooks/use-toast';
 import { MobileAgenda } from '@/components/dashboard/MobileAgenda';
@@ -35,6 +35,7 @@ const Index = () => {
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>(initialSettings?.blockedSlots ?? []);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [savingAppointment, setSavingAppointment] = useState(false);
@@ -62,6 +63,30 @@ const Index = () => {
     setSelectedAppointment(appointment);
     setSelectedDate(undefined);
     setAppointmentDialogOpen(true);
+  };
+
+  const handleBlockSlot = async (start: Date, end: Date) => {
+    const settings = await settingsStorage.get();
+    const blockedSlots = settings.blockedSlots ?? [];
+    const alreadyBlocked = blockedSlots.some((slot) =>
+      new Date(slot.startTime).getTime() === start.getTime() && new Date(slot.endTime).getTime() === end.getTime()
+    );
+    if (alreadyBlocked) return;
+    const nextBlockedSlots = [
+        ...blockedSlots,
+        { id: `blocked-${Date.now()}`, startTime: start.toISOString(), endTime: end.toISOString() },
+    ];
+    await settingsStorage.update({ blockedSlots: nextBlockedSlots });
+    setBlockedSlots(nextBlockedSlots);
+    toast({ title: t('appointment.blockedTitle'), description: t('appointment.blockedDescription') });
+  };
+
+  const handleUnblockSlot = async (slot: BlockedSlot) => {
+    const settings = await settingsStorage.get();
+    const nextBlockedSlots = (settings.blockedSlots ?? []).filter((candidate) => candidate.id !== slot.id);
+    await settingsStorage.update({ blockedSlots: nextBlockedSlots });
+    setBlockedSlots(nextBlockedSlots);
+    toast({ title: t('appointment.unblockedTitle'), description: t('appointment.unblockedDescription') });
   };
   
   const handlePatientClick = (patient: Patient) => {
@@ -341,6 +366,8 @@ const Index = () => {
               onCreateAppointment={handleCreateAppointment}
               onAppointmentClick={handleAppointmentClick}
               refreshTrigger={refreshTrigger}
+              blockedSlots={blockedSlots}
+              onUnblockSlot={handleUnblockSlot}
             />
             <div className="hidden md:block">
               <WeeklyScheduler
@@ -348,6 +375,8 @@ const Index = () => {
                 onCreateAppointment={handleCreateAppointment}
                 onAppointmentClick={handleAppointmentClick}
                 refreshTrigger={refreshTrigger}
+                blockedSlots={blockedSlots}
+                onUnblockSlot={handleUnblockSlot}
               />
             </div>
           </>
@@ -429,6 +458,7 @@ const Index = () => {
           if (!open) {
             setSelectedAppointment(null);
             setSelectedDate(undefined);
+            handleRefresh();
           }
         }}
         selectedDate={selectedDate}
@@ -437,6 +467,7 @@ const Index = () => {
         onSubmit={handleSaveAppointment}
         onUpdated={handleRefresh}
         onDelete={handleDeleteAppointment}
+        onBlockSlot={handleBlockSlot}
         refreshTrigger={refreshTrigger}
         saving={savingAppointment}
       />

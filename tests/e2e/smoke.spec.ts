@@ -173,4 +173,19 @@ test.describe('Smoke — Application Loads', () => {
 
     await expect(page.getByTestId('appointment-block').filter({ hasText: PATIENTS.alice.firstName })).toBeVisible();
   });
+
+  test('scheduler can mark a free slot as unavailable without creating an appointment', async ({
+    pageWithPatients: page,
+  }) => {
+    await bookingHelper.goToScheduler(page);
+    await bookingHelper.openSlot(page, nextWorkingSlot(1, 14));
+
+    await page.getByTestId('block-slot-btn').click();
+    await expect(page.getByTestId('booking-dialog')).not.toBeVisible();
+    await expect(page.getByTestId('toast-success')).toBeVisible();
+
+    await page.reload();
+    await bookingHelper.goToScheduler(page);
+    await expect(page.locator('[data-slot-time="14:00"][data-blocked="true"]')).toBeVisible();
+  });
 });

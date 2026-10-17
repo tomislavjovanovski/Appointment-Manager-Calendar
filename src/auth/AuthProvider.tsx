@@ -27,6 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const [savingSidebarPreference, setSavingSidebarPreference] = useState(false);
   const preferenceSaveRef = useRef(false);
+  const authOperationRef = useRef(0);
+  const sessionRequestRef = useRef<AbortController | null>(null);
   const statusRef = useRef(status);
   statusRef.current = status;
 
@@ -38,17 +40,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    const operation = ++authOperationRef.current;
+    sessionRequestRef.current?.abort();
+    const controller = new AbortController();
+    sessionRequestRef.current = controller;
     setStatus('loading');
-    fetchCurrentUser()
+    fetchCurrentUser(controller.signal)
       .then((currentUser) => {
-        if (!active) return;
+        if (!active || operation !== authOperationRef.current) return;
         setUser(currentUser);
         setStatus(currentUser ? 'authenticated' : 'unauthenticated');
       })
       .catch(() => {
-        if (active) setStatus('error');
+        if (active && operation === authOperationRef.current && !controller.signal.aborted) setStatus('error');
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [attempt]);
 
   useEffect(() => {
@@ -65,14 +74,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearCachedData]);
 
   const login = useCallback(async (email: string, password: string) => {
+    const operation = ++authOperationRef.current;
+    sessionRequestRef.current?.abort();
+    sessionRequestRef.current = null;
     clearCachedData();
     const loggedIn = await loginRequest(email, password);
+    if (operation !== authOperationRef.current) return;
     setUser(loggedIn);
     setSessionExpired(false);
     setStatus('authenticated');
   }, [clearCachedData]);
 
   const logout = useCallback(async () => {
+    ++authOperationRef.current;
+    sessionRequestRef.current?.abort();
+    sessionRequestRef.current = null;
     try {
       await logoutRequest();
     } catch {
@@ -84,7 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('unauthenticated');
   }, [clearCachedData]);
 
-  const retry = useCallback(() => setAttempt((current) => current + 1), []);
+  const retry = useCallback(() => {
+    setAttempt((current) => current + 1);
+  }, []);
   const saveSidebarCollapsed = useCallback(async (collapsed: boolean) => {
     if (preferenceSaveRef.current) return;
     preferenceSaveRef.current = true;

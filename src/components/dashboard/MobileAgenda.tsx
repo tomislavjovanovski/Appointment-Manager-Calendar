@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, addWeeks, format, isBefore, isSameDay, startOfDay, startOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight, Clock3, Phone, Plus, UserRound } from 'lucide-react';
-import { Appointment, AppointmentSettings, Patient } from '@/types/appointment';
+import { ChevronLeft, ChevronRight, Clock3, Phone, Plus, UserRound, X } from 'lucide-react';
+import { Appointment, AppointmentSettings, BlockedSlot, Patient } from '@/types/appointment';
 import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
 import { getFreeGaps, splitIntoSlots } from '@/lib/appointmentAvailability';
 import { Button } from '@/components/ui/button';
@@ -15,18 +15,38 @@ interface MobileAgendaProps {
   onCreateAppointment: (date: Date) => void;
   onAppointmentClick: (appointment: Appointment) => void;
   refreshTrigger?: number;
+  blockedSlots?: BlockedSlot[];
+  onUnblockSlot?: (slot: BlockedSlot) => Promise<void>;
 }
 
-export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0 }: MobileAgendaProps) {
+export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, blockedSlots, onUnblockSlot }: MobileAgendaProps) {
   const { dateFnsLocale, t, initialSettings } = useI18n();
   const isCurrentAppointment = useCurrentAppointment();
   const [settings, setSettings] = useState<AppointmentSettings | null>(() => settingsStorage.getCached() ?? initialSettings);
   const today = useMemo(() => startOfDay(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(today, { weekStartsOn: 1 }));
+  const initialDateAdjustedRef = useRef(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (blockedSlots && settings) setSettings((current) => current ? { ...current, blockedSlots } : current);
+  }, [blockedSlots]);
+  const currentSettings = blockedSlots && settings ? { ...settings, blockedSlots } : settings;
+
+  useEffect(() => {
+    if (!currentSettings || initialDateAdjustedRef.current) return;
+
+    const nextWorkingDate = Array.from({ length: 7 }, (_, offset) => addDays(today, offset))
+      .find((date) => currentSettings.workingDays.includes(date.getDay()));
+    if (!nextWorkingDate) return;
+
+    initialDateAdjustedRef.current = true;
+    setSelectedDate(nextWorkingDate);
+    setWeekStart(startOfWeek(nextWorkingDate, { weekStartsOn: 1 }));
+  }, [currentSettings, today]);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,7 +75,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
     };
   }, [refreshTrigger]);
 
-  const workingDays = settings?.workingDays;
+  const workingDays = currentSettings?.workingDays;
   const visibleDates = useMemo(() => {
     const week = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
     const working = workingDays ? week.filter((date) => workingDays.includes(date.getDay())) : week;
@@ -70,20 +90,22 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
     .filter((appointment) => isSameDay(new Date(appointment.startTime), selectedDate))
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  const isWorkingDay = (date: Date) => !settings || settings.workingDays.includes(date.getDay());
-  const isFullDay = (date: Date) => Boolean(settings) && !loading && isWorkingDay(date) &&
-    !isBefore(date, today) && getFreeGaps(date, settings!, appointments).length === 0;
+  const isWorkingDay = (date: Date) => !currentSettings || currentSettings.workingDays.includes(date.getDay());
+  const isFullDay = (date: Date) => Boolean(currentSettings) && !loading && isWorkingDay(date) &&
+    !isBefore(date, today) && getFreeGaps(date, currentSettings!, appointments).length === 0;
 
   const now = new Date();
   const getDaySlots = (date: Date) => {
-    if (!settings || !isWorkingDay(date) || isBefore(date, today)) return [];
+    if (!currentSettings || !isWorkingDay(date) || isBefore(date, today)) return [];
     const notBefore = isSameDay(date, now) ? now : undefined;
-    return splitIntoSlots(getFreeGaps(date, settings, appointments, notBefore));
+    return splitIntoSlots(getFreeGaps(date, currentSettings, appointments, notBefore));
   };
   const selectedGaps = getDaySlots(selectedDate);
+  const selectedBlockedSlots = (blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), selectedDate));
   const timeline = [
     ...dayAppointments.map((appointment) => ({ kind: 'appointment' as const, start: new Date(appointment.startTime), appointment })),
     ...selectedGaps.map((gap) => ({ kind: 'gap' as const, start: gap.start, end: gap.end })),
+    ...selectedBlockedSlots.map((slot) => ({ kind: 'blocked' as const, start: new Date(slot.startTime), end: new Date(slot.endTime), slot })),
   ].sort((a, b) => a.start.getTime() - b.start.getTime());
 
   const selectDate = (date: Date) => setSelectedDate(startOfDay(date));
@@ -116,7 +138,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
             const working = isWorkingDay(date);
             const full = isFullDay(date);
             const freeCount = loading ? 0 : getDaySlots(date).length;
-            const showCount = !loading && Boolean(settings) && working && !isBefore(date, today);
+            const showCount = !loading && Boolean(currentSettings) && working && !isBefore(date, today);
             const dayLabel = format(date, 'EEEE d MMMM', { locale: dateFnsLocale });
             let statusLabel = '';
             if (full) statusLabel = `, ${t('mobile.fullDay')}`;
@@ -193,6 +215,31 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
             <p className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{t('mobile.fullDay')}</p>
           )}
           {timeline.map((item) => {
+            if (item.kind === 'blocked') {
+              return (
+                <div
+                  key={`blocked-${item.slot.id}`}
+                  data-testid="mobile-blocked-slot"
+                  className="flex w-full items-center justify-between gap-2 rounded-2xl border border-destructive/30 bg-destructive/20 px-3 py-2 text-left text-sm text-destructive"
+                >
+                  <span className="tabular-nums">
+                    <span className="font-semibold">{format(item.start, 'HH:mm')} - {format(item.end, 'HH:mm')}</span>
+                    <span className="ml-2 text-xs opacity-80">{t('appointment.blockedShort')}</span>
+                  </span>
+                  {onUnblockSlot && (
+                    <button
+                      type="button"
+                      data-testid="unblock-slot-btn"
+                      aria-label={t('appointment.unblockSlot')}
+                      onClick={() => void onUnblockSlot(item.slot)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background/80 hover:bg-background"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              );
+            }
             if (item.kind === 'gap') {
               return (
                 <button

@@ -5,11 +5,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Clock, Phone, Plus, UserRound } from 'lucide-react';
+import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Clock, Phone, Plus, UserRound, X } from 'lucide-react';
 import { addDays, addWeeks, endOfWeek, format, startOfWeek } from 'date-fns';
-import { Appointment, Patient } from '@/types/appointment';
+import { Appointment, BlockedSlot, Patient } from '@/types/appointment';
 import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
-import { getDayHours, parseTimeMinutes } from '@/lib/appointmentAvailability';
+import { getDayHours, isBlockedSlot, parseTimeMinutes } from '@/lib/appointmentAvailability';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -24,10 +24,12 @@ interface WeeklySchedulerProps {
   onCreateAppointment: (date: Date) => void;
   onAppointmentClick: (appointment: Appointment) => void;
   refreshTrigger?: number;
+  blockedSlots?: BlockedSlot[];
+  onUnblockSlot?: (slot: BlockedSlot) => Promise<void>;
   navigation?: React.ReactNode;
 }
 
-export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, navigation }: WeeklySchedulerProps) {
+export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, navigation, blockedSlots, onUnblockSlot }: WeeklySchedulerProps) {
   const { toast } = useToast();
   const isCurrentAppointment = useCurrentAppointment();
   const { t, dateFnsLocale, initialSettings } = useI18n();
@@ -41,6 +43,11 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     timeSlotMinutes: 30
   });
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (blockedSlots) setSettings((current: any) => ({ ...current, blockedSlots }));
+  }, [blockedSlots]);
+  const currentSettings = blockedSlots ? { ...settings, blockedSlots } : settings;
   const [viewDate, setViewDate] = useState<Date>(() => new Date());
 
   const weekStart = useMemo(
@@ -59,10 +66,10 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
   );
   const workingDays = useMemo<number[]>(
     () =>
-      Array.isArray(settings.workingDays) && settings.workingDays.length > 0
-        ? settings.workingDays
+      Array.isArray(currentSettings.workingDays) && currentSettings.workingDays.length > 0
+        ? currentSettings.workingDays
         : [1, 2, 3, 4, 5],
-    [settings.workingDays]
+    [currentSettings.workingDays]
   );
 
   const isWorkingDay = (date: Date) => workingDays.includes(date.getDay());
@@ -179,7 +186,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
   const events = appointmentEvents;
 
   const dayHourRanges = workingDays.map((weekday) => {
-    const hours = getDayHours(settings, weekday);
+    const hours = getDayHours(currentSettings, weekday);
     return { start: parseTimeMinutes(hours.startTime), end: parseTimeMinutes(hours.endTime) };
   }).filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end));
   const earliestStart = dayHourRanges.length ? Math.min(...dayHourRanges.map((range) => range.start)) : 9 * 60;
@@ -195,7 +202,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       ? Math.ceil(event.end.getHours() + event.end.getMinutes() / 60)
       : 24
   ));
-  const step = typeof settings.timeSlotMinutes === 'number' ? settings.timeSlotMinutes : 30;
+  const step = typeof currentSettings.timeSlotMinutes === 'number' ? currentSettings.timeSlotMinutes : 30;
   const schedulerHeight = 600;
   const rowCount = Math.ceil((visibleEndHour - visibleStartHour) * 60 / step);
   const slotHeight = Math.ceil(Math.max(schedulerHeight / rowCount, 60));
@@ -384,7 +391,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
           </div>
           <div className="weekly-scheduler bg-muted/5" style={{ zoom: 44 / 60, width: '100%' }}>
             <Scheduler
-              key={weekStart.toISOString()}
+              key={`${weekStart.toISOString()}-${refreshTrigger}`}
               view="week"
               height={schedulerHeight}
               events={events}
@@ -534,11 +541,15 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   const weekStartDay = weekStart.getDay();
                   const testId = day === weekStartDay ? `time-slot-${label}` : undefined;
                   const slotMinutes = start ? start.getHours() * 60 + start.getMinutes() : Number.NaN;
-                  const dayHours = start ? getDayHours(settings, start.getDay()) : undefined;
+                  const dayHours = start ? getDayHours(currentSettings, start.getDay()) : undefined;
                   const isWithinHours = Boolean(dayHours) && Number.isFinite(slotMinutes) &&
                     slotMinutes >= parseTimeMinutes(dayHours!.startTime) &&
                     slotMinutes < parseTimeMinutes(dayHours!.endTime);
-                  const isEnabled = Boolean(start && end && onClick && isWorkingDay(start) && isWithinHours);
+                  const isBlocked = Boolean(start && end && isBlockedSlot(currentSettings, start, end));
+                  const blockedSlot = isBlocked && start && end
+                    ? blockedSlots?.find((slot) => new Date(slot.startTime).getTime() === start.getTime() && new Date(slot.endTime).getTime() === end.getTime())
+                    : undefined;
+                  const isEnabled = Boolean(start && end && onClick && isWorkingDay(start) && isWithinHours && !isBlocked);
 
                   return (
                     <div
@@ -546,6 +557,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       data-slot-day={start?.getDay()}
                       data-slot-time={label}
                       data-working-day={isEnabled ? 'true' : 'false'}
+                      data-blocked={isBlocked ? 'true' : 'false'}
                       aria-disabled={isEnabled ? 'false' : 'true'}
                       onDrop={onDrop}
                       onDragOver={(event) => {
@@ -570,12 +582,29 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                         if (isEnabled && start && end && onClick) onClick(start, end);
                       }}
                       className={cn(
-                        'h-full w-full transition-colors',
+                        'relative h-full w-full transition-colors',
                         isEnabled
                           ? 'cursor-pointer bg-transparent hover:bg-primary/5'
-                          : 'cursor-not-allowed bg-muted-foreground/10 hover:bg-muted-foreground/10'
+                          : isBlocked
+                            ? 'cursor-not-allowed bg-destructive/20 hover:bg-destructive/20'
+                            : 'cursor-not-allowed bg-muted-foreground/10 hover:bg-muted-foreground/10'
                       )}
-                    />
+                    >
+                      {blockedSlot && onUnblockSlot && (
+                        <button
+                          type="button"
+                          data-testid="unblock-slot-btn"
+                          aria-label={t('appointment.unblockSlot')}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void onUnblockSlot(blockedSlot);
+                          }}
+                          className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background/90 text-destructive shadow-sm hover:bg-background"
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
                   );
                 }
               }}

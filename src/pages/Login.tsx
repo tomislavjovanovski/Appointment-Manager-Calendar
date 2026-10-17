@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  RefreshCw,
   ShieldCheck,
   UsersRound,
 } from 'lucide-react';
@@ -26,7 +27,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type FieldErrors = { email?: string; password?: string };
 
 export default function Login() {
-  const { login, sessionExpired } = useAuth();
+  const { login, retry, sessionExpired, status } = useAuth();
   // Settings (and the clinic's language) are protected, so use the language remembered on this device.
   const [locale] = useState(readRememberedLocale);
   const t = (key: string, vars?: Record<string, string | number>) => translate(locale, key, vars);
@@ -86,7 +87,8 @@ export default function Login() {
     }
   };
 
-  const notice = formError ?? (sessionExpired ? t('auth.sessionExpired') : null);
+  const sessionError = status === 'error';
+  const notice = formError ?? (sessionExpired ? t('auth.sessionExpired') : sessionError ? t('auth.networkError') : null);
 
   return (
     <main className="login-page relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-slate-50 px-3 py-3 sm:px-6 sm:py-4">
@@ -198,12 +200,20 @@ export default function Login() {
                 data-testid="login-error"
                 className={cn(
                   'rounded-xl border px-3.5 py-3 text-sm',
-                  formError
+                  formError || sessionError
                     ? 'border-destructive/30 bg-destructive/10 text-destructive'
                     : 'border-primary/25 bg-primary/5 text-foreground',
                 )}
               >
-                {notice}
+                <div className="flex items-center justify-between gap-3">
+                  <span>{notice}</span>
+                  {sessionError && !formError && (
+                    <Button type="button" variant="outline" size="sm" onClick={retry}>
+                      <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                      {t('settings.retry')}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 

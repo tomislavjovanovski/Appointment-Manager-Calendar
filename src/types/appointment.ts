@@ -30,6 +30,12 @@ export interface Appointment {
   createdAt: string;
 }
 
+export interface BlockedSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+}
+
 export interface NotificationSettings {
   emailWebhookUrl: string;
   smsWebhookUrl: string;
@@ -52,6 +58,7 @@ export interface AppointmentSettings {
   endTime: string;
   /** Per-weekday overrides of startTime/endTime, keyed by day (0 = Sunday). */
   dailyHours?: Partial<Record<number, { startTime: string; endTime: string }>>;
+  blockedSlots?: BlockedSlot[];
   appointmentSizes: {
     half: { duration: 30; label: 'Half Hour' };
     full: { duration: 60; label: 'Full Hour' };

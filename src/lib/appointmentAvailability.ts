@@ -9,6 +9,15 @@ export function getDayHours(settings: AppointmentSettings, weekday: number) {
   return settings.dailyHours?.[weekday] ?? { startTime: settings.startTime, endTime: settings.endTime };
 }
 
+export function isBlockedSlot(settings: AppointmentSettings, start: Date, end: Date) {
+  return (settings.blockedSlots ?? []).some((slot) => {
+    const blockedStart = new Date(slot.startTime).getTime();
+    const blockedEnd = new Date(slot.endTime).getTime();
+    return Number.isFinite(blockedStart) && Number.isFinite(blockedEnd) &&
+      start.getTime() < blockedEnd && blockedStart < end.getTime();
+  });
+}
+
 export function getWorkingTimeSlots(
   day: Date,
   settings: AppointmentSettings,
@@ -45,7 +54,8 @@ export function getAvailableStarts(
   return getWorkingTimeSlots(day, settings, duration).filter((start) => {
     const end = new Date(start);
     end.setMinutes(end.getMinutes() + duration);
-    return !occupied.some((appointment) => start.getTime() < appointment.end && end.getTime() > appointment.start);
+    return !isBlockedSlot(settings, start, end) &&
+      !occupied.some((appointment) => start.getTime() < appointment.end && end.getTime() > appointment.start);
   });
 }
 
@@ -64,6 +74,7 @@ export function getFreeGaps(
   for (const slot of getWorkingTimeSlots(day, settings)) {
     const slotEnd = slot.getTime() + 15 * 60_000;
     const isFree = (!notBefore || slot >= notBefore) &&
+      !isBlockedSlot(settings, slot, new Date(slotEnd)) &&
       !occupied.some((appointment) => slot.getTime() < appointment.end && slotEnd > appointment.start);
     const last = gaps[gaps.length - 1];
     if (isFree && last?.end.getTime() === slot.getTime()) last.end = new Date(slotEnd);

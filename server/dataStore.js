@@ -4,6 +4,7 @@ import path from 'path';
 
 export const DEFAULT_SETTINGS = {
   locale: 'mk',
+  blockedSlots: [],
   workingDays: [1, 2, 3, 4, 5],
   startTime: '09:00',
   endTime: '17:00',
@@ -73,6 +74,7 @@ const mergeSettings = (partial = {}) => ({
   ...DEFAULT_SETTINGS,
   ...partial,
   locale: partial.locale === 'en' ? 'en' : 'mk',
+  blockedSlots: Array.isArray(partial.blockedSlots) ? partial.blockedSlots : [],
   appointmentTypeDurations: {
     ...DEFAULT_SETTINGS.appointmentTypeDurations,
     ...partial.appointmentTypeDurations,

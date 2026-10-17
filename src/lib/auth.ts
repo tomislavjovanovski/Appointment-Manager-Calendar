@@ -50,8 +50,9 @@ export class LoginError extends Error {
 
 type SessionPayload = { user: AuthUser; csrfToken: string };
 
-export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  const response = await authFetch(buildApiUrl('/auth/me'), { signal: AbortSignal.timeout(10_000) });
+export async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
+  const requestSignal = signal ?? AbortSignal.timeout(10_000);
+  const response = await authFetch(buildApiUrl('/auth/me'), { signal: requestSignal });
   if (response.status === 401) {
     setCsrfToken(null);
     return null;
