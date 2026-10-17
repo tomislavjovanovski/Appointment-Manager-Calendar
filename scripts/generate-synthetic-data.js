@@ -340,7 +340,7 @@ const main = async () => {
   validateRecords(generated.patients, generated.appointments, settings);
   const existingIds = new Set([...existingPatients, ...existingAppointments].map((record) => record.id));
   if (!manifest && (generated.patients.some((patient) => existingIds.has(patient.id)) ||
-      generated.appointments.some((appointment) => existingIds.has(appointment.id))) {
+      generated.appointments.some((appointment) => existingIds.has(appointment.id)))) {
     fail('A generated ID collides with an existing record; choose a new target or seed.');
   }
   const additions = manifest ? { patients: [], appointments: [] } : generated;
