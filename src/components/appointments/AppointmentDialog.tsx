@@ -607,6 +607,13 @@ export default function AppointmentDialog({
       <DialogContent
         ref={pickerContainerRef}
         className="border-border/70 p-0 shadow-2xl sm:max-w-[800px]"
+        onOpenAutoFocus={(event) => {
+          // Auto-focusing the title on mobile opens the keyboard and iOS password AutoFill.
+          if (isMobilePicker || window.matchMedia('(pointer: coarse)').matches) {
+            event.preventDefault();
+            (event.currentTarget as HTMLElement | null)?.focus({ preventScroll: true });
+          }
+        }}
         onInteractOutside={(event) => {
           if (openTimePicker) event.preventDefault();
         }}
@@ -636,7 +643,7 @@ export default function AppointmentDialog({
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSubmit(submit)}>
+          <form autoComplete="off" onSubmit={handleSubmit(submit)}>
             <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: Title and Patient */}
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -648,6 +655,7 @@ export default function AppointmentDialog({
                       <Input
                         id="title"
                         data-testid="appointment-title-input"
+                        autoComplete="off"
                         {...register("title")}
                         placeholder={t(APPOINTMENT_TYPES[watch("type") ?? 'procedure'].labelKey)}
                         className="h-10 border-border bg-background shadow-sm"
