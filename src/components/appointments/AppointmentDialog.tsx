@@ -1007,9 +1007,11 @@ export default function AppointmentDialog({
                   data-testid="block-slot-btn"
                   disabled={blockingSlot || saving || availabilityLoading}
                   onClick={() => void blockSelectedSlot()}
-                  className="h-10 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  title={t('appointment.blockSlot')}
+                  aria-label={t('appointment.blockSlot')}
+                  className="h-10 min-w-0 justify-start truncate px-2 text-left text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto sm:px-3"
                 >
-                  {blockingSlot ? t('appointment.blockingSlot') : t('appointment.blockSlot')}
+                  {blockingSlot ? t('appointment.blockingSlot') : t('appointment.blockSlotShort')}
                 </Button>
               )}
               <Button type="button" variant="outline" data-testid="cancel-booking-btn" onClick={() => onOpenChange(false)} className="h-10 border-border/70">
