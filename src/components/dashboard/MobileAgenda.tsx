@@ -10,7 +10,8 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 import { useCurrentAppointment } from '@/hooks/use-current-appointment';
 import { APPOINTMENT_TYPES, darkenHexColor } from '@/lib/appointmentTypes';
-import { downloadScheduleSnapshot, SnapshotItem } from '@/lib/scheduleSnapshot';
+import { createScheduleSnapshot, SnapshotItem } from '@/lib/scheduleSnapshot';
+import { SnapshotDialog } from './SnapshotDialog';
 
 interface MobileAgendaProps {
   onCreateAppointment: (date: Date) => void;
@@ -160,6 +161,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
   };
 
   const [snapshotting, setSnapshotting] = useState(false);
+  const [snapshot, setSnapshot] = useState<{ blob: Blob; fileName: string; title: string } | null>(null);
   const takeSnapshot = async () => {
     setSnapshotting(true);
     try {
@@ -191,13 +193,14 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
       });
       const first = visibleDates[0];
       const last = visibleDates[visibleDates.length - 1];
-      await downloadScheduleSnapshot({
-        title: `${format(first, 'd MMM', { locale: dateFnsLocale })} - ${format(last, 'd MMM yyyy', { locale: dateFnsLocale })}`,
+      const title = `${format(first, 'd MMM', { locale: dateFnsLocale })} - ${format(last, 'd MMM yyyy', { locale: dateFnsLocale })}`;
+      const blob = await createScheduleSnapshot({
+        title,
         days,
         freeLabel: t('mobile.freeSlot'),
         blockedLabel: t('appointment.blockedShort'),
-        fileName: `schedule-${format(first, 'yyyy-MM-dd')}.png`,
       });
+      setSnapshot({ blob, title, fileName: `schedule-${format(first, 'yyyy-MM-dd')}.png` });
     } catch (error) {
       console.error('Snapshot failed', error);
     } finally {
@@ -279,6 +282,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
 
   return (
     <section className="space-y-3 md:hidden" data-testid="mobile-agenda">
+      <SnapshotDialog snapshot={snapshot} onClose={() => setSnapshot(null)} />
       <div ref={controlsRef} className="sticky top-0 z-30 space-y-1 bg-background py-2" data-testid="mobile-agenda-controls">
       <div className="flex items-stretch gap-1.5 rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background px-1.5 py-2.5 shadow-soft">
         <Button type="button" variant="outline" size="icon" aria-label={t('dashboard.previousWeek')} onClick={() => changeWeek(-1)} className="h-auto w-8 shrink-0 self-stretch rounded-xl bg-background/75 shadow-sm">

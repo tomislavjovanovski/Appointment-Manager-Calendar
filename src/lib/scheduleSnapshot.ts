@@ -15,7 +15,6 @@ export interface SnapshotOptions {
   days: SnapshotDay[];
   freeLabel: string;
   blockedLabel: string;
-  fileName: string;
 }
 
 const WIDTH = 540;
@@ -45,7 +44,7 @@ const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 };
 
-export async function downloadScheduleSnapshot({ title, days, freeLabel, blockedLabel, fileName }: SnapshotOptions) {
+export async function createScheduleSnapshot({ title, days, freeLabel, blockedLabel }: SnapshotOptions): Promise<Blob> {
   await document.fonts?.ready;
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
   const primary = cssColor('--primary', '#0070f0');
@@ -162,6 +161,10 @@ export async function downloadScheduleSnapshot({ title, days, freeLabel, blocked
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Could not create image');
+  return blob;
+}
+
+export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -170,4 +173,8 @@ export async function downloadScheduleSnapshot({ title, days, freeLabel, blocked
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function canShareImage(file: File) {
+  return typeof navigator !== 'undefined' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
 }

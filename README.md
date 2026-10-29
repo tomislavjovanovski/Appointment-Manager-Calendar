@@ -24,7 +24,8 @@ iTermin provides a weekly scheduling view, contact records, appointment statisti
 ### 📅 Calendar and appointment booking
 
 - **Weekly desktop calendar** with seven equal day columns, compact time rows, and a date-range picker.
-- **Continuous mobile agenda** with compact appointment cards, pinned week/day controls, and a selected date that updates as soon as the next day heading is fully visible near the bottom of the screen. Only the remainder of the current week is prepared initially; the next week is prepared in the background when the last working day comes into view. Day timelines are cached between selection changes. Tap a date, the week arrows, or Today to scroll smoothly to that day (respecting reduced-motion preferences). The agenda follows configured working days.
+- **Continuous mobile agenda** with compact appointment cards, pinned week/day controls, and a selected date that updates as soon as the next day heading is fully visible near the bottom of the screen. Only the remainder of the current week is prepared initially; the next week is prepared in the background when the last working day comes into view. Day timelines are cached between selection changes. Tap a date or Today to scroll smoothly to that day (respecting reduced-motion preferences); the week arrows jump to the first working day of the previous/next week. The agenda follows configured working days.
+- **Mobile week snapshot:** the Snapshot button next to Today creates a PNG of the selected week's working days (booked, free, and unavailable slots). Patient names are replaced by a blurred placeholder, and phone numbers and notes are left out, so no patient data is in the image. A preview modal offers **Share** (native iOS/Android share sheet, e.g. Viber, Facebook, Instagram, Save to Photos; requires HTTPS) and **Download**.
 - **Appointment durations** of 30, 45, 60, 90, and 120 minutes, using a 24-hour time format and automatically calculated end times.
 - **Configurable booking defaults:** choose the default appointment type and set a default duration for each type. Existing appointments keep their saved type and duration when edited.
 - **Six color-coded appointment types:**
@@ -394,6 +395,15 @@ At that point, a database may be worth considering for transactional writes and 
 
 
 ## Changelog
+
+### 2026-10-29 - Mobile Agenda and Patient Dialog Polish
+
+- Mobile agenda is now a continuous Teams-style scroll: day/week controls stay pinned, and the selected day follows scrolling. The selection switches when the next day heading becomes fully visible near the bottom of the screen. The remainder of the current week loads first; the following week is prepared in the background when the last day comes into view.
+- Tapping a day or Today scrolls smoothly to it; the previous/next week arrows now select the first working day of that week instead of keeping the same weekday.
+- Day buttons no longer shift when selected (all buttons have a border; the active one is blue with a blue border). The selected state cross-fades in 0.5s, with background, text, and the free-slot badge changing in sync, so no white-on-white flash.
+- Added a mobile **Snapshot** button that creates a privacy-safe image of the selected week (blurred placeholder names, no phone numbers or notes) with a preview modal offering native Share and Download (`src/lib/scheduleSnapshot.ts`, `src/components/dashboard/SnapshotDialog.tsx`).
+- Patient edit dialog: appointment history entries use a vertical divider between date/type and note; the Notes field is shorter, with labels aligned to the date of birth and address fields; Details and History tabs share the same content-based height.
+- Added mobile agenda E2E tests to `tests/e2e/smoke.spec.ts`.
 
 ### 2026-10-15 - Monthly Statistics
 

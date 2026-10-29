@@ -42,7 +42,7 @@ test.describe('Smoke — Application Loads', () => {
     await scrollToDay(8);
     await scrollToDay(1);
     await page.getByRole('button', { name: 'Next week', exact: true }).click();
-    await expect(controls.locator('[aria-pressed="true"]')).toHaveAttribute('data-date', (await days.nth(8).getAttribute('data-date'))!);
+    await expect(controls.locator('[aria-pressed="true"]')).toHaveAttribute('data-date', (await days.nth(7).getAttribute('data-date'))!);
     await days.nth(13).scrollIntoViewIfNeeded();
     await expect(days).toHaveCount(initialCount + 14);
     await scrollToDay(13);
