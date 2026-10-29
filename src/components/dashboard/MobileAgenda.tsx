@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { addDays, addWeeks, format, isBefore, isSameDay, startOfDay, startOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight, Clock3, Phone, Plus, UserRound, X } from 'lucide-react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { addDays, addWeeks, differenceInCalendarDays, format, isBefore, isSameDay, startOfDay, startOfWeek } from 'date-fns';
+import { Camera, ChevronLeft, ChevronRight, Clock3, Phone, Plus, UserRound, X } from 'lucide-react';
 import { Appointment, AppointmentSettings, BlockedSlot, Patient } from '@/types/appointment';
 import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
 import { getFreeGaps, splitIntoSlots } from '@/lib/appointmentAvailability';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 import { useCurrentAppointment } from '@/hooks/use-current-appointment';
 import { APPOINTMENT_TYPES, darkenHexColor } from '@/lib/appointmentTypes';
+import { downloadScheduleSnapshot, SnapshotItem } from '@/lib/scheduleSnapshot';
 
 interface MobileAgendaProps {
   onCreateAppointment: (date: Date) => void;
@@ -30,11 +31,16 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [agendaStart, setAgendaStart] = useState(today);
+  const [dayCount, setDayCount] = useState(() => 7 - differenceInCalendarDays(today, startOfWeek(today, { weekStartsOn: 1 })));
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const dayRefs = useRef(new Map<string, HTMLElement>());
+  const pendingScrollRef = useRef<Date | null>(null);
+  const scrollTargetRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (blockedSlots && settings) setSettings((current) => current ? { ...current, blockedSlots } : current);
-  }, [blockedSlots]);
-  const currentSettings = blockedSlots && settings ? { ...settings, blockedSlots } : settings;
+  const currentSettings = useMemo(() =>
+    blockedSlots && settings ? { ...settings, blockedSlots } : settings,
+  [blockedSlots, settings]);
 
   useEffect(() => {
     if (!currentSettings || initialDateAdjustedRef.current) return;
@@ -46,6 +52,8 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
     initialDateAdjustedRef.current = true;
     setSelectedDate(nextWorkingDate);
     setWeekStart(startOfWeek(nextWorkingDate, { weekStartsOn: 1 }));
+    setAgendaStart(nextWorkingDate);
+    setDayCount(7 - differenceInCalendarDays(nextWorkingDate, startOfWeek(nextWorkingDate, { weekStartsOn: 1 })));
   }, [currentSettings, today]);
 
   useEffect(() => {
@@ -82,13 +90,10 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
     return working.length > 0 ? working : week;
   }, [weekStart, workingDays]);
 
-  useEffect(() => {
-    if (!visibleDates.some((date) => isSameDay(date, selectedDate))) setSelectedDate(visibleDates[0]);
-  }, [visibleDates, selectedDate]);
-
-  const dayAppointments = appointments
-    .filter((appointment) => isSameDay(new Date(appointment.startTime), selectedDate))
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const agendaDates = useMemo(() =>
+    Array.from({ length: dayCount }, (_, index) => addDays(agendaStart, index))
+      .filter((date) => !workingDays?.length || workingDays.includes(date.getDay())),
+  [agendaStart, dayCount, workingDays]);
 
   const isWorkingDay = (date: Date) => !currentSettings || currentSettings.workingDays.includes(date.getDay());
   const isFullDay = (date: Date) => Boolean(currentSettings) && !loading && isWorkingDay(date) &&
@@ -100,28 +105,181 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
     const notBefore = isSameDay(date, now) ? now : undefined;
     return splitIntoSlots(getFreeGaps(date, currentSettings, appointments, notBefore));
   };
-  const selectedGaps = getDaySlots(selectedDate);
-  const selectedBlockedSlots = (blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), selectedDate));
-  const timeline = [
-    ...dayAppointments.map((appointment) => ({ kind: 'appointment' as const, start: new Date(appointment.startTime), appointment })),
-    ...selectedGaps.map((gap) => ({ kind: 'gap' as const, start: gap.start, end: gap.end })),
-    ...selectedBlockedSlots.map((slot) => ({ kind: 'blocked' as const, start: new Date(slot.startTime), end: new Date(slot.endTime), slot })),
-  ].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const daySchedules = useMemo(() => {
+    const now = new Date();
+    return new Map(agendaDates.map((date) => {
+      const dayAppointments = appointments
+        .filter((appointment) => isSameDay(new Date(appointment.startTime), date))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const working = !currentSettings || currentSettings.workingDays.includes(date.getDay());
+      const freeGaps = currentSettings && working && !isBefore(date, today)
+        ? getFreeGaps(date, currentSettings, appointments) : [];
+      const gaps = splitIntoSlots(isSameDay(date, now) && currentSettings
+        ? getFreeGaps(date, currentSettings, appointments, now) : freeGaps);
+      const timeline = [
+        ...dayAppointments.map((appointment) => ({ kind: 'appointment' as const, start: new Date(appointment.startTime), appointment })),
+        ...gaps.map((gap) => ({ kind: 'gap' as const, start: gap.start, end: gap.end })),
+        ...(blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), date))
+          .map((slot) => ({ kind: 'blocked' as const, start: new Date(slot.startTime), end: new Date(slot.endTime), slot })),
+      ].sort((a, b) => a.start.getTime() - b.start.getTime());
+      return [format(date, 'yyyy-MM-dd'), {
+        dayAppointments, timeline, freeCount: gaps.length,
+        full: Boolean(currentSettings) && !loading && working && !isBefore(date, today) && freeGaps.length === 0,
+      }];
+    }));
+  }, [agendaDates, appointments, blockedSlots, currentSettings, loading, today]);
 
-  const selectDate = (date: Date) => setSelectedDate(startOfDay(date));
+  const patientsById = useMemo(() => new Map(patients?.map((patient) => [patient.id, patient])), [patients]);
+  const scrollToDate = (date: Date) => {
+    const element = dayRefs.current.get(format(date, 'yyyy-MM-dd'));
+    if (!element || !controlsRef.current) return false;
+    const top = window.scrollY + element.getBoundingClientRect().top - controlsRef.current.getBoundingClientRect().height - 12;
+    scrollTargetRef.current = Math.max(0, Math.min(top, document.documentElement.scrollHeight - window.innerHeight));
+    window.scrollTo({
+      top: scrollTargetRef.current,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    });
+    return true;
+  };
+
+  const selectDate = (date: Date) => {
+    const target = startOfDay(date);
+    setSelectedDate(target);
+    setWeekStart(startOfWeek(target, { weekStartsOn: 1 }));
+    if (!scrollToDate(target)) {
+      pendingScrollRef.current = target;
+      setAgendaStart(startOfWeek(target, { weekStartsOn: 1 }));
+      setDayCount(7);
+    }
+  };
 
   const changeWeek = (amount: number) => {
-    setWeekStart((currentWeek) => addWeeks(currentWeek, amount));
-    setSelectedDate((currentDate) => addWeeks(currentDate, amount));
+    const targetWeekStart = addWeeks(weekStart, amount);
+    const week = Array.from({ length: 7 }, (_, index) => addDays(targetWeekStart, index));
+    selectDate(week.find(isWorkingDay) ?? targetWeekStart);
+  };
+
+  const [snapshotting, setSnapshotting] = useState(false);
+  const takeSnapshot = async () => {
+    setSnapshotting(true);
+    try {
+      const days = visibleDates.filter(isWorkingDay).map((date) => {
+        const dayAppointments = appointments.filter((appointment) => isSameDay(new Date(appointment.startTime), date));
+        const items = [
+          ...dayAppointments.map((appointment) => ({
+            at: new Date(appointment.startTime).getTime(),
+            item: {
+              kind: 'appointment', color: APPOINTMENT_TYPES[appointment.type].color,
+              start: format(new Date(appointment.startTime), 'HH:mm'), end: format(new Date(appointment.endTime), 'HH:mm'),
+            } as SnapshotItem,
+          })),
+          ...getDaySlots(date).map((gap) => ({
+            at: gap.start.getTime(),
+            item: { kind: 'free', start: format(gap.start, 'HH:mm'), end: format(gap.end, 'HH:mm') } as SnapshotItem,
+          })),
+          ...(blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), date)).map((slot) => ({
+            at: new Date(slot.startTime).getTime(),
+            item: { kind: 'blocked', start: format(new Date(slot.startTime), 'HH:mm'), end: format(new Date(slot.endTime), 'HH:mm') } as SnapshotItem,
+          })),
+        ].sort((a, b) => a.at - b.at).map(({ item }) => item);
+        return {
+          title: format(date, 'EEEE, d MMMM', { locale: dateFnsLocale }),
+          subtitle: dayAppointments.length === 1 ? t('mobile.appointmentsOne') : t('mobile.appointments', { count: dayAppointments.length }),
+          items,
+          emptyLabel: t('calendar.noAppointments'),
+        };
+      });
+      const first = visibleDates[0];
+      const last = visibleDates[visibleDates.length - 1];
+      await downloadScheduleSnapshot({
+        title: `${format(first, 'd MMM', { locale: dateFnsLocale })} - ${format(last, 'd MMM yyyy', { locale: dateFnsLocale })}`,
+        days,
+        freeLabel: t('mobile.freeSlot'),
+        blockedLabel: t('appointment.blockedShort'),
+        fileName: `schedule-${format(first, 'yyyy-MM-dd')}.png`,
+      });
+    } catch (error) {
+      console.error('Snapshot failed', error);
+    } finally {
+      setSnapshotting(false);
+    }
   };
 
   const goToThisWeek = () => {
-    setWeekStart(startOfWeek(today, { weekStartsOn: 1 }));
-    setSelectedDate(today);
+    selectDate(Array.from({ length: 7 }, (_, index) => addDays(today, index)).find(isWorkingDay) ?? today);
   };
+
+  useEffect(() => {
+    if (!loading && pendingScrollRef.current && scrollToDate(pendingScrollRef.current)) {
+      pendingScrollRef.current = null;
+    }
+  }, [agendaDates, loading]);
+
+  useEffect(() => {
+    if (loading) return;
+    let frame = 0;
+    const updateDay = () => {
+      frame = 0;
+      const controls = controlsRef.current;
+      if (!controls || controls.getBoundingClientRect().width === 0 || pendingScrollRef.current) return;
+      if (scrollTargetRef.current !== null) {
+        if (Math.abs(window.scrollY - scrollTargetRef.current) < 2) scrollTargetRef.current = null;
+        return;
+      }
+      const controlsBottom = controls.getBoundingClientRect().bottom;
+      const edge = window.innerHeight - 16;
+      let activeDate = agendaDates[0];
+      for (const date of agendaDates) {
+        const element = dayRefs.current.get(format(date, 'yyyy-MM-dd'));
+        if (!element) continue;
+        const heading = element.querySelector('h3');
+        if (!heading || heading.getBoundingClientRect().bottom > edge) break;
+        const top = element.getBoundingClientRect().top;
+        activeDate = date;
+        if (top >= controlsBottom) break;
+      }
+      if (activeDate) {
+        setSelectedDate((current) => isSameDay(current, activeDate) ? current : activeDate);
+        const nextWeek = startOfWeek(activeDate, { weekStartsOn: 1 });
+        setWeekStart((current) => isSameDay(current, nextWeek) ? current : nextWeek);
+      }
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(updateDay);
+    };
+    const endNavigation = () => { scrollTargetRef.current = null; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    window.addEventListener('scrollend', endNavigation);
+    window.addEventListener('wheel', endNavigation, { passive: true });
+    window.addEventListener('touchstart', endNavigation, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('scrollend', endNavigation);
+      window.removeEventListener('wheel', endNavigation);
+      window.removeEventListener('touchstart', endNavigation);
+      cancelAnimationFrame(frame);
+    };
+  }, [agendaDates, loading]);
+
+  useEffect(() => {
+    const lastDate = agendaDates[agendaDates.length - 1];
+    const lastDay = lastDate && dayRefs.current.get(format(lastDate, 'yyyy-MM-dd'));
+    if (loading || !lastDay) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        observer.disconnect();
+        startTransition(() => setDayCount((count) => count + 7));
+      }
+    });
+    observer.observe(lastDay);
+    return () => observer.disconnect();
+  }, [loading, agendaDates]);
 
   return (
     <section className="space-y-3 md:hidden" data-testid="mobile-agenda">
+      <div ref={controlsRef} className="sticky top-0 z-30 space-y-1 bg-background py-2" data-testid="mobile-agenda-controls">
       <div className="flex items-stretch gap-1.5 rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background px-1.5 py-2.5 shadow-soft">
         <Button type="button" variant="outline" size="icon" aria-label={t('dashboard.previousWeek')} onClick={() => changeWeek(-1)} className="h-auto w-8 shrink-0 self-stretch rounded-xl bg-background/75 shadow-sm">
           <ChevronLeft className="h-5 w-5" />
@@ -136,8 +294,9 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
             const isSelected = isSameDay(date, selectedDate);
             const isToday = isSameDay(date, today);
             const working = isWorkingDay(date);
-            const full = isFullDay(date);
-            const freeCount = loading ? 0 : getDaySlots(date).length;
+            const schedule = daySchedules.get(format(date, 'yyyy-MM-dd'));
+            const full = schedule?.full ?? isFullDay(date);
+            const freeCount = loading ? 0 : schedule?.freeCount ?? getDaySlots(date).length;
             const showCount = !loading && Boolean(currentSettings) && working && !isBefore(date, today);
             const dayLabel = format(date, 'EEEE d MMMM', { locale: dateFnsLocale });
             let statusLabel = '';
@@ -147,33 +306,53 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
               <Button
                 key={date.toISOString()}
                 type="button"
-                variant={isSelected ? 'default' : 'outline'}
+                variant="outline"
                 disabled={!working}
+                aria-pressed={isSelected}
+                data-date={format(date, 'yyyy-MM-dd')}
                 aria-label={dayLabel + statusLabel}
                 onClick={() => selectDate(date)}
                 className={cn(
-                  'relative h-auto min-w-0 flex-col rounded-xl px-1 py-2 text-center shadow-sm sm:rounded-2xl sm:px-2.5 sm:py-2.5',
-                  !isSelected && 'bg-background/75',
+                  'relative h-auto min-w-0 flex-col rounded-xl border border-input bg-background px-1 py-2 text-center text-foreground shadow-sm transition-shadow duration-500 ease-in-out hover:bg-background hover:text-foreground motion-reduce:transition-none sm:rounded-2xl sm:px-2.5 sm:py-2.5',
+                  isSelected && 'shadow-md',
                   !working && 'bg-muted/40 opacity-40',
-                  full && !isSelected && 'border-destructive/50 bg-destructive/10'
+                  full && 'border-destructive/50 bg-destructive/10 hover:bg-destructive/10'
                 )}
               >
                 <span className="text-[11px] font-medium leading-5 opacity-80 sm:text-[13px]">
                   {isToday ? t('scheduler.nav.today') : format(date, 'EEE', { locale: dateFnsLocale })}
                 </span>
                 <span className="text-base font-semibold leading-none sm:text-lg">{format(date, 'd')}</span>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'pointer-events-none absolute -inset-px flex flex-col items-center justify-center gap-2 rounded-[inherit] border border-primary bg-primary px-1 py-2 text-primary-foreground transition-opacity duration-500 ease-in-out motion-reduce:transition-none sm:px-2.5 sm:py-2.5',
+                    isSelected ? 'opacity-100' : 'opacity-0'
+                  )}
+                >
+                  <span className="text-[11px] font-medium leading-5 opacity-80 sm:text-[13px]">
+                    {isToday ? t('scheduler.nav.today') : format(date, 'EEE', { locale: dateFnsLocale })}
+                  </span>
+                  <span className="text-base font-semibold leading-none sm:text-lg">{format(date, 'd')}</span>
+                </span>
                 {showCount && (
                   <span
                     aria-hidden="true"
                     data-testid="mobile-day-free-count"
                     className={cn(
-                      'absolute -right-1 -top-1.5 min-w-[1.25rem] rounded-full px-1 text-xs font-semibold leading-5 tabular-nums shadow-sm',
-                      isSelected && 'bg-background text-primary',
-                      !isSelected && freeCount === 0 && 'bg-destructive text-destructive-foreground',
-                      !isSelected && freeCount > 0 && 'bg-accent text-accent-foreground'
+                      'absolute -right-1 -top-1.5 z-10 min-w-[1.25rem] overflow-hidden rounded-full px-1 text-xs font-semibold leading-5 tabular-nums shadow-sm',
+                      freeCount === 0 ? 'bg-destructive text-destructive-foreground' : 'bg-accent text-accent-foreground'
                     )}
                   >
                     {freeCount}
+                    <span
+                      className={cn(
+                        'absolute inset-0 flex items-center justify-center rounded-[inherit] bg-background text-primary transition-opacity duration-500 ease-in-out motion-reduce:transition-none',
+                        isSelected ? 'opacity-100' : 'opacity-0'
+                      )}
+                    >
+                      {freeCount}
+                    </span>
                   </span>
                 )}
               </Button>
@@ -186,32 +365,56 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
         </Button>
       </div>
 
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div>
-          <h3 className="text-base font-semibold">{format(selectedDate, 'EEEE, d MMMM', { locale: dateFnsLocale })}</h3>
-          <p className="text-xs text-muted-foreground">{dayAppointments.length === 1 ? t('mobile.appointmentsOne') : t('mobile.appointments', { count: dayAppointments.length })}</p>
-        </div>
+      <div className="flex h-8 items-center gap-2 px-1">
+        <p className="mr-auto text-sm font-semibold">{format(selectedDate, 'MMMM yyyy', { locale: dateFnsLocale })}</p>
         {(!isSameDay(weekStart, startOfWeek(today, { weekStartsOn: 1 })) ||
           (isWorkingDay(today) && !isSameDay(selectedDate, today))) && (
-          <Button type="button" variant="link" size="sm" onClick={goToThisWeek} className="h-8 px-1">
+          <Button type="button" variant="link" size="sm" onClick={goToThisWeek} className="ml-auto h-8 px-1">
             {t('scheduler.nav.today')}
           </Button>
         )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void takeSnapshot()}
+          disabled={loading || snapshotting}
+          aria-label={t('mobile.snapshotLabel')}
+          title={t('mobile.snapshotLabel')}
+          data-testid="mobile-snapshot-btn"
+          className="h-8 gap-1.5 rounded-lg px-2.5"
+        >
+          <Camera className="h-4 w-4" />
+          {t('mobile.snapshot')}
+        </Button>
+      </div>
       </div>
 
       {loading ? (
         <Card className="border-border/70 shadow-soft"><CardContent className="p-6 text-center text-sm text-muted-foreground">{t('mobile.loading')}</CardContent></Card>
-      ) : !isWorkingDay(selectedDate) || timeline.length === 0 ? (
+      ) : agendaDates.map((date) => {
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const { dayAppointments, timeline, full } = daySchedules.get(dateKey)!;
+        return (
+        <section key={dateKey} ref={(element) => {
+          if (element) dayRefs.current.set(dateKey, element);
+          else dayRefs.current.delete(dateKey);
+        }} data-testid="mobile-agenda-day" data-date={dateKey} className="space-y-2.5 border-t border-border/70 pt-3">
+          <div className="px-1">
+            <h3 className="text-base font-semibold">{format(date, 'EEEE, d MMMM', { locale: dateFnsLocale })}</h3>
+            <p className="text-xs text-muted-foreground">{dayAppointments.length === 1 ? t('mobile.appointmentsOne') : t('mobile.appointments', { count: dayAppointments.length })}</p>
+          </div>
+        {!isWorkingDay(date) || timeline.length === 0 ? (
         <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
           <CardContent className="flex flex-col items-center px-5 py-10 text-center">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Clock3 className="h-5 w-5" /></span>
-            <p className="mt-3 text-sm font-medium">{isWorkingDay(selectedDate) ? t('calendar.noAppointments') : t('mobile.nonWorkingDay')}</p>
-            {isWorkingDay(selectedDate) && <p className="mt-1 text-xs text-muted-foreground">{t('mobile.addHint')}</p>}
+            <p className="mt-3 text-sm font-medium">{isWorkingDay(date) ? t('calendar.noAppointments') : t('mobile.nonWorkingDay')}</p>
+            {isWorkingDay(date) && <p className="mt-1 text-xs text-muted-foreground">{t('mobile.addHint')}</p>}
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2.5">
-          {isFullDay(selectedDate) && (
+          {full && (
             <p className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{t('mobile.fullDay')}</p>
           )}
           {timeline.map((item) => {
@@ -258,7 +461,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
               );
             }
             const { appointment } = item;
-            const patient = patients?.find((record) => record.id === appointment.patientId);
+            const patient = patientsById.get(appointment.patientId);
             const firstName = patient?.firstName?.trim() || appointment.patientName || t('common.unknown');
             const lastName = patient?.lastName?.trim();
             const phone = patient?.phone?.trim() || t(patients === null ? 'dashboard.phoneUnavailable' : 'dashboard.noPhone');
@@ -307,6 +510,9 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
           })}
         </div>
       )}
+        </section>
+        );
+      })}
     </section>
   );
 }

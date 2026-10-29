@@ -1,4 +1,4 @@
-import { Patient, Appointment, AppointmentSettings } from '@/types/appointment';
+import { Patient, PatientWithActivity, Appointment, AppointmentSettings } from '@/types/appointment';
 import { normalizeLocale, type AppLocale } from '@/i18n/types';
 import { normalizePatientForm, normalizePatientUpdates } from '@/lib/patientForm';
 import { authFetch } from '@/lib/auth';
@@ -161,6 +161,7 @@ export const initializeData = async () => {
 // Patient storage operations
 export const patientsStorage = {
   getAll: async (): Promise<Patient[]> => apiCall('/patients') as Promise<Patient[]>,
+  getWithActivity: async (): Promise<PatientWithActivity[]> => apiCall('/patients') as Promise<PatientWithActivity[]>,
   
   add: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> => {
     const payload = {

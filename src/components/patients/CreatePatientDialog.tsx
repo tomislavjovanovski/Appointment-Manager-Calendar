@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { UserPlus, User, Mail, Phone, MapPin, CalendarDays, ShieldPlus } from 'lucide-react';
-import { patientsStorage } from '@/lib/storage';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { UserPlus, User, Mail, Phone, MapPin, CalendarDays, ShieldPlus, History, RotateCw } from 'lucide-react';
+import { appointmentsStorage, patientsStorage } from '@/lib/storage';
+import { format, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
-import { Patient } from '@/types/appointment';
+import { Appointment, Patient } from '@/types/appointment';
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
+import { APPOINTMENT_TYPES } from '@/lib/appointmentTypes';
 
 interface CreatePatientDialogProps {
   open: boolean;
@@ -27,12 +30,37 @@ export function CreatePatientDialog({
   onPatientUpdated,
   patient
 }: CreatePatientDialogProps) {
-  const { t } = useI18n();
+  const { t, dateFnsLocale } = useI18n();
   const emptyForm = useMemo(createEmptyPatientForm, []);
   const [formData, setFormData] = useState(emptyForm);
   const { toast } = useToast();
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const isEditMode = Boolean(patient?.id);
+  const [activeTab, setActiveTab] = useState('details');
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [historyRetry, setHistoryRetry] = useState(0);
+
+  useEffect(() => {
+    setActiveTab('details');
+  }, [open, patient?.id]);
+
+  useEffect(() => {
+    if (!open || !patient?.id || activeTab !== 'history') return;
+    let active = true;
+    setAppointments([]);
+    setHistoryState('loading');
+    appointmentsStorage.getByPatient(patient.id).then((records) => {
+      if (!active) return;
+      setAppointments([...records].sort((first, second) =>
+        (Date.parse(second.startTime) || 0) - (Date.parse(first.startTime) || 0)
+      ));
+      setHistoryState('ready');
+    }).catch(() => {
+      if (active) setHistoryState('error');
+    });
+    return () => { active = false; };
+  }, [open, patient?.id, activeTab, historyRetry]);
 
   useEffect(() => {
     if (!open) return;
@@ -128,19 +156,19 @@ export function CreatePatientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden border-border/70 p-0 shadow-2xl sm:max-w-4xl" data-testid="patient-form-dialog">
-        <div className="max-h-[70vh] overflow-y-auto">
-          <div className="border-b border-border/60 bg-gradient-to-br from-primary/10 via-background to-background px-5 py-4 sm:px-6">
-            <DialogHeader className="space-y-2 text-left">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+      <DialogContent className="block h-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] overflow-y-auto rounded-lg border-border/70 p-0 shadow-2xl sm:max-w-4xl" data-testid="patient-form-dialog">
+        <div>
+          <div className="shrink-0 border-b border-border/60 bg-muted/20 px-4 py-3 pr-12 sm:px-5 sm:pr-12">
+            <DialogHeader className="space-y-0 text-left">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                   {isEditMode ? <User className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
                 </div>
-                <div className="space-y-1">
-                  <DialogTitle className="text-lg font-semibold tracking-tight">
+                <div className="min-w-0 space-y-1">
+                  <DialogTitle className="text-base font-semibold">
                     {isEditMode ? t('createPatient.editTitle') : t('createPatient.title')}
                   </DialogTitle>
-                  <DialogDescription className="max-w-2xl text-xs leading-relaxed">
+                  <DialogDescription className="sr-only">
                     {isEditMode
                       ? t('createPatient.editDescription')
                       : t('createPatient.description')}
@@ -150,11 +178,25 @@ export function CreatePatientDialog({
             </DialogHeader>
           </div>
 
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            {isEditMode && (
+              <TabsList className="mx-4 my-2 grid h-auto min-h-10 shrink-0 grid-cols-2 items-stretch gap-1 rounded-lg border border-slate-300 bg-slate-100 p-1 sm:mx-5">
+                <TabsTrigger value="details" className="min-h-8 min-w-0 whitespace-normal rounded-md border border-transparent px-2 py-1.5 text-xs transition-colors hover:bg-background/70 data-[state=active]:border-primary/25 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm" data-testid="patient-details-tab">
+                  <User className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                  {t('patientHistory.details')}
+                </TabsTrigger>
+                <TabsTrigger value="history" className="min-h-8 min-w-0 whitespace-normal rounded-md border border-transparent px-2 py-1.5 text-xs transition-colors hover:bg-background/70 data-[state=active]:border-primary/25 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm" data-testid="patient-history-tab">
+                  <History className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                  {t('patientHistory.title')}
+                </TabsTrigger>
+              </TabsList>
+            )}
+          <div className="grid">
+          <TabsContent forceMount value="details" className="col-start-1 row-start-1 mt-0 data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
           <form onSubmit={handleSubmit} noValidate>
-            <div className="space-y-3 px-5 py-4 sm:px-6">
-              {/* Box 1: First name and Last name */}
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-3 shadow-sm">
-                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
+            <div className="space-y-3 px-4 py-3 sm:px-5">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="firstName">{t('createPatient.firstName')}</Label>
                     <Input
@@ -167,7 +209,7 @@ export function CreatePatientDialog({
                     />
                     {errors.firstName && <div data-testid="error-first-name-required" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                   </div>
-                  <div className="space-y-1.5 pr-3">
+                  <div className="space-y-1.5">
                     <Label htmlFor="lastName">{t('createPatient.lastName')}</Label>
                     <Input
                       id="lastName"
@@ -182,10 +224,9 @@ export function CreatePatientDialog({
                 </div>
               </section>
 
-              {/* Box 2: Email and Phone/Emergency Contact */}
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-3 shadow-sm">
-                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
-                  <div className="space-y-1.5">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="min-w-0 space-y-1.5">
                     <Label htmlFor="email" className="flex items-center gap-2">
                       <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                       {t('createPatient.email')}
@@ -202,8 +243,7 @@ export function CreatePatientDialog({
                     {errors.emailInvalid && <div data-testid="error-email-invalid" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                     {errors.emailDuplicate && <div data-testid="error-email-duplicate" className="text-xs font-medium text-destructive">{t('common.error')}</div>}
                   </div>
-                  <div className="space-y-3 pr-3">
-                    <div className="space-y-1.5">
+                    <div className="min-w-0 space-y-1.5">
                       <Label htmlFor="phone" className="flex items-center gap-2">
                         <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                         {t('createPatient.phone')}
@@ -218,7 +258,7 @@ export function CreatePatientDialog({
                         className="h-9 border-border/70 bg-background/80"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="min-w-0 space-y-1.5">
                       <Label htmlFor="emergencyContact" className="flex items-center gap-2">
                         <ShieldPlus className="h-3.5 w-3.5 text-muted-foreground" />
                         {t('createPatient.emergencyContact')}
@@ -232,16 +272,14 @@ export function CreatePatientDialog({
                         className="h-9 border-border/70 bg-background/80"
                       />
                     </div>
-                  </div>
                 </div>
               </section>
 
-              {/* Box 3: Date/Address and Notes */}
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-3 shadow-sm">
-                <div className="grid gap-3 sm:grid-cols-[60%_40%]">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="patient-dob" className="flex items-center gap-2">
+                      <Label htmlFor="patient-dob" className="flex h-5 items-center gap-2">
                         <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                         {t('createPatient.dob')}
                       </Label>
@@ -255,7 +293,7 @@ export function CreatePatientDialog({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="address" className="flex items-center gap-2">
+                      <Label htmlFor="address" className="flex h-5 items-center gap-2">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                         {t('createPatient.address')}
                       </Label>
@@ -269,8 +307,8 @@ export function CreatePatientDialog({
                       />
                     </div>
                   </div>
-                  <div className="space-y-1.5 pr-3">
-                    <Label htmlFor="notes">{t('createPatient.notes')}</Label>
+                  <div className="min-w-0 space-y-1.5">
+                    <Label htmlFor="notes" className="flex h-5 items-center">{t('createPatient.notes')}</Label>
                     <Textarea
                       id="notes"
                       data-testid="patient-notes"
@@ -278,7 +316,7 @@ export function CreatePatientDialog({
                       value={formData.notes}
                       onChange={(e) => handleInputChange('notes', e.target.value)}
                       rows={3}
-                      className="min-h-[72px] border-border/70 bg-background/80"
+                      className="min-h-[96px] resize-y border-border/70 bg-background/80"
                     />
                   </div>
                 </div>
@@ -287,7 +325,7 @@ export function CreatePatientDialog({
 
             <Separator />
 
-            <DialogFooter className="gap-3 px-5 py-3 sm:px-6">
+            <DialogFooter className="shrink-0 flex-row justify-end gap-2 bg-background px-4 py-3 sm:px-5">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-9 border-border/70">
                 {t('createPatient.cancel')}
               </Button>
@@ -300,6 +338,53 @@ export function CreatePatientDialog({
               </Button>
             </DialogFooter>
           </form>
+          </TabsContent>
+          {isEditMode && (
+            <TabsContent forceMount value="history" className="col-start-1 row-start-1 mt-0 px-4 pb-4 pt-1 data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none sm:px-5" data-testid="patient-history">
+              {historyState === 'loading' && <output className="block py-6 text-sm text-muted-foreground">{t('patientHistory.loading')}</output>}
+              {historyState === 'error' && (
+                <div role="alert" className="space-y-3 py-6">
+                  <p className="text-sm text-destructive">{t('patientHistory.error')}</p>
+                  <Button variant="outline" onClick={() => setHistoryRetry((value) => value + 1)}>
+                    <RotateCw className="mr-2 h-4 w-4" />{t('patientHistory.retry')}
+                  </Button>
+                </div>
+              )}
+              {historyState === 'ready' && (appointments.length === 0 ? (
+                <p className="py-6 text-sm text-muted-foreground">{t('patientHistory.empty')}</p>
+              ) : (
+                <ol className="space-y-2">
+                  {appointments.map((appointment) => {
+                    const date = new Date(appointment.startTime);
+                    const appointmentType = APPOINTMENT_TYPES[appointment.type];
+                    return (
+                      <li
+                        key={appointment.id}
+                        className="grid min-w-0 grid-cols-[minmax(0,1fr)_1px_minmax(0,2fr)] items-stretch gap-3 rounded-lg border border-slate-200 border-l-4 bg-slate-50 px-3 py-2.5"
+                        style={{ borderLeftColor: appointmentType?.color ?? '#64748b' }}
+                        data-testid="patient-history-entry"
+                      >
+                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <time dateTime={isValid(date) ? appointment.startTime : undefined} className="block text-sm font-medium">
+                            {isValid(date) ? format(date, 'PP', { locale: dateFnsLocale }) : t('patientHistory.unknownDate')}
+                          </time>
+                          <span className="block break-words text-xs font-medium text-muted-foreground" data-testid="patient-history-type">
+                            {appointmentType ? t(appointmentType.labelKey) : appointment.type}
+                          </span>
+                        </div>
+                        <Separator orientation="vertical" />
+                        <p className="min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
+                          {appointment.notes?.trim() ? appointment.notes : t('patientHistory.noNotes')}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ))}
+            </TabsContent>
+          )}
+          </div>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>

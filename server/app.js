@@ -68,7 +68,7 @@ export function createApp({ dataStore, dataDir, auth }) {
   }));
 
   app.get('/api/patients', asyncRoute(async (_req, res) => {
-    res.json(await dataStore.getPatients());
+    res.json(await dataStore.getPatientDirectory());
   }));
 
   app.post('/api/patients', asyncRoute(async (req, res) => {

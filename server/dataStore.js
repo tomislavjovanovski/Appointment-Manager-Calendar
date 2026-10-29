@@ -259,6 +259,31 @@ export function createDataStore({
       return readPatients();
     },
 
+    async getPatientDirectory() {
+      const [patients, appointments] = await Promise.all([readPatients(), readAppointments()]);
+      const activity = new Map();
+      for (const appointment of appointments) {
+        const summary = activity.get(appointment.patientId) ?? { appointmentCount: 0, lastAppointmentAt: null };
+        summary.appointmentCount += 1;
+        const date = appointment.startTime ?? appointment.date;
+        const timestamp = Date.parse(date);
+        if (Number.isFinite(timestamp) &&
+            (summary.lastAppointmentAt === null || timestamp > Date.parse(summary.lastAppointmentAt))) {
+          summary.lastAppointmentAt = date;
+        }
+        activity.set(appointment.patientId, summary);
+      }
+      return patients.map((patient) => ({
+        ...patient,
+        ...(activity.get(patient.id) ?? { appointmentCount: 0, lastAppointmentAt: null }),
+      })).sort((first, second) => {
+        const firstTime = first.lastAppointmentAt === null ? -Infinity : Date.parse(first.lastAppointmentAt);
+        const secondTime = second.lastAppointmentAt === null ? -Infinity : Date.parse(second.lastAppointmentAt);
+        if (firstTime === secondTime) return 0;
+        return secondTime > firstTime ? 1 : -1;
+      });
+    },
+
     async createPatient(input) {
       const patients = await readPatients();
       const firstName = String(input.firstName ?? '').trim();

@@ -14,6 +14,11 @@ export interface Patient {
   createdAt: string;
 }
 
+export interface PatientWithActivity extends Patient {
+  appointmentCount: number;
+  lastAppointmentAt: string | null;
+}
+
 export interface Appointment {
   id: string;
   title: string;

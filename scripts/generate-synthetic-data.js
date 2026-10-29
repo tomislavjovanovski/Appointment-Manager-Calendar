@@ -9,8 +9,8 @@ const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, '..');
 const DEFAULT_TARGET = path.join(REPOSITORY_ROOT, '.local', 'synthetic-data');
 const LOCAL_SETTINGS_FILE = path.join(REPOSITORY_ROOT, 'public', 'data', 'settings.json');
 const MANIFEST_NAME = 'synthetic-data-manifest.json';
-const PATIENT_COUNT = 1_000;
-const APPOINTMENT_COUNT = 2_000;
+const PATIENT_COUNT = 500;
+const APPOINTMENT_COUNT = 500;
 const TYPES = ['consultation', 'follow-up', 'procedure', 'prevention', 'prosthetics-orthodontics', 'urgent'];
 const DURATIONS = [30, 45, 60, 90, 120];
 const FIRST_NAMES = ['Alex', 'Ana', 'Bojan', 'Elena', 'Filip', 'Ivana', 'Jovan', 'Katerina', 'Marko', 'Mila', 'Nikola', 'Sara', 'Stefan', 'Teodora', 'Viktor'];
@@ -145,10 +145,15 @@ const parseTime = (value) => {
 };
 
 const getDateRange = (settings, today = new Date()) => {
-  const first = localDate(today.getFullYear(), today.getMonth() - 2, 1);
-  let last = localDate(today.getFullYear(), today.getMonth() + 1, 0);
-  while (minimumSlotCapacity(settings, { first, last }) < APPOINTMENT_COUNT * 2) {
-    last = localDate(last.getFullYear(), last.getMonth() + 2, 0);
+  const boundary = (offset) => {
+    const month = today.getMonth() + offset;
+    const lastDay = localDate(today.getFullYear(), month + 1, 0).getDate();
+    return localDate(today.getFullYear(), month, Math.min(today.getDate(), lastDay));
+  };
+  const first = boundary(-3);
+  const last = boundary(3);
+  if (minimumSlotCapacity(settings, { first, last }) < APPOINTMENT_COUNT) {
+    fail('Not enough working slots in the three months before and after today.');
   }
   return { first, last };
 };

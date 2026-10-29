@@ -24,7 +24,7 @@ iTermin provides a weekly scheduling view, contact records, appointment statisti
 ### 📅 Calendar and appointment booking
 
 - **Weekly desktop calendar** with seven equal day columns, compact time rows, and a date-range picker.
-- **Mobile agenda** with compact appointment cards designed for smaller screens.
+- **Continuous mobile agenda** with compact appointment cards, pinned week/day controls, and a selected date that updates as soon as the next day heading is fully visible near the bottom of the screen. Only the remainder of the current week is prepared initially; the next week is prepared in the background when the last working day comes into view. Day timelines are cached between selection changes. Tap a date, the week arrows, or Today to scroll smoothly to that day (respecting reduced-motion preferences). The agenda follows configured working days.
 - **Appointment durations** of 30, 45, 60, 90, and 120 minutes, using a 24-hour time format and automatically calculated end times.
 - **Configurable booking defaults:** choose the default appointment type and set a default duration for each type. Existing appointments keep their saved type and duration when edited.
 - **Six color-coded appointment types:**
@@ -86,13 +86,16 @@ npm install
 npm run dev
 ```
 
-This starts the frontend and backend together. If a healthy backend is already running, the development launcher reuses it.
+This starts a fresh frontend and backend together. On Linux/WSL, the launcher stops previous development processes from this project, including suspended ones, before starting again. It does not kill unrelated services.
 
-- Open `http://localhost:8081/app/` (or the next free port reported by Vite). **Keep the trailing slash.**
+- Open `http://localhost:8081/app/`. **Keep the trailing slash.** The port is fixed; the launcher never silently switches to another port.
+- To choose another frontend port, use `DEV_PORT=8082 npm run dev` or `npm run dev -- 8082`.
 - Check backend health at `http://127.0.0.1:3000/api/health`.
 - During development, Vite proxies `/api` requests to the backend.
-- Stop the development process with **Ctrl+C**, not Ctrl+Z. Suspending processes can leave ports occupied and requests hanging.
-- After backend code changes, restart the backend. Vite reloads frontend code but does not restart a backend process that is already healthy.
+- The frontend starts only after the backend passes its health check. Startup fails with a clear error if the backend does not become ready within 20 seconds.
+- Stop development with **Ctrl+C**. Ctrl+Z also shuts down the servers and releases their ports rather than leaving them suspended.
+- After backend code changes, stop and rerun `npm run dev`. Frontend changes still reload automatically.
+- If a port belongs to an unrelated service, stop that service yourself or choose another frontend port. The API requires port `3000`.
 
 Create a local administrator account once:
 

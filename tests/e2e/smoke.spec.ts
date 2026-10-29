@@ -9,6 +9,126 @@ import { PATIENTS, nextWorkingSlot } from '../test-data/seed';
 import { E2E_USER } from '../utils/authHelper';
 
 test.describe('Smoke — Application Loads', () => {
+  test('mobile agenda scrolls across days and weeks with pinned date controls', async ({ pageWithPatients: page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.clock.setFixedTime(new Date('2026-10-26T07:00:00'));
+    await page.route('**/api/settings', (route) => route.fulfill({ json: {
+      locale: 'en', startTime: '08:00', endTime: '10:00',
+      workingDays: [0, 1, 2, 3, 4, 5, 6], timeSlotMinutes: 30,
+    } }));
+    await page.goto('/app/');
+    const days = page.getByTestId('mobile-agenda-day');
+    const controls = page.getByTestId('mobile-agenda-controls');
+    await expect(days.first()).toBeVisible();
+    await expect(days).toHaveCount(7);
+    const initialCount = await days.count();
+
+    const scrollToDay = async (index: number) => {
+      const day = days.nth(index);
+      const date = await day.getAttribute('data-date');
+      const controlsHeight = (await controls.boundingBox())!.height;
+      await day.evaluate((element, height) => {
+        window.scrollBy(0, element.getBoundingClientRect().top - height - 12);
+      }, controlsHeight);
+      await expect(controls.locator(`[data-date="${date}"]`)).toHaveAttribute('aria-pressed', 'true');
+      expect((await controls.boundingBox())!.y).toBeCloseTo(0, 0);
+    };
+
+    await scrollToDay(1);
+    await expect(days).toHaveCount(initialCount);
+    await days.nth(6).scrollIntoViewIfNeeded();
+    await expect(days).toHaveCount(initialCount + 7);
+    await scrollToDay(6);
+    await scrollToDay(8);
+    await scrollToDay(1);
+    await page.getByRole('button', { name: 'Next week', exact: true }).click();
+    await expect(controls.locator('[aria-pressed="true"]')).toHaveAttribute('data-date', (await days.nth(8).getAttribute('data-date'))!);
+    await days.nth(13).scrollIntoViewIfNeeded();
+    await expect(days).toHaveCount(initialCount + 14);
+    await scrollToDay(13);
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await expect(controls.locator('[aria-pressed="true"]')).toHaveAttribute('data-date', (await days.first().getAttribute('data-date'))!);
+    await expect(days.first()).toBeInViewport();
+    await days.nth(1).getByTestId('mobile-free-slot').first().click();
+    await expect(page.getByTestId('booking-dialog')).toBeVisible();
+  });
+
+  test('continuous mobile agenda respects working days and opens appointments', async ({ pageWithPatients: page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.clock.setFixedTime(new Date('2026-10-26T07:00:00'));
+    const appointmentDate = new Date('2026-10-26T07:00:00');
+    appointmentDate.setDate(appointmentDate.getDate() + 1);
+    while ([0, 6].includes(appointmentDate.getDay())) appointmentDate.setDate(appointmentDate.getDate() + 1);
+    appointmentDate.setHours(9, 0, 0, 0);
+    const end = new Date(appointmentDate.getTime() + 30 * 60_000);
+    await page.route('**/api/settings', (route) => route.fulfill({ json: {
+      locale: 'en', startTime: '08:00', endTime: '10:00',
+      workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30,
+    } }));
+    await page.route('**/api/appointments', (route) => route.fulfill({ json: [{
+      id: 'mobile-scroll-appointment', patientId: PATIENTS.alice.id, patientName: 'Alice Thornton',
+      startTime: appointmentDate.toISOString(), endTime: end.toISOString(),
+      duration: 30, type: 'follow-up', status: 'scheduled', title: 'Follow-up', notes: '',
+    }] }));
+    await page.goto('/app/');
+    const days = page.getByTestId('mobile-agenda-day');
+    await expect(days.first()).toBeVisible();
+    for (const date of await days.evaluateAll((elements) => elements.map((element) => element.getAttribute('data-date')!))) {
+      expect([0, 6]).not.toContain(new Date(`${date}T12:00:00`).getDay());
+    }
+    const appointment = page.getByTestId('mobile-appointment').filter({ hasText: 'Alice' });
+    await appointment.scrollIntoViewIfNeeded();
+    await appointment.click();
+    await expect(page.getByTestId('booking-dialog')).toBeVisible();
+    await expect(page.getByTestId('appointment-notes')).toHaveValue('');
+  });
+
+  test('mobile day highlight follows a heading entering the bottom of the screen', async ({ pageWithPatients: page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.clock.setFixedTime(new Date('2026-10-26T07:00:00'));
+    await page.route('**/api/settings', (route) => route.fulfill({ json: {
+      locale: 'en', startTime: '08:00', endTime: '18:00',
+      workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30,
+    } }));
+    await page.goto('/app/');
+    const days = page.getByTestId('mobile-agenda-day');
+    const controls = page.getByTestId('mobile-agenda-controls');
+    await expect(days).toHaveCount(5);
+    await days.nth(1).evaluate((element) => {
+      window.scrollBy(0, element.getBoundingClientRect().top - window.innerHeight + 70);
+    });
+    const secondDate = (await days.nth(1).getAttribute('data-date'))!;
+    await expect(controls.locator(`[data-date="${secondDate}"]`)).toHaveAttribute('aria-pressed', 'true');
+    expect((await days.nth(1).boundingBox())!.y).toBeGreaterThan(700);
+    await page.mouse.wheel(0, -150);
+    const firstDate = (await days.first().getAttribute('data-date'))!;
+    await expect(controls.locator(`[data-date="${firstDate}"]`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(days).toHaveCount(5);
+  });
+
+  test('mobile agenda starts with the remaining week and prepares the next week on its last working day', async ({ pageWithPatients: page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.clock.setFixedTime(new Date('2026-10-29T07:00:00'));
+    await page.route('**/api/settings', (route) => route.fulfill({ json: {
+      locale: 'en', startTime: '08:00', endTime: '18:00',
+      workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30,
+    } }));
+    await page.goto('/app/');
+    const days = page.getByTestId('mobile-agenda-day');
+    const controls = page.getByTestId('mobile-agenda-controls');
+    await expect(days).toHaveCount(2);
+    await expect(days.first()).toHaveAttribute('data-date', '2026-10-29');
+    await expect(days.last()).toHaveAttribute('data-date', '2026-10-30');
+    const height = (await controls.boundingBox())!.height;
+    await days.nth(1).evaluate((element, controlsHeight) => {
+      window.scrollBy(0, element.getBoundingClientRect().top - controlsHeight - 90);
+    }, height);
+    await expect(days).toHaveCount(7);
+    await expect(controls.locator('[aria-pressed="true"]')).toHaveAttribute('data-date', '2026-10-30');
+    await expect(days.nth(2)).toHaveAttribute('data-date', '2026-11-02');
+    await expect(days.last()).toHaveAttribute('data-date', '2026-11-06');
+  });
+
   test('desktop sidebar preference persists and never collapses the mobile menu', async ({ pageWithPatients: page }) => {
     let collapsed = false;
     await page.route('**/api/auth/me', (route) => route.fulfill({

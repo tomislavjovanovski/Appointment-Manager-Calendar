@@ -12,8 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Plus, User, Phone, Mail, Calendar, Activity, ArrowUpRight, Users } from 'lucide-react';
-import { Patient } from '@/types/appointment';
-import { patientsStorage, appointmentsStorage } from '@/lib/storage';
+import { Patient, PatientWithActivity } from '@/types/appointment';
+import { patientsStorage } from '@/lib/storage';
 import { format } from 'date-fns';
 import { useI18n } from '@/i18n';
 
@@ -26,46 +26,24 @@ interface PatientListProps {
 
 export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, navigation }: PatientListProps) {
   const { t, dateFnsLocale } = useI18n();
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<PatientWithActivity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [appointmentCounts, setAppointmentCounts] = useState<Record<string, number>>({});
-  const [lastAppointments, setLastAppointments] = useState<Record<string, string | null>>({});
   
   useEffect(() => {
+    let active = true;
     const loadData = async () => {
       try {
-        const patientsData = await patientsStorage.getAll().catch(() => []);
-        setPatients(patientsData);
-        
-        const counts: Record<string, number> = {};
-        const lastDates: Record<string, string | null> = {};
-        
-        for (const patient of patientsData) {
-          const appointments = await appointmentsStorage.getByPatient(patient.id).catch(() => []);
-          counts[patient.id] = appointments.length;
-          
-          if (appointments.length > 0) {
-            const sortedAppointments = [...appointments].sort((a: any, b: any) => 
-              new Date(b.startTime ?? b.date).getTime() - new Date(a.startTime ?? a.date).getTime()
-            );
-            lastDates[patient.id] = sortedAppointments[0].startTime ?? sortedAppointments[0].date;
-          } else {
-            lastDates[patient.id] = null;
-          }
-        }
-        
-        setAppointmentCounts(counts);
-        setLastAppointments(lastDates);
+        const patientsData = await patientsStorage.getWithActivity();
+        if (active) setPatients(patientsData);
       } catch (error) {
         // Avoid console.error noise in offline/test mode (smoke test treats it as a failure).
         console.warn('Patients: failed to load data, using empty defaults.', error);
-        setPatients([]);
-        setAppointmentCounts({});
-        setLastAppointments({});
+        if (active) setPatients([]);
       }
     };
     
-    loadData();
+    void loadData();
+    return () => { active = false; };
   }, [refreshTrigger]);
   
   const filteredPatients = patients.filter(patient =>
@@ -74,21 +52,21 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, n
     patient.phone.includes(searchQuery)
   );
 
-  const getPatientAppointmentCount = (patientId: string) => {
-    return appointmentCounts[patientId] || 0;
+  const getPatientAppointmentCount = (patient: PatientWithActivity) => {
+    return patient.appointmentCount || 0;
   };
 
-  const getLastAppointmentDate = (patientId: string) => {
-    return lastAppointments[patientId];
+  const getLastAppointmentDate = (patient: PatientWithActivity) => {
+    return patient.lastAppointmentAt;
   };
 
   const totalAppointments = filteredPatients.reduce(
-    (sum, patient) => sum + getPatientAppointmentCount(patient.id),
+    (sum, patient) => sum + getPatientAppointmentCount(patient),
     0
   );
 
   const patientsWithVisits = filteredPatients.filter(
-    (patient) => getPatientAppointmentCount(patient.id) > 0
+    (patient) => getPatientAppointmentCount(patient) > 0
   ).length;
 
   const patientInitials = (patient: Patient) =>
@@ -204,8 +182,8 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, n
             ) : (
               <ul className="divide-y divide-border/60">
                 {filteredPatients.map((patient) => {
-                  const appointmentCount = getPatientAppointmentCount(patient.id);
-                  const lastAppointment = getLastAppointmentDate(patient.id);
+                  const appointmentCount = getPatientAppointmentCount(patient);
+                  const lastAppointment = getLastAppointmentDate(patient);
                   const phone = patient.phone?.trim();
                   const email = patient.email?.trim();
 
@@ -299,8 +277,8 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, n
                 </TableHeader>
                 <TableBody>
                   {filteredPatients.map((patient) => {
-                    const appointmentCount = getPatientAppointmentCount(patient.id);
-                    const lastAppointment = getLastAppointmentDate(patient.id);
+                    const appointmentCount = getPatientAppointmentCount(patient);
+                    const lastAppointment = getLastAppointmentDate(patient);
 
                     return (
                       <TableRow
