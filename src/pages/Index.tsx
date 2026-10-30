@@ -390,6 +390,7 @@ const Index = () => {
             navigation={renderNavigationTabs()}
             onPatientClick={handlePatientClick}
             onCreatePatient={handleCreatePatient}
+            onPatientDeleted={handleRefresh}
             refreshTrigger={refreshTrigger}
           />
         );
@@ -487,6 +488,7 @@ const Index = () => {
         patient={selectedPatient}
         onPatientCreated={handleRefresh}
         onPatientUpdated={handleRefresh}
+        onPatientDeleted={handleRefresh}
       />
     </div>
   );

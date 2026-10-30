@@ -104,6 +104,47 @@ test.describe('Patient appointment history', () => {
     expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.screenshot({ path: '/tmp/patient-history-mobile.png' });
   });
+
+  test('requires confirmation before deleting patients from the table or profile', async ({ page }) => {
+    await page.unroute('**/api/patients');
+    let patientRecords = [PATIENTS.alice, PATIENTS.bob];
+    const deletedPatientIds: string[] = [];
+    await page.route('**/api/patients', (route) => route.fulfill({ json: patientRecords }));
+    await page.route('**/api/patients/**', async (route) => {
+      if (route.request().method() !== 'DELETE') {
+        await route.continue();
+        return;
+      }
+
+      const patientId = new URL(route.request().url()).pathname.split('/').at(-1)!;
+      deletedPatientIds.push(patientId);
+      patientRecords = patientRecords.filter((patient) => patient.id !== patientId);
+      await route.fulfill({ json: { success: true } });
+    });
+    await page.route('**/api/appointments', (route) => route.fulfill({ json: [] }));
+    await page.goto('/app/');
+    await page.getByTestId('nav-patients').click();
+
+    const aliceRow = page.getByTestId('patient-row').filter({ hasText: PATIENTS.alice.email });
+    await aliceRow.getByTestId('delete-patient-btn').click();
+    await expect(page.getByTestId('delete-patient-confirm-dialog'))
+      .toContainText('all of their appointment records');
+    await page.getByTestId('cancel-delete-patient-btn').click();
+    await expect(aliceRow).toBeVisible();
+    expect(deletedPatientIds).toEqual([]);
+
+    await aliceRow.getByTestId('delete-patient-btn').click();
+    await page.getByTestId('confirm-delete-patient-btn').click();
+    await expect(aliceRow).toHaveCount(0);
+    expect(deletedPatientIds).toEqual([PATIENTS.alice.id]);
+
+    const bobRow = page.getByTestId('patient-row').filter({ hasText: PATIENTS.bob.email });
+    await bobRow.click();
+    await page.getByTestId('patient-form-dialog').getByTestId('delete-patient-btn').click();
+    await page.getByTestId('confirm-delete-patient-btn').click();
+    await expect(bobRow).toHaveCount(0);
+    expect(deletedPatientIds).toEqual([PATIENTS.alice.id, PATIENTS.bob.id]);
+  });
 });
 
 test.describe('Patient Management — Standalone Creation', () => {

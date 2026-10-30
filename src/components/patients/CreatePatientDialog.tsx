@@ -14,12 +14,14 @@ import { useI18n } from '@/i18n';
 import { Appointment, Patient } from '@/types/appointment';
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
 import { APPOINTMENT_TYPES } from '@/lib/appointmentTypes';
+import { PatientDeleteButton } from './PatientDeleteButton';
 
 interface CreatePatientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPatientCreated?: () => void;
   onPatientUpdated?: () => void;
+  onPatientDeleted?: () => void;
   patient?: Patient | null;
 }
 
@@ -28,6 +30,7 @@ export function CreatePatientDialog({
   onOpenChange, 
   onPatientCreated,
   onPatientUpdated,
+  onPatientDeleted,
   patient
 }: CreatePatientDialogProps) {
   const { t, dateFnsLocale } = useI18n();
@@ -325,17 +328,30 @@ export function CreatePatientDialog({
 
             <Separator />
 
-            <DialogFooter className="shrink-0 flex-row justify-end gap-2 bg-background px-4 py-3 sm:px-5">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-9 border-border/70">
-                {t('createPatient.cancel')}
-              </Button>
-              <Button
-                type="submit"
-                data-testid="patient-form-submit"
-                className="h-9 bg-primary px-5 text-primary-foreground shadow-sm hover:bg-primary/90"
-              >
-                {isEditMode ? t('createPatient.saveChanges') : t('createPatient.submit')}
-              </Button>
+            <DialogFooter className="shrink-0 flex-row justify-between gap-2 bg-background px-4 py-3 sm:px-5">
+              <div>
+                {isEditMode && patient && (
+                  <PatientDeleteButton
+                    patient={patient}
+                    onDeleted={() => {
+                      onPatientDeleted?.();
+                      onOpenChange(false);
+                    }}
+                  />
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-9 border-border/70">
+                  {t('createPatient.cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  data-testid="patient-form-submit"
+                  className="h-9 bg-primary px-5 text-primary-foreground shadow-sm hover:bg-primary/90"
+                >
+                  {isEditMode ? t('createPatient.saveChanges') : t('createPatient.submit')}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
           </TabsContent>

@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { createDataStore } from '../../server/dataStore.js';
 
-test('patient directory returns sorted activity summaries without appointment details', async () => {
+test('patient directory returns activity summaries and deleting a patient removes its JSON records', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'clinic-patient-directory-'));
   const store = createDataStore({
     dataDir: dir,
@@ -53,6 +53,13 @@ test('patient directory returns sorted activity summaries without appointment de
       appointmentCount: 1,
       lastAppointmentAt: '2026-08-10T09:00:00Z',
     });
+
+    await store.deletePatient(first.id);
+    const savedPatients = JSON.parse(await fs.readFile(path.join(dir, 'patients.json'), 'utf8'));
+    const savedAppointments = JSON.parse(await fs.readFile(path.join(dir, 'appointments.json'), 'utf8'));
+    expect(savedPatients.some((patient: { id: string }) => patient.id === first.id)).toBe(false);
+    expect(savedAppointments.some((appointment: { patientId: string }) => appointment.patientId === first.id)).toBe(false);
+    expect(savedAppointments.some((appointment: { patientId: string }) => appointment.patientId === second.id)).toBe(true);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

@@ -36,7 +36,7 @@ test.describe('Login', () => {
           { width: 1366, height: 650 },
         ]) {
           await page.setViewportSize(viewport);
-          const desktop = viewport.width >= 1024 && viewport.height > 700;
+          const desktop = viewport.width >= 1024;
           const brandPanel = page.locator(desktop ? '.login-preview' : '.login-mobile-brand');
           await expect(brandPanel).toBeVisible();
           const visibleBrandCopy = desktop

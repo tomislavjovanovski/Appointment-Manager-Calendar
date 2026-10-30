@@ -16,15 +16,17 @@ import { Patient, PatientWithActivity } from '@/types/appointment';
 import { patientsStorage } from '@/lib/storage';
 import { format } from 'date-fns';
 import { useI18n } from '@/i18n';
+import { PatientDeleteButton } from './PatientDeleteButton';
 
 interface PatientListProps {
   onPatientClick: (patient: Patient) => void;
   onCreatePatient: () => void;
+  onPatientDeleted: () => void;
   refreshTrigger?: number;
   navigation?: React.ReactNode;
 }
 
-export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, navigation }: PatientListProps) {
+export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted, refreshTrigger, navigation }: PatientListProps) {
   const { t, dateFnsLocale } = useI18n();
   const [patients, setPatients] = useState<PatientWithActivity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -273,6 +275,7 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, n
                     <TableHead>{t('patients.lastVisit')}</TableHead>
                     <TableHead>{t('patients.activity')}</TableHead>
                     <TableHead className="pr-6">{t('patients.notesColumn')}</TableHead>
+                    <TableHead className="w-12 pr-4"><span className="sr-only">{t('patients.delete')}</span></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -344,6 +347,9 @@ export function PatientList({ onPatientClick, onCreatePatient, refreshTrigger, n
                             </p>
                             <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           </div>
+                        </TableCell>
+                        <TableCell className="pr-4" onClick={(event) => event.stopPropagation()}>
+                          <PatientDeleteButton patient={patient} onDeleted={onPatientDeleted} compact />
                         </TableCell>
                       </TableRow>
                     );
