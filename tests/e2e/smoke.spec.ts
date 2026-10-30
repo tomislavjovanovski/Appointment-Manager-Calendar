@@ -7,8 +7,91 @@ import { bookingHelper } from '../utils/bookingHelper';
 import { patientHelper } from '../utils/patientHelper';
 import { PATIENTS, nextWorkingSlot } from '../test-data/seed';
 import { E2E_USER } from '../utils/authHelper';
+import { groupSnapshotItems, type SnapshotItem } from '../../src/lib/scheduleSnapshot';
+
+test.describe('Snapshot grouping', () => {
+  test('combines touching and overlapping bookings without changing the source items', () => {
+    const items: SnapshotItem[] = [
+      { kind: 'appointment', start: '09:00', end: '10:00', count: 1 },
+      { kind: 'appointment', start: '08:00', end: '09:00', count: 1 },
+      { kind: 'appointment', start: '08:30', end: '08:45', count: 1 },
+    ];
+    expect(groupSnapshotItems(items)).toEqual([
+      { kind: 'appointment', start: '08:00', end: '10:00', count: 3 },
+    ]);
+    expect(items[0]).toEqual({ kind: 'appointment', start: '09:00', end: '10:00', count: 1 });
+    expect(items[1].end).toBe('09:00');
+    expect(groupSnapshotItems([])).toEqual([]);
+  });
+
+  test('preserves free gaps, unavailable time, and non-touching bookings', () => {
+    const items: SnapshotItem[] = [
+      { kind: 'appointment', start: '08:00', end: '09:00', count: 1 },
+      { kind: 'free', start: '09:00', end: '09:30' },
+      { kind: 'appointment', start: '09:30', end: '10:00', count: 1 },
+      { kind: 'blocked', start: '10:00', end: '11:00' },
+      { kind: 'appointment', start: '11:00', end: '11:30', count: 1 },
+      { kind: 'appointment', start: '11:45', end: '12:00', count: 1 },
+    ];
+    expect(groupSnapshotItems(items)).toEqual(items);
+  });
+});
 
 test.describe('Smoke — Application Loads', () => {
+  test('mobile snapshot highlights availability with compact private busy separators', async ({ pageWithPatients: page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.clock.setFixedTime(new Date('2026-10-26T07:00:00'));
+    await page.addInitScript(() => {
+      const original = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (...args: Parameters<typeof original>) {
+        const root = document.documentElement;
+        const texts: string[] = JSON.parse(root.dataset.snapshotText ?? '[]');
+        texts.push(args[0]);
+        root.dataset.snapshotText = JSON.stringify(texts);
+        return original.apply(this, args);
+      };
+    });
+    const appointment = (id: string, start: string, end: string) => ({
+      id, patientId: PATIENTS.alice.id, patientName: 'Alice Thornton',
+      startTime: new Date(start).toISOString(), endTime: new Date(end).toISOString(),
+      duration: (new Date(end).getTime() - new Date(start).getTime()) / 60_000,
+      type: 'follow-up', status: 'scheduled', title: 'Private follow-up', notes: 'Private notes',
+    });
+    await page.route('**/api/settings', (route) => route.fulfill({ json: {
+      locale: 'en', startTime: '08:00', endTime: '12:00',
+      workingDays: [1, 2], timeSlotMinutes: 30,
+      blockedSlots: [{
+        id: 'snapshot-blocked',
+        startTime: new Date('2026-10-26T11:00:00').toISOString(),
+        endTime: new Date('2026-10-26T12:00:00').toISOString(),
+      }],
+    } }));
+    await page.route('**/api/appointments', (route) => route.fulfill({ json: [
+      appointment('first', '2026-10-26T08:00:00', '2026-10-26T08:30:00'),
+      appointment('second', '2026-10-26T08:30:00', '2026-10-26T09:00:00'),
+      appointment('third', '2026-10-26T10:00:00', '2026-10-26T10:30:00'),
+      appointment('full-day', '2026-10-27T08:00:00', '2026-10-27T12:00:00'),
+    ] }));
+    await page.goto('/app/');
+    const button = page.getByTestId('mobile-snapshot-btn');
+    await expect(button).toBeEnabled();
+    await button.click();
+    const preview = page.getByTestId('mobile-snapshot-preview');
+    await expect(preview).toBeVisible();
+    await expect.poll(() => preview.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(1080);
+    const texts: string[] = await page.evaluate(() => JSON.parse(document.documentElement.dataset.snapshotText ?? '[]'));
+    expect(texts).toEqual(expect.arrayContaining([
+      '08:00 - 09:00 · 2 booked', '10:00 - 10:30 · 1 booked',
+      '11:00 - 12:00 · Unavailable', '08:00 - 12:00 · 1 booked',
+      '09:00 - 09:30', '09:30 - 10:00', '10:30 - 11:00', '3 free slots', 'No free slots',
+    ]));
+    expect(texts.filter((text) => text === 'Free slot')).toHaveLength(3);
+    expect(texts.join(' ')).not.toMatch(/Alice|Thornton|Private|follow-up|Xxxxx/);
+    expect(await preview.evaluate((image: HTMLImageElement) => image.naturalHeight)).toBe(964);
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(page.getByTestId('mobile-appointment').filter({ hasText: 'Alice' })).toHaveCount(4);
+  });
+
   test('mobile agenda scrolls across days and weeks with pinned date controls', async ({ pageWithPatients: page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.clock.setFixedTime(new Date('2026-10-26T07:00:00'));

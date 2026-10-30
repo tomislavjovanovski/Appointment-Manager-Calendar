@@ -1,8 +1,7 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowUpRight,
-  CalendarCheck2,
   CalendarDays,
   Clock3,
   Eye,
@@ -12,7 +11,8 @@ import {
   ShieldCheck,
   UsersRound,
 } from 'lucide-react';
-import ITerminLogo from '@/components/brand/ITerminLogo';
+import BrandLogo from '@/components/brand/BrandLogo';
+import brand from '@/config/brand.json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,11 @@ export default function Login() {
   const [formError, setFormError] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    document.title = brand.name;
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const validate = (): FieldErrors => {
     const errors: FieldErrors = {};
@@ -91,11 +96,11 @@ export default function Login() {
   const notice = formError ?? (sessionExpired ? t('auth.sessionExpired') : sessionError ? t('auth.networkError') : null);
 
   return (
-    <main className="login-page relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-slate-50 px-3 py-3 sm:px-6 sm:py-4">
-      <div aria-hidden="true" className="pointer-events-none absolute -left-40 -top-44 h-96 w-96 rounded-full bg-blue-100/70 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 -right-40 h-[30rem] w-[30rem] rounded-full bg-violet-100/60 blur-3xl" />
+    <main className="login-page relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-slate-50 px-3 py-3 sm:px-6 sm:py-4 dark:bg-background">
+      <div aria-hidden="true" className="pointer-events-none absolute -left-40 -top-44 h-96 w-96 rounded-full bg-blue-100/70 blur-3xl dark:bg-blue-950/30" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 -right-40 h-[30rem] w-[30rem] rounded-full bg-violet-100/60 blur-3xl dark:bg-violet-950/20" />
 
-      <section className="login-card relative grid w-full max-w-5xl overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.24)] lg:h-[650px] lg:grid-cols-[1.03fr_0.97fr]">
+      <section className="login-card relative grid w-full max-w-5xl overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.24)] dark:border-border dark:bg-card lg:h-[650px] lg:grid-cols-[1.03fr_0.97fr]">
         <aside className="login-preview relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-blue-700 via-blue-700 to-indigo-800 p-6 text-white lg:flex xl:p-8">
           <div aria-hidden="true" className="login-calendar-pattern pointer-events-none absolute -right-14 -top-10 h-60 w-[21rem] rotate-12 rounded-2xl border border-white/15">
             <div className="absolute inset-x-0 top-0 h-12 rounded-t-2xl border-b border-white/15 bg-white/5" />
@@ -110,23 +115,22 @@ export default function Login() {
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -left-36 h-96 w-96 rounded-full bg-indigo-500/30 blur-3xl" />
 
           <div className="relative">
-            <ITerminLogo variant="horizontal" size={44} className="gap-3" iconClassName="text-current" wordmarkClassName="text-lg" />
+            <BrandLogo variant="horizontal" tone="inverse" size={52} className="gap-3 text-white" wordmarkClassName="text-2xl" />
 
-            <div className="mt-6 max-w-md">
+            <div className="mt-6 max-w-md" lang="mk">
               <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium tracking-wide text-blue-50">
-                <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
-                {t('auth.workspace')}
+                {brand.productDescription}
               </p>
               <h2 className="text-3xl font-semibold leading-[1.15] tracking-tight">
-                {t('auth.workspaceHeadline')}
+                {brand.slogan}
               </h2>
               <p className="mt-3 max-w-sm text-sm leading-5 text-blue-100/90">
-                {t('auth.workspaceDescription')}
+                {brand.supportingDescription}
               </p>
             </div>
           </div>
 
-          <div className="relative mt-5 rounded-2xl border border-white/20 bg-white p-4 text-slate-900 shadow-2xl shadow-indigo-950/20">
+          <div className="relative mt-5 rounded-2xl border border-white/20 bg-white p-4 text-slate-900 shadow-2xl shadow-indigo-950/20 dark:bg-card dark:text-card-foreground">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">{t('auth.schedulePreview')}</p>
@@ -142,10 +146,10 @@ export default function Login() {
                 { time: '10:30', label: t('auth.schedulePatientTwo'), tone: 'bg-violet-500' },
                 { time: '12:00', label: t('auth.schedulePatientThree'), tone: 'bg-teal-500' },
               ].map((item) => (
-                <div key={item.time} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3.5 py-2">
+                <div key={item.time} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3.5 py-2 dark:bg-muted/50">
                   <span className="w-12 shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">{item.time}</span>
                   <span className={`h-6 w-1 shrink-0 rounded-full ${item.tone}`} />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">{item.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700 dark:text-foreground">{item.label}</span>
                   <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 </div>
               ))}
@@ -177,13 +181,13 @@ export default function Login() {
         </aside>
 
         <div className="login-form-panel flex min-w-0 flex-col justify-center px-5 py-5 sm:px-10 sm:py-7 lg:px-10 xl:px-14">
-          <div className="login-mobile-brand mb-5 flex items-center lg:hidden">
-            <ITerminLogo variant="horizontal" size={44} className="gap-3" wordmarkClassName="text-slate-900" />
+          <div className="login-mobile-brand mb-4 flex flex-col items-start gap-2 lg:hidden" lang="mk">
+            <BrandLogo variant="horizontal" size={44} className="gap-3" wordmarkClassName="text-2xl text-foreground" />
+            <p className="text-sm font-medium text-primary">{brand.productDescription}</p>
           </div>
 
           <div className="mb-5">
-            <p className="text-sm font-medium text-primary">{t('auth.welcomeBack')}</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{t('auth.title')}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t('auth.title')}</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('auth.signInPrompt')}</p>
           </div>
 
@@ -236,7 +240,7 @@ export default function Login() {
                 aria-invalid={Boolean(fieldErrors.email)}
                 aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
                 disabled={submitting}
-                className="h-11 rounded-xl bg-white px-3.5 text-base shadow-sm transition-shadow focus-visible:shadow-md sm:h-12 md:text-sm"
+                className="h-11 rounded-xl bg-white px-3.5 text-base shadow-sm transition-shadow focus-visible:shadow-md dark:bg-background sm:h-12 md:text-sm"
               />
               {fieldErrors.email && (
                 <p id="login-email-error" className="text-xs text-destructive">{fieldErrors.email}</p>
@@ -258,7 +262,7 @@ export default function Login() {
                   aria-invalid={Boolean(fieldErrors.password)}
                   aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                   disabled={submitting}
-                  className="h-11 rounded-xl bg-white px-3.5 pr-12 text-base shadow-sm transition-shadow focus-visible:shadow-md sm:h-12 md:text-sm"
+                  className="h-11 rounded-xl bg-white px-3.5 pr-12 text-base shadow-sm transition-shadow focus-visible:shadow-md dark:bg-background sm:h-12 md:text-sm"
                 />
                 <button
                   type="button"

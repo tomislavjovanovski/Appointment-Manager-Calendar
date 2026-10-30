@@ -4,6 +4,18 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { rmSync } from "fs";
 import type { Plugin } from "vite";
+import brand from "./src/config/brand.json";
+
+const brandMetadata = (): Plugin => ({
+  name: "brand-metadata",
+  transformIndexHtml(html) {
+    return html
+      .replaceAll("%BRAND_NAME%", brand.name)
+      .replaceAll("%BRAND_DESCRIPTION%", brand.metaDescription)
+      .replaceAll("%BRAND_EXTENDED_DESCRIPTION%", brand.extendedDescription)
+      .replaceAll("%BRAND_THEME_COLOR%", brand.themeColor);
+  },
+});
 
 // public/data holds the local JSON database (patients, appointments, tokens). Vite copies
 // everything in public/ into the build, so remove it to make sure it is never deployed.
@@ -36,6 +48,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    brandMetadata(),
     excludePrivateData(),
     mode === 'development' &&
     componentTagger(),

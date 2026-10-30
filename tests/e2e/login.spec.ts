@@ -3,6 +3,7 @@
 
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { E2E_USER } from '../utils/authHelper';
+import brand from '../../src/config/brand.json' with { type: 'json' };
 
 const json = (body: unknown, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
@@ -18,6 +19,140 @@ test.describe('Login', () => {
     await page.goto('/');
     await expect(page.getByTestId('login-form')).toBeVisible();
     await expect(page.getByTestId('nav-patients')).toHaveCount(0);
+  });
+
+  test.describe('мојЗабар branding', () => {
+    for (const theme of ['light', 'dark']) {
+      test(`preserves the original login design and approved copy in ${theme} mode at mobile, tablet and desktop sizes`, async ({ page }) => {
+        await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
+        await page.addInitScript((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
+        await page.goto('/');
+        await expect(page).toHaveTitle('мојЗабар');
+        for (const viewport of [
+          { width: 320, height: 740 },
+          { width: 375, height: 812 },
+          { width: 768, height: 1024 },
+          { width: 1280, height: 900 },
+          { width: 1366, height: 650 },
+        ]) {
+          await page.setViewportSize(viewport);
+          const desktop = viewport.width >= 1024 && viewport.height > 700;
+          const brandPanel = page.locator(desktop ? '.login-preview' : '.login-mobile-brand');
+          await expect(brandPanel).toBeVisible();
+          for (const text of [
+            'мојЗабар',
+            'Менаџмент на стоматолошки ординации',
+            'Помалку администрација. Повеќе насмевки.',
+            'Термини, пациенти и организација на ординацијата — на едно место.',
+          ]) {
+            await expect(brandPanel.getByText(text, { exact: true })).toBeVisible();
+          }
+          await expect(page.getByTestId('login-form')).toBeVisible();
+          await expect(page.getByTestId('login-submit')).toBeVisible();
+          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+          if (desktop) {
+            await expect(brandPanel.locator('img')).toHaveAttribute('src', '/app/brand-mark-white.svg');
+            await expect(brandPanel).toHaveCSS('color', 'rgb(255, 255, 255)');
+            expect(await brandPanel.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain('linear-gradient');
+            await expect(brandPanel.locator('.login-calendar-pattern')).toHaveCount(2);
+          }
+        }
+        expect(await page.locator('body').innerText()).not.toMatch(/iTermin|ClinicCalendar|Lovable/);
+      });
+    }
+
+    test('serves consistent browser metadata, manifest, and correctly sized brand icons', async ({ page, request }) => {
+      await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
+      await page.goto('/');
+      await expect(page).toHaveTitle(brand.name);
+      await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', brand.metaDescription);
+      await expect(page.locator('meta[name="application-name"]')).toHaveAttribute('content', brand.name);
+      await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', brand.name);
+      await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', brand.extendedDescription);
+      await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', brand.name);
+      await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', brand.themeColor);
+      const manifestPath = await page.locator('link[rel="manifest"]').getAttribute('href');
+      expect(manifestPath).toBe('/app/manifest.webmanifest');
+      const response = await request.get(manifestPath!);
+      expect(response.ok()).toBe(true);
+      const manifest = await response.json();
+      expect(manifest).toMatchObject({
+        name: brand.name, short_name: brand.name, description: brand.metaDescription,
+        lang: 'mk', start_url: './', scope: './', display: 'standalone', theme_color: brand.themeColor,
+      });
+      for (const [asset, width, height] of [
+        ['/app/favicon.svg', 64, 64],
+        ['/app/favicon.ico', 32, 32],
+        ['/app/apple-touch-icon.png', 180, 180],
+        ['/app/icon-192.png', 192, 192],
+        ['/app/icon-512.png', 512, 512],
+        ['/app/icon-maskable-512.png', 512, 512],
+        ['/app/brand-social.png', 1200, 630],
+      ] as const) {
+        const dimensions = await page.evaluate(async (src) => {
+          const image = new Image();
+          image.src = src;
+          await image.decode();
+          return { width: image.naturalWidth, height: image.naturalHeight };
+        }, asset);
+        expect(dimensions).toEqual({ width, height });
+      }
+      await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/app/favicon.svg');
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/app/brand-social.png');
+    });
+
+    test('shows the custom practice instead of product branding in the sidebar and resets the title after logout', async ({ page, context }) => {
+      await mockApp(context);
+      await context.route('**/api/settings', (route) => route.fulfill(json({
+        locale: 'en', practiceName: 'Dental Studio',
+        logoDataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',
+        startTime: '08:00', endTime: '18:00', workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30,
+      })));
+      await page.route('**/api/auth/me', (route) => route.fulfill(json({ user: E2E_USER, csrfToken: 't' })));
+      await page.route('**/api/auth/logout', (route) => route.fulfill({ status: 204, body: '' }));
+      await page.goto('/');
+      await expect(page).toHaveTitle(`Dental Studio | ${brand.name}`);
+      const sidebar = page.getByTestId('desktop-sidebar');
+      await expect(sidebar.getByTestId('sidebar-product-brand')).toHaveCount(0);
+      await expect(sidebar.getByTestId('sidebar-practice-brand')).toContainText('Dental Studio');
+      await expect(sidebar.getByTestId('sidebar-practice-brand').locator('img')).toBeVisible();
+      await expect(sidebar.getByTestId('sidebar-practice-brand').locator('span'))
+        .toHaveClass(/text-xl.*font-semibold.*tracking-tight/);
+      await page.evaluate(() => document.documentElement.classList.add('dark'));
+      await expect(sidebar.getByTestId('sidebar-practice-brand')).toBeVisible();
+      await page.setViewportSize({ width: 375, height: 812 });
+      await expect(page.locator('header').getByText(brand.name, { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+      await expect(page.getByTestId('mobile-sidebar').getByTestId('sidebar-product-brand')).toHaveCount(0);
+      await expect(page.getByTestId('mobile-sidebar').getByTestId('sidebar-practice-brand')).toContainText('Dental Studio');
+      await page.getByTestId('mobile-sidebar').getByTestId('logout-button').click();
+      await expect(page.getByTestId('login-form')).toBeVisible();
+      await expect(page).toHaveTitle(brand.name);
+    });
+
+    test('shows the product brand in the sidebar when no custom practice is configured', async ({ page, context }) => {
+      await mockApp(context);
+      await context.route('**/api/auth/me', (route) => route.fulfill(json({ user: E2E_USER, csrfToken: 't' })));
+      await page.goto('/');
+
+      const sidebar = page.getByTestId('desktop-sidebar');
+      await expect(page).toHaveTitle(brand.name);
+      await expect(sidebar.getByTestId('sidebar-product-brand')).toContainText(brand.name);
+      await expect(sidebar.getByTestId('sidebar-practice-brand')).toHaveCount(0);
+    });
+
+    test('uses the dental practice identity throughout public information pages', async ({ page }) => {
+      await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
+      await page.setViewportSize({ width: 375, height: 812 });
+      for (const path of ['faq', 'privacy', 'terms', 'contact']) {
+        await page.goto(`/app/${path}`);
+        await expect(page).toHaveTitle(brand.name);
+        await expect(page.getByText(brand.name, { exact: true })).toBeVisible();
+        await expect(page.getByText(brand.productDescription, { exact: true })).toBeVisible();
+        expect(await page.locator('body').innerText()).not.toMatch(/iTermin|ClinicCalendar|Lovable/);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+      }
+    });
   });
 
   test('keeps the sign-in form usable on mobile and shows the schedule panel on desktop', async ({ page }) => {

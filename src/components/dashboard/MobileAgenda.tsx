@@ -167,28 +167,30 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
     try {
       const days = visibleDates.filter(isWorkingDay).map((date) => {
         const dayAppointments = appointments.filter((appointment) => isSameDay(new Date(appointment.startTime), date));
-        const items = [
+        const items: SnapshotItem[] = [
           ...dayAppointments.map((appointment) => ({
             at: new Date(appointment.startTime).getTime(),
             item: {
-              kind: 'appointment', color: APPOINTMENT_TYPES[appointment.type].color,
+              kind: 'appointment', count: 1,
               start: format(new Date(appointment.startTime), 'HH:mm'), end: format(new Date(appointment.endTime), 'HH:mm'),
-            } as SnapshotItem,
+            } satisfies SnapshotItem,
           })),
           ...getDaySlots(date).map((gap) => ({
             at: gap.start.getTime(),
-            item: { kind: 'free', start: format(gap.start, 'HH:mm'), end: format(gap.end, 'HH:mm') } as SnapshotItem,
+            item: { kind: 'free', start: format(gap.start, 'HH:mm'), end: format(gap.end, 'HH:mm') } satisfies SnapshotItem,
           })),
-          ...(blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), date)).map((slot) => ({
+          ...(currentSettings?.blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), date)).map((slot) => ({
             at: new Date(slot.startTime).getTime(),
-            item: { kind: 'blocked', start: format(new Date(slot.startTime), 'HH:mm'), end: format(new Date(slot.endTime), 'HH:mm') } as SnapshotItem,
+            item: { kind: 'blocked', start: format(new Date(slot.startTime), 'HH:mm'), end: format(new Date(slot.endTime), 'HH:mm') } satisfies SnapshotItem,
           })),
         ].sort((a, b) => a.at - b.at).map(({ item }) => item);
         return {
           title: format(date, 'EEEE, d MMMM', { locale: dateFnsLocale }),
-          subtitle: dayAppointments.length === 1 ? t('mobile.appointmentsOne') : t('mobile.appointments', { count: dayAppointments.length }),
+          subtitle: items.some((item) => item.kind === 'free')
+            ? t('mobile.freeSlotsCount', { n: items.filter((item) => item.kind === 'free').length })
+            : t('mobile.noFreeSlots'),
           items,
-          emptyLabel: t('calendar.noAppointments'),
+          emptyLabel: t('mobile.noFreeSlots'),
         };
       });
       const first = visibleDates[0];
@@ -199,6 +201,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
         days,
         freeLabel: t('mobile.freeSlot'),
         blockedLabel: t('appointment.blockedShort'),
+        bookedLabel: (count) => t('mobile.snapshotBooked', { count }),
       });
       setSnapshot({ blob, title, fileName: `schedule-${format(first, 'yyyy-MM-dd')}.png` });
     } catch (error) {

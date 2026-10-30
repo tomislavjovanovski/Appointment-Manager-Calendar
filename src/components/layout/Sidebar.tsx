@@ -1,4 +1,5 @@
-import ITerminLogo from '@/components/brand/ITerminLogo';
+import BrandLogo from '@/components/brand/BrandLogo';
+import brand from '@/config/brand.json';
 import { Calendar, Users, Settings, RefreshCw, LogOut, PanelLeftClose, PanelLeftOpen, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,8 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
   const { user, logout, saveSidebarCollapsed, savingSidebarPreference } = useAuth();
   const { toast } = useToast();
   const collapsed = !showNavigation && user?.preferences?.desktopSidebarCollapsed === true;
+  const practiceName = brandName?.trim();
+  const hasCustomBrand = Boolean(practiceName && practiceName !== brand.name);
   const toggleSidebar = async () => {
     try {
       await saveSidebarCollapsed(!collapsed);
@@ -51,19 +54,31 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
     <div data-testid={showNavigation ? 'mobile-sidebar' : 'desktop-sidebar'} data-collapsed={collapsed} className={cn('flex shrink-0 flex-col border-r border-sidebar-border/80 bg-sidebar text-sidebar-foreground shadow-soft', collapsed ? 'w-14' : 'w-[200px]', className)}>
       {/* Header */}
       <div className={cn('border-b border-sidebar-border/60 bg-sidebar-accent/30 py-4', collapsed ? 'px-2' : 'px-3')}>
-        <div className="flex items-center gap-2.5">
-          {logoDataUrl ? (
-            <img src={logoDataUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-contain" />
-          ) : (
-            <ITerminLogo size={36} />
-          )}
-          {!collapsed && <div className="min-w-0">
-            <h1 className="break-words text-sm font-semibold text-sidebar-foreground">
-              {brandName || t('sidebar.appName')}
-            </h1>
-            <p className="mt-0.5 text-[10px] font-medium leading-snug text-sidebar-foreground/80">{t('sidebar.appSubtitle')}</p>
-          </div>}
-        </div>
+        {hasCustomBrand ? (
+          <div className="flex items-center gap-2" data-testid="sidebar-practice-brand">
+            {logoDataUrl ? (
+              <img src={logoDataUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+            ) : (
+              <BrandLogo variant="icon" size={collapsed ? 36 : 32} title={practiceName} />
+            )}
+            {!collapsed && (
+              <span lang="mk" className="min-w-0 break-words text-xl font-semibold tracking-tight text-sidebar-foreground">
+                {practiceName}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div data-testid="sidebar-product-brand">
+            <BrandLogo
+              variant={collapsed ? 'icon' : 'horizontal'}
+              size={collapsed ? 36 : 32}
+              title={brand.name}
+              className="gap-2"
+              wordmarkClassName="text-xl text-sidebar-foreground"
+            />
+            {!collapsed && <p lang="mk" className="mt-2 text-[11px] font-medium leading-snug text-sidebar-foreground/80">{brand.productDescription}</p>}
+          </div>
+        )}
         {!showNavigation && (
           <Button
             type="button"

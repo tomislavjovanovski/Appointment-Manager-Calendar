@@ -16,6 +16,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Menu, Plus } from 'lucide-react';
 import { isSameDay, isSameMonth, isSameWeek, isValid } from 'date-fns';
+import BrandLogo from '@/components/brand/BrandLogo';
+import brand from '@/config/brand.json';
 
 const rangesOverlap = (
   startA: number,
@@ -104,7 +106,8 @@ const Index = () => {
   };
 
   useEffect(() => {
-    document.title = brandName;
+    document.title = brandName === brand.name ? brand.name : `${brandName} | ${brand.name}`;
+    return () => { document.title = brand.name; };
   }, [brandName]);
 
   useEffect(() => {
@@ -435,7 +438,10 @@ const Index = () => {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-base font-semibold tracking-tight">{activeTabTitle}</h1>
+          <div className="flex min-w-0 flex-col items-center gap-1">
+            <BrandLogo variant="horizontal" size={24} wordmarkClassName="text-base" />
+            <h1 className="text-xs font-medium text-muted-foreground">{activeTabTitle}</h1>
+          </div>
           <Button
             type="button"
             size="icon"

@@ -17,12 +17,13 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 213 27% 12%;
 
-    --primary: 212 100% 47%;
+    --brand: 224 76% 48%;
+    --primary: 224 76% 48%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 212 100% 42%;
+    --primary-hover: 224 76% 41%;
 
-    --secondary: 210 40% 98%;
-    --secondary-foreground: 213 27% 12%;
+    --secondary: 166 76% 97%;
+    --secondary-foreground: 175 77% 26%;
 
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 38%;
@@ -40,7 +41,7 @@ All colors MUST be HSL.
     --border: 214 24% 82%;
     --input: 214 24% 78%;
     --calendar-grid: 214 20% 65%;
-    --ring: 212 100% 47%;
+    --ring: 224 76% 48%;
 
     --medical-blue: 212 100% 47%;
     --medical-green: 142 76% 36%;
@@ -87,8 +88,9 @@ All colors MUST be HSL.
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 213 97% 78%;
     --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-hover: 213 97% 84%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -124,6 +126,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: Arial, "Noto Sans", "DejaVu Sans", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }

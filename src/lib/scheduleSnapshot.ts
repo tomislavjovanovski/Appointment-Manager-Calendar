@@ -1,5 +1,5 @@
 export type SnapshotItem =
-  | { kind: 'appointment'; start: string; end: string; color: string }
+  | { kind: 'appointment'; start: string; end: string; count: number }
   | { kind: 'free'; start: string; end: string }
   | { kind: 'blocked'; start: string; end: string };
 
@@ -15,19 +15,34 @@ export interface SnapshotOptions {
   days: SnapshotDay[];
   freeLabel: string;
   blockedLabel: string;
+  bookedLabel: (count: number) => string;
 }
 
 const WIDTH = 540;
 const SCALE = 2;
 const PAD = 20;
 const ROW = 44;
+const BUSY_ROW = 24;
 const GAP = 8;
 const DAY_HEADER = 52;
 const DAY_GAP = 18;
 const HEADER = 72;
 
-// Real names are never drawn; a placeholder is blurred so no patient data ends up in the image.
-const PLACEHOLDERS = ['Xxxxxx Xxxxxxxx', 'Xxxx Xxxxxxxxxx', 'Xxxxxxxx Xxxxx', 'Xxxxx Xxxxxxx'];
+export function groupSnapshotItems(items: SnapshotItem[]): SnapshotItem[] {
+  const grouped: SnapshotItem[] = [];
+  for (const item of [...items].sort((a, b) => a.start.localeCompare(b.start))) {
+    const previous = grouped[grouped.length - 1];
+    if (item.kind === 'appointment' && previous?.kind === 'appointment' && item.start <= previous.end) {
+      previous.end = previous.end > item.end ? previous.end : item.end;
+      previous.count += item.count;
+    } else {
+      grouped.push({ ...item });
+    }
+  }
+  return grouped;
+}
+
+const rowHeight = (item: SnapshotItem) => item.kind === 'free' ? ROW : BUSY_ROW;
 
 const cssColor = (name: string, fallback: string) => {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -44,7 +59,7 @@ const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 };
 
-export async function createScheduleSnapshot({ title, days, freeLabel, blockedLabel }: SnapshotOptions): Promise<Blob> {
+export async function createScheduleSnapshot({ title, days, freeLabel, blockedLabel, bookedLabel }: SnapshotOptions): Promise<Blob> {
   await document.fonts?.ready;
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
   const primary = cssColor('--primary', '#0070f0');
@@ -53,9 +68,10 @@ export async function createScheduleSnapshot({ title, days, freeLabel, blockedLa
   const muted = cssColor('--muted-foreground', '#64748b');
   const border = cssColor('--border', '#e2e8f0');
 
+  const groupedDays = days.map((day) => ({ ...day, items: groupSnapshotItems(day.items) }));
   const dayHeight = (day: SnapshotDay) =>
-    DAY_HEADER + Math.max(day.items.length, 1) * (ROW + GAP) - GAP;
-  const height = HEADER + days.reduce((sum, day) => sum + dayHeight(day) + DAY_GAP, 0) + PAD - DAY_GAP;
+    DAY_HEADER + (day.items.length ? day.items.reduce((sum, item) => sum + rowHeight(item) + GAP, -GAP) : ROW);
+  const height = HEADER + groupedDays.reduce((sum, day) => sum + dayHeight(day) + DAY_GAP, 0) + PAD - DAY_GAP;
 
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH * SCALE;
@@ -72,9 +88,8 @@ export async function createScheduleSnapshot({ title, days, freeLabel, blockedLa
   ctx.fillText(title, PAD, 38);
 
   let y = HEADER;
-  let placeholder = 0;
   const rowWidth = WIDTH - PAD * 2;
-  for (const day of days) {
+  for (const day of groupedDays) {
     ctx.strokeStyle = border;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -103,57 +118,41 @@ export async function createScheduleSnapshot({ title, days, freeLabel, blockedLa
 
     for (const item of day.items) {
       const time = `${item.start} - ${item.end}`;
-      roundRect(ctx, PAD, y, rowWidth, ROW, 12);
-      if (item.kind === 'free') {
-        ctx.save();
-        ctx.globalAlpha = 0.06;
-        ctx.fillStyle = primary;
-        ctx.fill();
-        ctx.restore();
-        ctx.setLineDash([5, 4]);
-        ctx.strokeStyle = primary;
-        ctx.stroke();
-        ctx.setLineDash([]);
-      } else if (item.kind === 'blocked') {
-        ctx.save();
-        ctx.globalAlpha = 0.15;
-        ctx.fillStyle = destructive;
-        ctx.fill();
-        ctx.restore();
-      } else {
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
+      if (item.kind !== 'free') {
+        const label = `${time} · ${item.kind === 'appointment' ? bookedLabel(item.count) : blockedLabel}`;
+        const centerY = y + BUSY_ROW / 2;
+        ctx.font = `500 12px ${font}`;
+        const labelWidth = ctx.measureText(label).width;
+        const labelX = (WIDTH - labelWidth) / 2;
         ctx.strokeStyle = border;
+        ctx.beginPath();
+        ctx.moveTo(PAD, centerY);
+        ctx.lineTo(Math.max(PAD, labelX - 10), centerY);
+        ctx.moveTo(Math.min(WIDTH - PAD, labelX + labelWidth + 10), centerY);
+        ctx.lineTo(WIDTH - PAD, centerY);
         ctx.stroke();
-        ctx.save();
-        roundRect(ctx, PAD, y, rowWidth, ROW, 12);
-        ctx.clip();
-        ctx.fillStyle = item.color;
-        ctx.fillRect(PAD, y, 5, ROW);
-        ctx.restore();
+        ctx.fillStyle = item.kind === 'blocked' ? destructive : muted;
+        ctx.fillText(label, labelX, centerY);
+        y += BUSY_ROW + GAP;
+        continue;
       }
 
-      const textColor = item.kind === 'free' ? primary : item.kind === 'blocked' ? destructive : foreground;
-      ctx.fillStyle = textColor;
+      roundRect(ctx, PAD, y, rowWidth, ROW, 12);
+      ctx.save();
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = primary;
+      ctx.fill();
+      ctx.restore();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = primary;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = primary;
       ctx.font = `600 14px ${font}`;
       ctx.fillText(time, PAD + 16, y + ROW / 2);
-
-      const labelX = PAD + 136;
-      if (item.kind === 'appointment') {
-        // Shadow-only rendering gives a blur that also works in browsers without ctx.filter.
-        ctx.save();
-        ctx.font = `600 14px ${font}`;
-        ctx.fillStyle = '#000';
-        ctx.shadowColor = 'rgba(15, 23, 42, 0.75)';
-        ctx.shadowBlur = 7 * SCALE;
-        ctx.shadowOffsetX = 10000 * SCALE;
-        ctx.fillText(PLACEHOLDERS[placeholder++ % PLACEHOLDERS.length], labelX - 10000, y + ROW / 2);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = textColor;
-        ctx.font = `500 13px ${font}`;
-        ctx.fillText(item.kind === 'free' ? freeLabel : blockedLabel, labelX, y + ROW / 2);
-      }
+      ctx.font = `500 13px ${font}`;
+      ctx.fillText(freeLabel, PAD + 156, y + ROW / 2);
       y += ROW + GAP;
     }
     y += DAY_GAP - GAP;

@@ -36,7 +36,7 @@ const parseArgs = (args) => {
 };
 
 const printHelp = () => {
-  console.log(`Local-only iTermin synthetic data generator
+  console.log(`Local-only мојЗабар synthetic data generator
 
 Default: dry-run preview; no files are written.
 

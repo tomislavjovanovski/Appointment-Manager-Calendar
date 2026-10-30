@@ -1,17 +1,21 @@
-# iTermin
+# мојЗабар
 
-**A lightweight appointment and contact management app for independent professionals and small teams.**
+**Менаџмент на стоматолошки ординации**
 
-iTermin provides a weekly scheduling view, contact records, appointment statistics, and configurable workspace settings in an English/Macedonian interface. It is designed for a single workspace, with a desktop calendar and a compact mobile agenda.
+**Помалку администрација. Повеќе насмевки.**
+
+Термини, пациенти и организација на ординацијата — на едно место.
+
+мојЗабар is dental practice management software for independent dentists and small dental clinics in North Macedonia. It provides scheduling, patient records, appointment statistics, and configurable practice settings in a Macedonian/English interface, with a desktop calendar and a compact mobile agenda. It is a professional tool for dental teams, not a patient-facing dentist directory.
 
 > **Current architecture:** React + TypeScript frontend, Express backend, and JSON-file storage. Google Calendar integration is currently disabled.
 
 ## ✨ At a glance
 
-**iTermin** is a lightweight appointment and contact management application for service-based teams, featuring a bilingual interface in English and Macedonian.
+**мојЗабар** brings appointments, patients, and day-to-day dental practice organization together.
 
 - 📅 **Smart scheduling** — Weekly calendar, configurable appointment durations, and availability checks.
-- 👥 **Contact management** — Create, search, and manage contact records.
+- 👥 **Patient management** — Create, search, and manage patient records.
 - 📊 **Workspace statistics** — Appointment summaries, contact insights, and monthly reports.
 - ⚙️ **Flexible settings** — Configure working hours, appointment defaults, language, and workspace branding.
 - 🔐 **Secure authentication** — Administrator accounts, protected API routes, server-side sessions, and CSRF protection.
@@ -19,13 +23,23 @@ iTermin provides a weekly scheduling view, contact records, appointment statisti
 - 💾 **JSON-based storage** — Lightweight file-based persistence without a database.
 - 🚀 **Deployment-ready build** — React frontend and Express backend, with cPanel/Phusion Passenger deployment support.
 
+## Brand identity and assets
+
+- Approved Macedonian brand copy, metadata, and asset colors are maintained in [the shared brand configuration](src/config/brand.json). The Cyrillic name **мојЗабар** is unchanged in both interface languages.
+- [BrandLogo](src/components/brand/BrandLogo.tsx) combines the Cyrillic wordmark with a white calendar mark whose tooth is a transparent cutout. The same mark is used in the sidebar, login, startup/error pages, favicon, and install icons.
+- The identity uses a restrained blue (`#1d4ed8`), soft teal secondary surfaces, neutral backgrounds, and theme-aware foregrounds. The system font stack supports Macedonian Cyrillic and Latin without remote font requests.
+- Practice names and uploaded practice logos remain customizable and are displayed alongside the product identity. Browser titles retain the product name: `Practice name | мојЗабар`.
+- Run `npm run generate:brand` after changing the shared brand configuration or [SVG mark](public/favicon.svg) to regenerate the PNG install icons, Apple touch icon, ICO fallback, social preview, and [web app manifest](public/manifest.webmanifest). This uses the existing Playwright Chromium installation; no new dependencies are required.
+- Browser metadata is populated from the shared configuration by Vite. Public assets and the manifest are scoped to the existing `/app/` deployment. The manifest provides standalone installation metadata; no service worker or offline patient-data cache is introduced.
+- Legacy synthetic-data seed/email prefixes are intentionally retained for reproducibility and compatibility with existing generated records. Stored clinic data, authentication, and API contracts are not renamed.
+
 ## 🚀 Features
 
 ### 📅 Calendar and appointment booking
 
 - **Weekly desktop calendar** with seven equal day columns, compact time rows, and a date-range picker.
 - **Continuous mobile agenda** with compact appointment cards, pinned week/day controls, and a selected date that updates as soon as the next day heading is fully visible near the bottom of the screen. Only the remainder of the current week is prepared initially; the next week is prepared in the background when the last working day comes into view. Day timelines are cached between selection changes. Tap a date or Today to scroll smoothly to that day (respecting reduced-motion preferences); the week arrows jump to the first working day of the previous/next week. The agenda follows configured working days.
-- **Mobile week snapshot:** the Snapshot button next to Today creates a PNG of the selected week's working days (booked, free, and unavailable slots). Patient names are replaced by a blurred placeholder, and phone numbers and notes are left out, so no patient data is in the image. A preview modal offers **Share** (native iOS/Android share sheet, e.g. Viber, Facebook, Instagram, Save to Photos; requires HTTPS) and **Download**.
+- **Mobile week snapshot:** the Snapshot button next to Today creates an availability PNG of the selected week's working days. Free slots remain prominent; consecutive or overlapping bookings are combined into compact separators showing the busy time range and booking count, without merging across free gaps. Blocked time is marked **Unavailable**, and days without bookable slots show **No free slots**. Patient names, appointment types, phone numbers, and notes are never included. A preview modal offers **Share** (native iOS/Android share sheet, e.g. Viber, Facebook, Instagram, Save to Photos; requires HTTPS) and **Download**. The regular agenda is unchanged.
 - **Appointment durations** of 30, 45, 60, 90, and 120 minutes, using a 24-hour time format and automatically calculated end times.
 - **Configurable booking defaults:** choose the default appointment type and set a default duration for each type. Existing appointments keep their saved type and duration when edited.
 - **Six color-coded appointment types:**
@@ -111,7 +125,7 @@ The command prompts for a password. Authentication files are stored in the priva
 
 ### Data storage and file layout
 
-iTermin currently uses **JSON files**, not a database.
+мојЗабар currently uses **JSON files**, not a database.
 
 | Data | Storage |
 |---|---|
@@ -315,7 +329,7 @@ The private auth directory can remain in place; the old code does not use it. **
 
 ## Authentication and security
 
-iTermin currently supports **one clinic with one or more administrator accounts**. It does not yet support registration, password reset, social login, or account switching.
+мојЗабар currently supports **one clinic with one or more administrator accounts**. It does not yet support registration, password reset, social login, or account switching.
 
 - **Storage:** `users.json` and `sessions.json` live in `AUTH_DATA_DIR`, defaulting to `../private/auth` relative to the backend. On cPanel, use `/home/devforge/private/auth`, outside `public_html` and outside `public/data`.
 - **Permissions:** the auth directory should use `0700` permissions and its files `0600`. Writes are atomic (temporary file plus rename) and protected by a lock file shared by Passenger processes.

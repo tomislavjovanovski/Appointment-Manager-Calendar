@@ -16,6 +16,8 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { normalizeLocale, type AppLocale } from './types';
 import { translate } from './dictionary';
 import { rememberLocale } from './storedLocale';
+import BrandLogo from '@/components/brand/BrandLogo';
+import brand from '@/config/brand.json';
 
 type I18nContextValue = {
   locale: AppLocale;
@@ -41,7 +43,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .then((s) => {
         if (!isMounted) return;
         setLocaleState(normalizeLocale(s.locale));
-        document.title = s.practiceName?.trim() || 'iTermin';
+        document.title = s.practiceName?.trim() ? `${s.practiceName.trim()} | ${brand.name}` : brand.name;
         setInitialSettings(s);
       })
       .catch(() => {
@@ -75,6 +77,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   if (!initialSettings) return (
     <main className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="flex flex-col items-center gap-3" role={settingsError ? 'alert' : 'status'}>
+        <BrandLogo variant="horizontal" size={40} />
         {settingsError ? (
           <>
             <p className="text-sm text-destructive">{t('settings.startupFailed')}</p>

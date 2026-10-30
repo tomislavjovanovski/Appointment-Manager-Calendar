@@ -316,7 +316,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
         {/* General */}
         <TabsContent value="general" className="mt-0 space-y-4 sm:space-y-6">
           <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            <SettingsSection icon={Building2} title={t('settings.practiceSection')}>
+            <SettingsSection icon={Building2} title={t('settings.practiceSection')} description={t('settings.practiceBrandHint')}>
               <div className="space-y-2">
                 <Label htmlFor="practiceName">{t('settings.practiceName')}</Label>
                 <Input
