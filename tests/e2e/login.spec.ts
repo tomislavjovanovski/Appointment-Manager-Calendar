@@ -83,9 +83,11 @@ test.describe('Login', () => {
         name: brand.name, short_name: brand.name, description: brand.metaDescription,
         lang: 'mk', start_url: './', scope: './', display: 'standalone', theme_color: brand.themeColor,
       });
+      const icoResponse = await request.get('/app/favicon.ico');
+      expect(icoResponse.ok()).toBe(true);
+      expect(icoResponse.headers()['content-type']).toContain('image/x-icon');
       for (const [asset, width, height] of [
         ['/app/favicon.svg', 64, 64],
-        ['/app/favicon.ico', 32, 32],
         ['/app/apple-touch-icon.png', 180, 180],
         ['/app/icon-192.png', 192, 192],
         ['/app/icon-512.png', 512, 512],
@@ -94,8 +96,20 @@ test.describe('Login', () => {
       ] as const) {
         const dimensions = await page.evaluate(async (src) => {
           const image = new Image();
+          const loadPromise = new Promise<void>((resolve, reject) => {
+            image.onload = () => resolve();
+            image.onerror = () => reject(new Error(`Unable to load image: ${src}`));
+          });
           image.src = src;
-          await image.decode();
+          if ('decode' in image) {
+            try {
+              await image.decode();
+            } catch {
+              await loadPromise;
+            }
+          } else {
+            await loadPromise;
+          }
           return { width: image.naturalWidth, height: image.naturalHeight };
         }, asset);
         expect(dimensions).toEqual({ width, height });
