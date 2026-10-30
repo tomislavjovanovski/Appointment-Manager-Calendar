@@ -66,6 +66,7 @@
 - FZO's `Датум на пријава` is stored separately as `registrationDate` (`YYYY-MM-DD`). Valid non-empty dates are synchronized on each confirmed import; absent dates never clear a stored date, and invalid dates require review. `createdAt` remains the timestamp when the record was added to this application, not the FZO registration date.
 - Import decodes the first seven EMBG digits (`DDMMYYY`) into `dateOfBirth` (`YYYY-MM-DD`) for new patients and existing patients with an empty birth date. Existing birth dates are never overwritten. Year suffixes 800–999 map to 1800–1999 and 000–799 to 2000–2799; impossible and future dates require review rather than being saved.
 - The patient details modal shows the FZO registration date as a read-only `DD.MM.YYYY` field when available; it is updated through FZO import rather than manual editing.
+- The editable birth-date picker explicitly displays `DD.MM.YYYY`, independent of the browser's native date-input format. Stored birth dates remain ISO `YYYY-MM-DD`.
 - The patient directory includes a FZO registration-date column (`DD.MM.YYYY`, or `-` when missing); mobile patient cards show the date when available.
 - The desktop patient table shows birth dates in a separate date-of-birth column (`DD.MM.YYYY`, or `-` when missing), rather than repeating them below the patient name.
 - The duplicate-merge panel groups records by EMBG, even if names differ. Name-only candidate groups contain records without an EMBG; same-name records with different EMBGs are never grouped together.

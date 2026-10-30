@@ -14,6 +14,8 @@ import { Patient } from '@/types/appointment';
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
 import { PatientDeleteButton } from './PatientDeleteButton';
 import { PatientAppointmentHistory } from './PatientAppointmentHistory';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { format, isValid, parseISO } from 'date-fns';
 
 interface CreatePatientDialogProps {
   open: boolean;
@@ -37,6 +39,7 @@ export function CreatePatientDialog({
   const [formData, setFormData] = useState(emptyForm);
   const { toast } = useToast();
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [birthDateInvalid, setBirthDateInvalid] = useState(false);
   const isEditMode = Boolean(patient?.id);
   const [activeTab, setActiveTab] = useState('details');
 
@@ -64,6 +67,7 @@ export function CreatePatientDialog({
     }
 
     setErrors({});
+    setBirthDateInvalid(false);
   }, [open, patient, emptyForm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +75,7 @@ export function CreatePatientDialog({
 
     const normalizedForm = normalizePatientForm(formData);
     const nextErrors = validatePatientForm(normalizedForm);
+    if (birthDateInvalid) nextErrors.dateOfBirth = true;
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -273,13 +278,28 @@ export function CreatePatientDialog({
                         <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                         {t('createPatient.dob')}
                       </Label>
-                      <Input
-                        id="patient-dob"
-                        type="date"
-                        data-testid="patient-dob"
-                        value={formData.dateOfBirth}
-                        onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                        className="h-9 border-border/70 bg-background/80"
+                      <DatePicker
+                        format="dd.MM.yyyy"
+                        value={formData.dateOfBirth ? parseISO(formData.dateOfBirth) : null}
+                        onChange={(date) => {
+                          if (date === null) handleInputChange('dateOfBirth', '');
+                          else if (isValid(date)) handleInputChange('dateOfBirth', format(date, 'yyyy-MM-dd'));
+                        }}
+                        onError={(error) => setBirthDateInvalid(error !== null)}
+                        slotProps={{
+                          textField: {
+                            id: 'patient-dob',
+                            size: 'small',
+                            fullWidth: true,
+                            inputProps: { 'data-testid': 'patient-dob' },
+                            helperText: birthDateInvalid ? t('createPatient.dobInvalid') : undefined,
+                            sx: {
+                              '& .MuiInputBase-root': { height: 36, fontSize: 14, backgroundColor: 'hsl(var(--background) / 0.8)' },
+                            },
+                          },
+                          popper: { sx: { zIndex: 2100 } },
+                          dialog: { sx: { zIndex: 2100 } },
+                        }}
                       />
                     </div>
                     <div className="space-y-1.5">
