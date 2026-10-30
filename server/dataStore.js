@@ -1,7 +1,8 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { findExactPatients } from './patientMatching.js';
+import { planPatientImport } from './patientImport.js';
 
 export const DEFAULT_SETTINGS = {
   locale: 'mk',
@@ -315,6 +316,17 @@ export function createDataStore({
         throw error;
       }
       const email = String(input.email ?? '').trim().toLowerCase();
+      const embg = input.embg == null ? '' : String(input.embg).trim();
+      if (embg && !/^\d{13}$/.test(embg)) {
+        const error = new Error('EMBG must contain exactly 13 digits.');
+        error.statusCode = 400;
+        throw error;
+      }
+      if (embg && patients.some((patient) => patient.embg === embg)) {
+        const error = new Error('A patient with this EMBG already exists.');
+        error.statusCode = 409;
+        throw error;
+      }
       if (email && patients.some((patient) => String(patient.email ?? '').trim().toLowerCase() === email)) {
         const error = new Error('A patient with this email already exists.');
         error.statusCode = 409;
@@ -326,6 +338,7 @@ export function createDataStore({
         createdAt: input.createdAt ?? new Date().toISOString(),
         firstName,
         lastName,
+        ...(embg ? { embg } : {}),
         email: String(input.email ?? '').trim(),
         phone: String(input.phone ?? '').trim(),
         dateOfBirth: String(input.dateOfBirth ?? ''),
@@ -337,6 +350,44 @@ export function createDataStore({
       patients.push(patient);
       await writeJsonFile(patientsFile, patients);
       return patient;
+    },
+
+    async previewPatientImport(rows) {
+      const patients = await readPatients();
+      const entries = planPatientImport(patients, rows);
+      const revision = createHash('sha256').update(JSON.stringify({ patients, rows })).digest('hex');
+      return { entries, revision, currentCount: patients.length };
+    },
+
+    async importPatients(rows, revision) {
+      const preview = await store.previewPatientImport(rows);
+      if (typeof revision !== 'string' || revision !== preview.revision) {
+        const error = new Error('Patient data changed. Review the file again before importing.');
+        error.statusCode = 409;
+        throw error;
+      }
+      const patients = await readPatients();
+      const result = { added: 0, updated: 0, unchanged: 0, review: 0, duplicate: 0 };
+      for (const entry of preview.entries) {
+        if (entry.status === 'new') {
+          const [firstName, ...surname] = entry.name.split(' ');
+          patients.push({
+            id: randomUUID(), createdAt: new Date().toISOString(),
+            firstName, lastName: surname.join(' '), embg: entry.embg,
+            address: entry.address, email: '', phone: '', dateOfBirth: entry.dateOfBirth, emergencyContact: '', notes: '',
+            ...(entry.registrationDate ? { registrationDate: entry.registrationDate } : {}),
+          });
+          result.added++;
+        } else if (entry.status === 'update') {
+          const patient = patients.find((item) => item.id === entry.patient.id);
+          Object.assign(patient, entry.changes);
+          result.updated++;
+        } else {
+          result[entry.status]++;
+        }
+      }
+      if (result.added || result.updated) await writeJsonFile(patientsFile, patients);
+      return result;
     },
 
     async resolvePatient(input) {
@@ -368,11 +419,16 @@ export function createDataStore({
         error.statusCode = 404;
         throw error;
       }
+      if (new Set([target, ...sources].map((patient) => patient.embg).filter(Boolean)).size > 1) {
+        const error = new Error('Patients with different EMBGs cannot be merged.');
+        error.statusCode = 409;
+        throw error;
+      }
       const merged = { ...target };
       const notes = [String(target.notes ?? '').trim()].filter(Boolean);
       for (const source of sources) {
         const conflicts = [];
-        for (const field of ['firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'address', 'emergencyContact']) {
+        for (const field of ['firstName', 'lastName', 'embg', 'email', 'phone', 'dateOfBirth', 'address', 'registrationDate', 'emergencyContact']) {
           const value = String(source[field] ?? '').trim();
           if (!String(merged[field] ?? '').trim()) merged[field] = value;
           else if (value && value !== String(merged[field]).trim()) conflicts.push(`${field}: ${value}`);
@@ -403,6 +459,20 @@ export function createDataStore({
         const error = new Error('Patient not found.');
         error.statusCode = 404;
         throw error;
+      }
+      if (updates.embg !== undefined) {
+        const embg = String(updates.embg ?? '').trim();
+        if (embg && !/^\d{13}$/.test(embg)) {
+          const error = new Error('EMBG must contain exactly 13 digits.');
+          error.statusCode = 400;
+          throw error;
+        }
+        if (embg && patients.some((patient) => patient.id !== id && patient.embg === embg)) {
+          const error = new Error('A patient with this EMBG already exists.');
+          error.statusCode = 409;
+          throw error;
+        }
+        updates = { ...updates, embg };
       }
 
       const nextEmail = updates.email == null
@@ -570,7 +640,7 @@ export function createDataStore({
   // Serialize whole read/modify/write operations, including name resolution and cross-file merges.
   let mutation = Promise.resolve();
   const result = { ...store };
-  for (const method of ['createPatient', 'resolvePatient', 'mergePatients', 'updatePatient', 'deletePatient',
+  for (const method of ['createPatient', 'resolvePatient', 'mergePatients', 'importPatients', 'updatePatient', 'deletePatient',
     'createAppointment', 'updateAppointment', 'deleteAppointment']) {
     result[method] = (...args) => {
       const next = mutation.then(async () => {

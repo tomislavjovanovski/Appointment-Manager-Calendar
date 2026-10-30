@@ -51,6 +51,7 @@ export function CreatePatientDialog({
       setFormData({
         firstName: patient.firstName ?? '',
         lastName: patient.lastName ?? '',
+        embg: patient.embg ?? '',
         email: patient.email ?? '',
         phone: patient.phone ?? '',
         dateOfBirth: patient.dateOfBirth ?? '',
@@ -75,7 +76,7 @@ export function CreatePatientDialog({
     if (Object.keys(nextErrors).length > 0) {
       toast({
         title: t('common.error'),
-        description: t('createPatient.toastRequired'),
+        description: nextErrors.embg ? t('createPatient.embgInvalid') : t('createPatient.toastRequired'),
         variant: "destructive",
       });
       return;
@@ -178,6 +179,13 @@ export function CreatePatientDialog({
           <form onSubmit={handleSubmit} noValidate>
             <div className="space-y-3 px-4 py-3 sm:px-5">
               <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                <div className="mb-3 space-y-1.5">
+                  <Label htmlFor="patient-embg">{t('createPatient.embg')}</Label>
+                  <Input id="patient-embg" data-testid="patient-embg" inputMode="numeric" maxLength={13}
+                    value={formData.embg ?? ''} onChange={(event) => handleInputChange('embg', event.target.value)}
+                    aria-invalid={Boolean(errors.embg)} className="h-9 border-border/70 bg-background/80" />
+                  {errors.embg && <p className="text-sm text-destructive">{t('createPatient.embgInvalid')}</p>}
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="firstName">{t('createPatient.firstName')}</Label>
@@ -260,6 +268,21 @@ export function CreatePatientDialog({
               <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-3">
+                    {patient?.registrationDate && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="patient-registration-date" className="flex h-5 items-center gap-2">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                          {t('patientImport.registrationDate')}
+                        </Label>
+                        <Input
+                          id="patient-registration-date"
+                          data-testid="patient-registration-date"
+                          value={patient.registrationDate.split('-').reverse().join('.')}
+                          readOnly
+                          className="h-9 border-border/70 bg-muted/50"
+                        />
+                      </div>
+                    )}
                     <div className="space-y-1.5">
                       <Label htmlFor="patient-dob" className="flex h-5 items-center gap-2">
                         <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />

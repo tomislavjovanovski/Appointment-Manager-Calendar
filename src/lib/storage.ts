@@ -3,6 +3,15 @@ import { normalizeLocale, type AppLocale } from '@/i18n/types';
 import { normalizePatientForm, normalizePatientUpdates } from '@/lib/patientForm';
 import { authFetch } from '@/lib/auth';
 import { DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
+import type { FzoRow, ImportPreview } from '@/lib/fzoImport';
+
+export const patientImportStorage = {
+  preview: (rows: FzoRow[]): Promise<ImportPreview> =>
+    apiCall('/patients/import/preview', { method: 'POST', body: JSON.stringify({ rows }) }),
+  confirm: (rows: FzoRow[], revision: string): Promise<{
+    added: number; updated: number; unchanged: number; review: number; duplicate: number;
+  }> => apiCall('/patients/import', { method: 'POST', body: JSON.stringify({ rows, revision }) }),
+};
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const LOCAL_HOST_PATTERN = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|::1|\[::1\])$/i;

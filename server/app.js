@@ -51,6 +51,7 @@ export function createApp({ dataStore, dataDir, auth }) {
   });
 
   app.use('/api/settings', express.json({ limit: '512kb' }));
+  app.use('/api/patients/import', express.json({ limit: '10mb' }));
   app.use(express.json());
 
   app.get('/api/health/details', asyncRoute(async (_req, res) => {
@@ -85,6 +86,16 @@ export function createApp({ dataStore, dataDir, auth }) {
   app.post('/api/patients/merge', asyncRoute(async (req, res) => {
     requireObjectPayload(req.body, 'Patient merge');
     res.json(await dataStore.mergePatients(req.body.targetId, req.body.sourceIds));
+  }));
+
+  app.post('/api/patients/import/preview', asyncRoute(async (req, res) => {
+    requireObjectPayload(req.body, 'Patient import');
+    res.json(await dataStore.previewPatientImport(req.body.rows));
+  }));
+
+  app.post('/api/patients/import', asyncRoute(async (req, res) => {
+    requireObjectPayload(req.body, 'Patient import');
+    res.json(await dataStore.importPatients(req.body.rows, req.body.revision));
   }));
 
   app.put('/api/patients/:id', asyncRoute(async (req, res) => {

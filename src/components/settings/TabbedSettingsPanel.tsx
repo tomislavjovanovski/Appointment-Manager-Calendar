@@ -7,9 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Clock, Calendar, Download, Upload, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server, Trash2, Building2, Languages, type LucideIcon } from 'lucide-react';
+import { Settings, Clock, Calendar, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server, Trash2, Building2, Languages, type LucideIcon } from 'lucide-react';
 import { AppointmentSettings } from '@/types/appointment';
-import { settingsStorage, dataManagement } from '@/lib/storage';
+import { settingsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GoogleCalendarSync } from '@/components/dashboard/GoogleCalendarSync';
@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/auth/AuthProvider';
 import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES, APPOINTMENT_DURATIONS, DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
 import { PatientMergePanel } from './PatientMergePanel';
+import { PatientImportPanel } from './PatientImportPanel';
 
 function SettingsTimeInput({ id, testId, value, onChange }: Readonly<{
   id: string;
@@ -128,6 +129,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
   const [lastHealthCheck, setLastHealthCheck] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [patientImportVersion, setPatientImportVersion] = useState(0);
   const { toast } = useToast();
   const apiHealthUrl = buildApiUrl('/health');
 
@@ -207,52 +209,6 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
         variant: "destructive"
       });
     }
-  };
-
-  const handleExport = async () => {
-    const data = await dataManagement.exportAll();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `medical-appointments-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: t('settings.exportToastTitle'),
-      description: t('settings.exportToastDesc'),
-    });
-  };
-
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        await dataManagement.importAll(data);
-        const newSettings = await settingsStorage.get();
-        setSettings(newSettings);
-        onSettingsSaved?.(newSettings);
-        setLocale(normalizeLocale(newSettings.locale));
-        toast({
-          title: t('settings.importToastTitle'),
-          description: t('settings.importToastDesc'),
-        });
-      } catch (error) {
-        toast({
-          title: t('settings.importErrorTitle'),
-          description: t('settings.importErrorDesc'),
-          variant: "destructive",
-        });
-      }
-    };
-    reader.readAsText(file);
   };
 
   const toggleWorkingDay = (dayId: number) => {
@@ -721,34 +677,11 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
 
         {/* Data */}
         <TabsContent value="data" className="mt-0 space-y-4 sm:space-y-6">
-          <PatientMergePanel onMerged={onPatientsMerged} />
-          <SettingsSection icon={Database} title={t('settings.dataTitle')}>
-            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-              <Button onClick={handleExport} variant="outline" className="h-11 w-full">
-                <Download className="mr-2 h-4 w-4" />
-                {t('settings.export')}
-              </Button>
-              <div>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImport}
-                  className="hidden"
-                  id="import-file"
-                />
-                <Button asChild variant="outline" className="h-11 w-full">
-                  <label htmlFor="import-file" className="cursor-pointer">
-                    <Upload className="mr-2 h-4 w-4" />
-                    {t('settings.import')}
-                  </label>
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-1 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-              <p><strong>{t('settings.exportHelp')}</strong> {t('settings.exportHelpText')}</p>
-              <p><strong>{t('settings.importHelp')}</strong> {t('settings.importHelpText')}</p>
-            </div>
-          </SettingsSection>
+          <PatientImportPanel onImported={() => {
+            setPatientImportVersion((version) => version + 1);
+            onPatientsMerged?.();
+          }} />
+          <PatientMergePanel key={patientImportVersion} onMerged={onPatientsMerged} />
         </TabsContent>
 
         {/* API health */}

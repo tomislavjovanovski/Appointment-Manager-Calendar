@@ -15,7 +15,7 @@ export function findExactPatients(patients, input) {
     (!lastName || normalizePatientName(patient.lastName) === lastName));
 }
 
-/** @template {{ firstName: string, lastName: string }} T
+/** @template {{ firstName: string, lastName: string, embg?: string }} T
  * @param {T[]} patients
  * @returns {T[][]}
  */
@@ -24,8 +24,9 @@ export function groupDuplicatePatients(patients) {
   for (const patient of patients) {
     const first = normalizePatientName(patient.firstName);
     const last = normalizePatientName(patient.lastName);
-    if (!first) continue;
-    const key = JSON.stringify([first, last]);
+    const embg = String(patient.embg ?? '').trim();
+    if (!embg && !first) continue;
+    const key = embg ? JSON.stringify(['embg', embg]) : JSON.stringify(['name', first, last]);
     const group = groups.get(key) ?? [];
     group.push(patient);
     groups.set(key, group);

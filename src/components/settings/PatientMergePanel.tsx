@@ -75,11 +75,13 @@ export function PatientMergePanel({ onMerged }: Readonly<{ onMerged?: () => void
                   {([
                     ['createPatient.email', patient.email],
                     ['createPatient.phone', patient.phone],
+                    ['createPatient.embg', patient.embg],
                     ['createPatient.dob', patient.dateOfBirth],
                     ['createPatient.address', patient.address],
                     ['createPatient.emergencyContact', patient.emergencyContact],
                     ['appointment.notes', patient.notes],
                     ['patientMerge.created', patient.createdAt],
+                    ['patientImport.registrationDate', patient.registrationDate],
                     ['patientMerge.appointments', String(patient.appointmentCount)],
                   ]).map(([label, value]) => value && (
                     <div key={label} className="whitespace-pre-wrap break-words"><dt className="inline font-medium">{t(label)}: </dt><dd className="inline">{value}</dd></div>

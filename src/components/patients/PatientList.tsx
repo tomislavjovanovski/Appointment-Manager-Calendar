@@ -51,7 +51,8 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
   const filteredPatients = patients.filter(patient =>
     `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.phone.includes(searchQuery)
+    patient.phone.includes(searchQuery) ||
+    (patient.embg ?? '').includes(searchQuery)
   );
 
   const getPatientAppointmentCount = (patient: PatientWithActivity) => {
@@ -225,6 +226,11 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                               </span>
                             )}
                           </span>
+                          {patient.registrationDate && (
+                            <span className="block text-xs text-muted-foreground" data-testid="patient-card-registration-date">
+                              {t('patientImport.registrationDate')}: {patient.registrationDate.split('-').reverse().join('.')}
+                            </span>
+                          )}
                         </span>
                         <span className="flex shrink-0 flex-col items-end gap-0.5">
                           <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px] font-medium">
@@ -272,6 +278,8 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="pl-6">{t('appointment.patient')}</TableHead>
                     <TableHead>{t('patients.contact')}</TableHead>
+                    <TableHead>{t('createPatient.dob')}</TableHead>
+                    <TableHead>{t('patientImport.registrationDate')}</TableHead>
                     <TableHead>{t('patients.lastVisit')}</TableHead>
                     <TableHead>{t('patients.activity')}</TableHead>
                     <TableHead className="pr-6">{t('patients.notesColumn')}</TableHead>
@@ -299,11 +307,6 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                               <div className="font-semibold text-foreground">
                                 {patient.firstName} {patient.lastName}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {patient.dateOfBirth
-                                  ? t('patients.born', { date: format(new Date(patient.dateOfBirth), 'MMM d, yyyy', { locale: dateFnsLocale }) })
-                                  : t('patients.noBirthDate')}
-                              </div>
                             </div>
                           </div>
                         </TableCell>
@@ -318,6 +321,12 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                               <span>{patient.phone}</span>
                             </div>
                           </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap" data-testid="patient-birth-date-cell">
+                          {patient.dateOfBirth ? patient.dateOfBirth.split('-').reverse().join('.') : '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap" data-testid="patient-registration-date-cell">
+                          {patient.registrationDate ? patient.registrationDate.split('-').reverse().join('.') : '-'}
                         </TableCell>
                         <TableCell>
                           {lastAppointment ? (

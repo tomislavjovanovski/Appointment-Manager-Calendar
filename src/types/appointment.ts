@@ -5,6 +5,8 @@ export interface Patient {
   id: string;
   firstName: string;
   lastName: string;
+  embg?: string;
+  registrationDate?: string;
   email: string;
   phone: string;
   dateOfBirth: string;
