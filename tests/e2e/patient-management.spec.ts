@@ -254,23 +254,15 @@ test.describe('Patient Management — Inline Creation During Booking', () => {
     await booking.goToScheduler(page);
     await booking.openSlot(page);
 
-    await test.step('Switch to new-patient form inside booking dialog', async () => {
-      await page.getByTestId('create-new-patient-btn').click();
+    await test.step('Type a new patient name inside booking dialog', async () => {
       await expect(page.getByTestId('new-patient-panel')).toBeVisible();
-    });
-
-    await test.step('Fill new patient details', async () => {
       await booking.fillNewPatientForm(page, {
         firstName: newP.firstName,
         lastName: newP.lastName,
-        email: newP.email,
         phone: newP.phone,
-        dateOfBirth: newP.dateOfBirth,
       });
-
-      await page.getByTestId('new-patient-save').click();
-      await expect(page.getByTestId('new-patient-panel')).not.toBeVisible();
-      await expect(page.getByTestId('selected-patient')).toContainText(`${newP.firstName} ${newP.lastName}`);
+      await expect(page.getByTestId('patient-search-hint')).toContainText('A new patient will be created');
+      await expect(page.getByTestId('patient-name-matches')).toHaveCount(0);
     });
 
     await test.step('Complete rest of booking form', async () => {
@@ -288,11 +280,11 @@ test.describe('Patient Management — Inline Creation During Booking', () => {
     });
 
     await test.step('Both patient AND appointment exist in storage, correctly linked', async () => {
-      await storage.assertPatientExistsInStorage(page, newP.email);
-
-      const patients = await storage.getAll(page, 'patients') as { id: string; email: string }[];
-      const patient = patients.find((p) => p.email === newP.email)!;
-      expect(patient).toBeDefined();
+      const patients = await storage.getAll(page, 'patients') as { id: string; firstName: string; lastName: string; phone: string }[];
+      const created = patients.filter((p) => p.firstName === newP.firstName && p.lastName === newP.lastName);
+      expect(created).toHaveLength(1);
+      const patient = created[0];
+      expect(patient.phone).toBe(newP.phone);
 
       // Appointment must reference the newly created patient's ID
       await storage.assertAppointmentExistsInStorage(page, {

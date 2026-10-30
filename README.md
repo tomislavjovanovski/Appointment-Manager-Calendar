@@ -417,6 +417,18 @@ At that point, a database may be worth considering for transactional writes and 
 
 ## Changelog
 
+### 2026-10-30 - Duplicate-Free Patient Booking and Patient Merge
+
+- Booking a patient no longer creates duplicates when names are typed. Saving the dialog calls `POST /api/patients/resolve`. If exactly one patient matches the typed first + last name, that patient is reused; if only a first name is typed and exactly one patient has it, that patient is reused. When the name is ambiguous, the dialog asks you to choose a patient. When no patient matches, a new patient is created. Name matching ignores case and extra spaces (shared logic in `server/patientMatching.js`).
+- The separate "Choose patient" dropdown and mobile patient picker were removed. The First name / Last name inputs now both search existing patients and create new ones. Suggestions show only the patient name; when several patients have the same name, the phone (or birth date / email) is added to tell them apart. A selected patient is shown with a **Change patient** button.
+- A hint under the name fields changes with what you type: before typing it explains how the search works; it then shows "searching", "matching patients found, select the one you want", or "no match found, a new patient with this name will be created" (English and Macedonian).
+- Suggestions update 500 ms after you stop typing instead of on every keypress. The search uses a pre-built name index and shows the first results with a **Show more** button, so it stays fast with 1,000+ patients.
+- Closing the booking dialog now clears the typed name and suggestions, so the previous name no longer flashes when the dialog is opened again.
+- Added **Settings → Data → Merge duplicate patients**. It lists patients with matching names; you choose which patient to keep and which duplicates to merge, then confirm. All appointments move to the kept patient, its empty fields are filled from the duplicates, conflicting details and notes are preserved in its notes, and only the selected duplicates are removed (`POST /api/patients/merge`, `src/components/settings/PatientMergePanel.tsx`).
+- Merges are written through a recovery journal (`patient-merge-pending.json` in the data folder), so an interrupted merge is completed on the next start. Data-changing operations are now processed one at a time to avoid lost updates.
+- Fixed the i18n placeholder format in the new texts (`{{name}}`).
+- Tests: added `tests/server/patient-deduplication.spec.ts` and `tests/e2e/patient-deduplication.spec.ts` (1,500-patient search on desktop and mobile, auto-reuse, ambiguous names, editing, dialog reset, merge). The patient-deduplication spec is included in the default Chromium E2E run. The booking helper and the patient-management and data-consistency specs were updated for the name-search flow: they no longer use the removed `patient-select`, `create-new-patient-btn`, `new-patient-save`, email or birth-date booking fields. This fixes the smoke test "scheduler allows creating an appointment for an existing patient".
+
 ### 2026-10-29 - Mobile Agenda and Patient Dialog Polish
 
 - Mobile agenda is now a continuous Teams-style scroll: day/week controls stay pinned, and the selected day follows scrolling. The selection switches when the next day heading becomes fully visible near the bottom of the screen. The remainder of the current week loads first; the following week is prepared in the background when the last day comes into view.

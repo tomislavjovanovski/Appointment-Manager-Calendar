@@ -4,15 +4,14 @@
 
 import { Locator, Page, expect } from '@playwright/test';
 import { nextWorkingSlot } from '../test-data/seed';
+import type { Patient } from '../../src/types/appointment';
 
 export interface BookingOptions {
   patientId?: string;         // select existing patient
   newPatient?: {              // OR create inline
     firstName: string;
     lastName: string;
-    email: string;
-    phone: string;
-    dateOfBirth: string;
+    phone?: string;
   };
   type: 'consultation' | 'follow-up' | 'procedure';
   duration: 30 | 60 | 120;
@@ -97,30 +96,28 @@ export const bookingHelper = {
 
     // Patient selection
     if (options.patientId) {
-        await dialog.getByTestId('patient-select').click();
-
-        // Wait until the dropdown is actually open
-        await expect(dialog.getByTestId('patient-select')).toHaveAttribute(
-          'aria-expanded',
-          'true'
-        );
-
-        const optionLocator = page.getByTestId(
-          `patient-option-${options.patientId}`
-        );
-
-        await expect(optionLocator).toBeVisible({
-          timeout: 5000,
-        });
-
-        await optionLocator.click();
-
-        await expect(dialog.getByTestId('patient-select')).toHaveAttribute(
-          'aria-expanded',
-          'false'
-        );
+      if (await dialog.getByTestId('change-patient-btn').isVisible()) {
+        await dialog.getByTestId('change-patient-btn').click();
+      }
+      const patients = await page.evaluate(async (): Promise<Patient[]> => {
+        const response = await fetch('/api/patients');
+        if (!response.ok) throw new Error('Unable to load patients for booking test.');
+        return response.json();
+      });
+      const patient = patients.find((candidate) => candidate.id === options.patientId);
+      if (!patient) throw new Error(`Booking test patient not found: ${options.patientId}`);
+      await dialog.getByTestId('patient-first-name').fill(patient.firstName);
+      await dialog.getByTestId('patient-last-name').fill(patient.lastName);
+      await expect(dialog.getByTestId('patient-name-matches')).toBeVisible();
+      const optionLocator = dialog.getByTestId(`patient-name-match-${patient.id}`);
+      while (!(await optionLocator.isVisible())) {
+        const more = dialog.getByTestId('patient-name-matches').getByTestId('more-patient-matches');
+        if (!(await more.isVisible())) break;
+        await more.click();
+      }
+      await optionLocator.click();
+      await expect(dialog.getByTestId('selected-patient')).toContainText(`${patient.firstName} ${patient.lastName}`.trim());
     } else if (options.newPatient) {
-      await dialog.getByTestId('create-new-patient-btn').click();
       await this.fillNewPatientForm(page, options.newPatient);
     }
 
@@ -191,9 +188,7 @@ export const bookingHelper = {
 
     await panel.getByTestId('patient-first-name').fill(patient.firstName);
     await panel.getByTestId('patient-last-name').fill(patient.lastName);
-    await panel.getByTestId('patient-email').fill(patient.email);
-    await panel.getByTestId('patient-phone').fill(patient.phone);
-    await panel.getByTestId('patient-dob').fill(patient.dateOfBirth);
+    if (patient.phone) await panel.getByTestId('patient-phone').fill(patient.phone);
   },
 
   // ── Submit ────────────────────────────────────────────────────────────────
