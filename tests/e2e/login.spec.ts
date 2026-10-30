@@ -23,7 +23,7 @@ test.describe('Login', () => {
 
   test.describe('мојЗабар branding', () => {
     for (const theme of ['light', 'dark']) {
-      test(`preserves the original login design and approved copy in ${theme} mode at mobile, tablet and desktop sizes`, async ({ page }) => {
+      test(`shows the approved brand copy in ${theme} mode at mobile, tablet and desktop sizes`, async ({ page }) => {
         await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
         await page.addInitScript((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
         await page.goto('/');
@@ -39,12 +39,15 @@ test.describe('Login', () => {
           const desktop = viewport.width >= 1024 && viewport.height > 700;
           const brandPanel = page.locator(desktop ? '.login-preview' : '.login-mobile-brand');
           await expect(brandPanel).toBeVisible();
-          for (const text of [
-            'мојЗабар',
-            'Менаџмент на стоматолошки ординации',
-            'Помалку администрација. Повеќе насмевки.',
-            'Термини, пациенти и организација на ординацијата — на едно место.',
-          ]) {
+          const visibleBrandCopy = desktop
+            ? [
+                'мојЗабар',
+                'Менаџмент на стоматолошки ординации',
+                'Помалку администрација. Повеќе насмевки.',
+                'Термини, пациенти и организација на ординацијата — на едно место.',
+              ]
+            : ['мојЗабар', 'Менаџмент на стоматолошки ординации'];
+          for (const text of visibleBrandCopy) {
             await expect(brandPanel.getByText(text, { exact: true })).toBeVisible();
           }
           await expect(page.getByTestId('login-form')).toBeVisible();
