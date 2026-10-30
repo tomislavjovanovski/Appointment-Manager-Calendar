@@ -38,7 +38,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, Check, Clock3, ClipboardList, FileText, X } from "lucide-react";
+import { CalendarDays, Check, Clock3, ClipboardList, FileText, History, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PatientAppointmentHistory } from "@/components/patients/PatientAppointmentHistory";
 import { appointmentsStorage, patientsStorage, settingsStorage } from "@/lib/storage";
 import { getAvailableStarts, getAvailableStartDurations, getWorkingTimeSlots } from "@/lib/appointmentAvailability";
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
@@ -242,6 +244,11 @@ export default function AppointmentDialog({
   const isMobilePicker = useMediaQuery("(max-width: 639px)");
   // Determine effective mode: explicit mode wins, otherwise presence of `appointment` means edit
   const effectiveMode: "create" | "edit" = mode ?? (appointment ? "edit" : "create");
+  const [activeTab, setActiveTab] = useState('details');
+
+  useEffect(() => {
+    setActiveTab('details');
+  }, [open, appointment?.id, effectiveMode]);
 
   const mergedInitial = useMemo<Partial<FormData> | undefined>(() => {
     if (!appointment) return initialValues;
@@ -657,6 +664,21 @@ export default function AppointmentDialog({
             </DialogHeader>
           </div>
 
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            {effectiveMode === 'edit' && (
+              <TabsList className="mx-5 my-2 grid h-auto min-h-10 grid-cols-2 items-stretch gap-1 rounded-lg border border-slate-300 bg-slate-100 p-1 sm:mx-6">
+                <TabsTrigger value="details" className="min-h-8 min-w-0 whitespace-normal rounded-md border border-transparent px-2 py-1.5 text-xs transition-colors hover:bg-background/70 data-[state=active]:border-primary/25 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm" data-testid="appointment-details-tab">
+                  <ClipboardList className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                  {t('createAppointment.appointmentDetails')}
+                </TabsTrigger>
+                <TabsTrigger value="history" className="min-h-8 min-w-0 whitespace-normal rounded-md border border-transparent px-2 py-1.5 text-xs transition-colors hover:bg-background/70 data-[state=active]:border-primary/25 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm" data-testid="appointment-history-tab">
+                  <History className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                  {t('patientHistory.title')}
+                </TabsTrigger>
+              </TabsList>
+            )}
+          <div className="grid">
+          <TabsContent forceMount value="details" className="col-start-1 row-start-1 mt-0 data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
           <form autoComplete="off" onSubmit={handleSubmit(submit)}>
             <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: Title and Patient */}
@@ -1016,6 +1038,20 @@ export default function AppointmentDialog({
               </Button>
             </DialogFooter>
           </form>
+          </TabsContent>
+          {effectiveMode === 'edit' && (
+            <TabsContent forceMount value="history" className="col-start-1 row-start-1 mt-0 px-5 pb-4 pt-1 data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none sm:px-6" data-testid="appointment-history">
+              {selectedPatient && <p className="mb-3 break-words text-sm font-medium">{selectedPatient.name}</p>}
+              <PatientAppointmentHistory
+                key={patientIdValue}
+                patientId={patientIdValue}
+                active={open && activeTab === 'history'}
+                currentAppointmentId={appointment?.id}
+              />
+            </TabsContent>
+          )}
+          </div>
+          </Tabs>
         </div>
       </DialogContent>
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

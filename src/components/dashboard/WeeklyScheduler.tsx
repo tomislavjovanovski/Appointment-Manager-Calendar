@@ -14,7 +14,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useCurrentAppointment } from '@/hooks/use-current-appointment';
-import { APPOINTMENT_TYPES, darkenHexColor } from '@/lib/appointmentTypes';
+import { APPOINTMENT_TYPES, appointmentBackgroundColor, darkenHexColor } from '@/lib/appointmentTypes';
+
+const SCHEDULER_ZOOM = 44 / 60;
 
 function appointmentTypeColor(type: Appointment['type'] | undefined): string {
   return type ? APPOINTMENT_TYPES[type]?.color ?? '#64748b' : '#64748b';
@@ -389,7 +391,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 </PopoverContent>
               </Popover>
           </div>
-          <div className="weekly-scheduler bg-muted/5" style={{ zoom: 44 / 60, width: '100%' }}>
+          <div className="weekly-scheduler bg-muted/5" style={{ zoom: SCHEDULER_ZOOM, width: '100%' }}>
             <Scheduler
               key={`${weekStart.toISOString()}-${refreshTrigger}`}
               view="week"
@@ -417,8 +419,12 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     <div
                       data-testid="gcal-event-block"
                       data-source="google"
-                      className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-white"
-                      style={{ backgroundColor: schedulerEvent.color || '#9333ea', height: blockHeight }}
+                      className="h-full w-full overflow-hidden rounded-md px-2 py-1 text-xs font-medium text-foreground"
+                      style={{
+                        backgroundColor: appointmentBackgroundColor(schedulerEvent.color || '#9333ea'),
+                        borderLeft: `${4 / SCHEDULER_ZOOM}px solid ${schedulerEvent.color || '#9333ea'}`,
+                        height: blockHeight,
+                      }}
                     >
                       {schedulerEvent.title || 'Google Event'}
                     </div>
@@ -451,10 +457,14 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     data-source="local"
                     data-current={isCurrent ? 'true' : 'false'}
                     className={cn(
-                      'relative h-full w-full overflow-hidden rounded-md text-left text-white shadow-sm',
+                      'relative h-full w-full overflow-hidden rounded-md text-left text-foreground shadow-sm',
                       isDragging ? 'pointer-events-none opacity-35' : 'cursor-pointer'
                     )}
-                    style={{ backgroundColor: isCurrent ? darkenHexColor(bgColor) : bgColor, height: blockHeight }}
+                    style={{
+                      backgroundColor: appointmentBackgroundColor(bgColor, isCurrent),
+                      borderLeft: `${4 / SCHEDULER_ZOOM}px solid ${isCurrent ? darkenHexColor(bgColor) : bgColor}`,
+                      height: blockHeight,
+                    }}
                     title={`${displayTitle}\n${patientPhone}\n${t('dashboard.dragAppointment')}`}
                     draggable={props?.draggable}
                     onDragStart={(event) => {
@@ -481,10 +491,10 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     {(apt?.duration ?? 30) < step * 2 ? (
                       <div className="flex h-full flex-col gap-0.5 p-0.5 text-left">
                         <div className={cn('flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-semibold leading-tight', isCurrent && 'pr-6')}>
-                          <UserRound className="h-4 w-4 shrink-0 text-white" />
+                          <UserRound className="h-4 w-4 shrink-0" />
                           <span className="truncate">{[firstName, lastName].filter(Boolean).join(' ')}</span>
                         </div>
-                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[15px] leading-tight text-white">
+                        <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[15px] leading-tight">
                           <Phone className="h-4 w-4 shrink-0" />
                           {patientPhone && <span className="shrink-0" data-testid="appointment-phone">{patientPhone}</span>}
                         </div>
@@ -492,13 +502,13 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     ) : (
                     <div className="flex h-full flex-col gap-1 p-1 text-left">
                       <div className={cn('flex min-w-0 shrink-0 items-start justify-start gap-1.5', isCurrent && 'pr-6')}>
-                        <UserRound className="h-5 w-5 shrink-0 text-white" />
+                        <UserRound className="h-5 w-5 shrink-0" />
                         <div className="min-w-0 whitespace-normal text-left text-[17.5px] font-semibold leading-tight [overflow-wrap:anywhere]">
                           <div>{firstName}</div>
                           {lastName && <div>{lastName}</div>}
                         </div>
                       </div>
-                      <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-medium leading-tight text-white">
+                      <div className="flex min-w-0 shrink-0 items-center justify-start gap-1.5 text-[17.5px] font-medium leading-tight">
                         <Phone className="h-5 w-5 shrink-0" />
                         {patientPhone && <span className="truncate" data-testid="appointment-phone">{patientPhone}</span>}
                       </div>

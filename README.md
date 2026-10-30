@@ -15,8 +15,8 @@
 **мојЗабар** brings appointments, patients, and day-to-day dental practice organization together.
 
 - 📅 **Smart scheduling** — Weekly calendar, configurable appointment durations, and availability checks.
-- 👥 **Patient management** — Create, search, and manage patient records.
-- 📊 **Workspace statistics** — Appointment summaries, contact insights, and monthly reports.
+- 👥 **Patient management** — Create, search, edit, merge, and delete patient records, with appointment history.
+- 📊 **Workspace statistics** — Appointment summaries, patient activity, and monthly comparisons.
 - ⚙️ **Flexible settings** — Configure working hours, appointment defaults, language, and workspace branding.
 - 🔐 **Secure authentication** — Administrator accounts, protected API routes, server-side sessions, and CSRF protection.
 - 📱 **Responsive interface** — Full weekly calendar on desktop and a compact agenda on mobile.
@@ -52,7 +52,9 @@
 - **Availability guidance** based on working days and hours, with overlap checks, 15-minute suggestions, and highlighted time ranges.
 - **One-off unavailable slots:** mark a specific desktop or mobile time slot as non-working from the booking dialog; it is persisted without creating an appointment and removed from future booking suggestions.
 - **Appointment management:** edit or reschedule appointments, or delete them with confirmation.
-- **Current appointment indicator:** an appointment in progress is highlighted with a darker shade of its type color and a clock indicator.
+- **Edit appointment tabs:** **Appointment Details** opens by default with the existing editing form. **Appointment History** shows every saved appointment for the selected patient, newest first, with date, type and notes. The current saved appointment is labelled **Current appointment**; unsaved form changes are not shown in history until saved. Switching tabs preserves edits, and changing the selected patient changes whose history is displayed. Loading, empty, missing-patient and retry states are provided. Creating an appointment remains a single form without history tabs.
+- **Desktop drag-to-reschedule:** move an appointment to another calendar slot. Drops reject non-working days and an identical occupied start time; this is not full overlap enforcement (see [Known limitations](#known-limitations)).
+- **Calendar appointment cards:** a solid 4px type-colour left border (compensated for desktop calendar zoom to match the history cards) and a light 10% type-colour background keep the calendar calm and text readable. Appointments in progress use a stronger 15% tint, a darker left border and a clock indicator on desktop and mobile.
 
 ### 🦷 Patient management
 
@@ -62,7 +64,10 @@
 - Typing a first/last name in the booking form shows existing patient suggestions. Saving reuses a single exact name match (case-insensitive, with whitespace normalized); a first name alone also reuses a unique first-name match. Multiple exact matches require selecting a patient, and no match creates a new record. Reusing a patient does not overwrite their existing details. Manual patient creation remains available for different people sharing a name.
 - For large patient lists, name suggestions update locally 500 ms after typing stops, without per-keystroke requests, using pre-normalized names and memoized results. Saving always checks the current input immediately. Exact matches appear first. Suggestions show only names; identical-name records also show a phone number or birth date (falling back to email or record ID if neither is available). Suggestions initially render 10 matches and merge settings 10 duplicate groups, with **Show more** to access the rest. Searching always checks the entire loaded list; display limits never change duplicate detection. Booking availability is recalculated only when scheduling inputs or data change, not while typing patient details.
 - In **Settings → Data → Merge duplicate patients**, review same-name groups, choose the record to keep, select the duplicates to merge, and confirm. Only selected duplicates are removed after their appointments are reassigned. Empty fields are filled, and conflicting details and source notes are preserved in the kept patient's notes. Export a backup first; there is no in-app undo. Interrupted merges are recovered from a server-side journal on startup or before the next patient/appointment write.
-- Complete additional patient details later.
+- Create or edit patient profiles with first and last name, email, phone, date of birth, address, emergency contact and notes. Complete additional details after inline booking when needed.
+- **Patient directory:** search by name, email or phone in a desktop table or mobile cards. View appointment counts and the latest appointment date; summary counts for the filtered list show patients, patients with appointments and total appointments.
+- **Patient appointment history:** the edit-patient dialog has **Patient Details** and **Appointment History** tabs. History shows all saved appointments, newest first, using a simple date/type/notes list with a coloured left border and neutral background. It shares [PatientAppointmentHistory](src/components/patients/PatientAppointmentHistory.tsx) with Edit appointment, including loading, empty and retry states. Switching tabs preserves patient detail edits.
+- **Confirmed patient deletion:** delete from the directory or patient profile after confirmation. Deleting a patient also deletes all of their linked appointment records; export a backup first because there is no in-app undo.
 - Inline patient search on mobile, without a separate picker sheet.
 - Patient overview counts, including total patients and patients added during the current month.
 
@@ -70,9 +75,11 @@
 
 - Compact overview of appointments for **Today**, **This Week**, **This Month**, and **All Time**.
 - Patient totals and new-patient counts.
-- Monthly statistics for days worked, appointments, new versus returning patients, and hours worked.
-- Per-appointment-type breakdown with appointment counts, hours, and comparison with the previous month.
+- Monthly navigation with a return-to-current-month action. Summary cards show days with appointments versus configured working days, appointment count, unique patients and booked hours, with changes from the previous month.
+- New versus returning patient counts and percentage shares. A patient is new when their first counted appointment falls in the selected month, not when their patient profile was created.
+- Per-appointment-type cards show appointment counts and booked hours, with changes from the previous month. An **Other** category appears when unknown types are present.
 - Cancelled and no-show appointments are excluded from monthly statistics.
+- Statistics include valid scheduled and completed appointments, including future bookings; booked hours are not verified attendance or staff time. Failed loads offer a retry.
 
 ### ⚙️ Settings and personalization
 
@@ -81,9 +88,10 @@
 - Set the desktop calendar row interval.
 - Switch between English and Macedonian.
 - Configure the practice name and upload or remove a PNG, JPEG, or WebP logo (up to 128 KB).
-- Configure email/SMS webhook settings.
+- Configure email/SMS webhook URLs, templates, reminder options and notification-time fields. The manual notification action processes scheduled appointments for today and tomorrow; there is no automatic background reminder scheduler, and the saved notification-time fields do not trigger dispatch.
 - Collapse the desktop sidebar; the preference is saved per user and restored at login. Mobile navigation remains expanded.
-- Export and import data through Settings.
+- Export patients, appointments and clinic settings as JSON, or import JSON through Settings. Import saves supplied settings and creates supplied patient/appointment records; it is not an atomic replace/restore or a duplicate-safe merge. Authentication accounts and sessions are not included.
+- An authenticated API health panel shows connectivity, the server data directory, patient and appointment counts, and the last check, with manual refresh.
 
 ### 🔐 Login and access control
 
@@ -92,10 +100,13 @@
 - CSRF protection and login rate limiting.
 - Patient, appointment, and settings API routes require authentication.
 - User and session files are stored separately from the public frontend.
+- FAQ, privacy, terms and contact pages are accessible without signing in at `/app/faq`, `/app/privacy`, `/app/terms` and `/app/contact`. Their content is explicitly marked as placeholder information, not finalized clinic policy or legal text.
 
 ### 🔌 Current integration status
 
 **Google Calendar synchronization is disabled in this version.** The desktop calendar control has been removed. Integration settings remain visible but inactive, and backend `/api/google/*` routes return HTTP `503`.
+
+**Email/SMS reminders require external webhook services.** The Settings action sends browser-originated webhook requests for enabled same-day email/SMS and day-before email reminders. It does not provide an email/SMS gateway, automatic scheduling or delivery confirmation; repeated manual runs can send the same reminders again. Only configure services approved for handling the clinic's patient data.
 
 ## Quick start
 
@@ -341,7 +352,7 @@ The private auth directory can remain in place; the old code does not use it. **
 - **Storage:** `users.json` and `sessions.json` live in `AUTH_DATA_DIR`, defaulting to `../private/auth` relative to the backend. On cPanel, use `/home/devforge/private/auth`, outside `public_html` and outside `public/data`.
 - **Permissions:** the auth directory should use `0700` permissions and its files `0600`. Writes are atomic (temporary file plus rename) and protected by a lock file shared by Passenger processes.
 - **Password hashing:** scrypt with `N=2^16`, `r=8`, `p=2`, and a random salt. Passwords must be at least 8 characters and include one uppercase letter, one number, and one special character.
-- **Sessions:** random 256-bit session IDs in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Production uses `__Host-medical_sid`. Only the SHA-256 hash of the session ID is stored. Sessions expire after 8 hours idle or 24 hours maximum by default.
+- **Sessions:** random 256-bit session IDs in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Production uses `__Host-medical_sid`. Only the SHA-256 hash of the session ID is stored. Idle and maximum session timeouts default to `0` (disabled); the browser cookie lasts up to 400 days and is refreshed on activity. Set `AUTH_SESSION_IDLE_HOURS` and `AUTH_SESSION_MAX_HOURS` to positive values to enforce expiry.
 - **Session invalidation:** login replaces the session ID; logout deletes it. Disabling a user or changing their password signs out that user's sessions.
 - **CSRF protection:** write requests require an `X-CSRF-Token` header. The token is returned by `/api/auth/login` and `/api/auth/me`; a same-host `Origin` is also checked when present.
 - **Login rate limiting:** defaults to 10 failed attempts per email and 20 per client address per 15 minutes. Counters are in memory, so they reset on restart and are per Passenger process.
@@ -357,6 +368,8 @@ A corrupt or unreadable `users.json` causes login to fail with a generic server 
 - Patient creation and appointment creation are separate writes. If booking fails after the patient is created, retry using the saved patient.
 - Startup waits for Settings and offers a retry if loading fails. Concurrent reads are shared and Settings is cached for five seconds. Some other failures may still show empty data, so check backend health if records appear to be missing.
 - Automatic backups are not implemented.
+- JSON import is not a transactional backup restore and does not resolve duplicates or guarantee original record identifiers. Review imported relationships before relying on imported data.
+- Email/SMS dispatch is manual and depends on external webhook services; saved notification times do not schedule jobs, delivery is not confirmed, and reminders are not deduplicated.
 - Google Calendar synchronization is disabled.
 - Multi-clinic isolation and database migration are not implemented.
 
@@ -381,9 +394,9 @@ npm run test:e2e:backend
 npm run test:server
 ```
 
-`npm run test:server` runs Node-only backend startup, authentication, and API-protection tests. It does not require a browser or development server.
+`npm run test:server` runs Node-only backend tests covering startup, authentication/API protection, patient-directory activity, duplicate resolution/merging and appointment-type defaults. It does not require a browser or development server.
 
-See [`docs/Testing.md`](docs/Testing.md) for testing details. The default E2E configuration selects smoke tests; some legacy tests may need updating for current controls and the `/app/` route. A complete regression pass for all recent UI changes has not been verified.
+See [`docs/Testing.md`](docs/Testing.md) for testing details. The default Chromium E2E configuration selects smoke, login, statistics, patient-deduplication and appointment-history specs. The history spec covers both edit dialogs, tab-switch persistence, saving edits, patient isolation, retry/empty states, mobile translations and the unchanged create flow. Some legacy tests outside this selection may need updating for current controls and the `/app/` route. A complete regression pass for all recent UI changes has not been verified.
 
 Build deployment artifacts with:
 
@@ -416,6 +429,15 @@ At that point, a database may be worth considering for transactional writes and 
 
 
 ## Changelog
+
+### 2026-10-30 - Shared Appointment History and Calmer Calendar Cards
+
+- Added **Appointment Details** and **Appointment History** tabs to Edit appointment. Details remains the default; tab switching preserves unsaved edits. Create appointment is unchanged.
+- Extracted [PatientAppointmentHistory](src/components/patients/PatientAppointmentHistory.tsx) for reuse in both edit dialogs. All saved appointments are shown newest first with date, appointment type and notes; the appointment editor labels the current saved record and follows the selected patient.
+- Preserved the simple history layout and loading, empty and retry feedback; added missing-patient guidance and English/Macedonian labels.
+- Replaced solid calendar fills with a 4px type-colour left border, a 10% type-colour background and theme-aware foreground text on desktop and mobile. Desktop borders compensate for calendar zoom to match the history cards. Current appointments use a 15% tint, darker border and clock indicator.
+- Added [appointment-history browser coverage](tests/e2e/appointment-history.spec.ts) to the default Chromium selection.
+- Refreshed the current feature overview for patient profiles/history/deletion, directory activity, desktop rescheduling, monthly statistics, manual reminders, API health, public information pages and data import limitations. Corrected session-expiry defaults.
 
 ### 2026-10-30 - Duplicate-Free Patient Booking and Patient Merge
 

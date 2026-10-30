@@ -6,15 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserPlus, User, Mail, Phone, MapPin, CalendarDays, ShieldPlus, History, RotateCw } from 'lucide-react';
-import { appointmentsStorage, patientsStorage } from '@/lib/storage';
-import { format, isValid } from 'date-fns';
+import { UserPlus, User, Mail, Phone, MapPin, CalendarDays, ShieldPlus, History } from 'lucide-react';
+import { patientsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
-import { Appointment, Patient } from '@/types/appointment';
+import { Patient } from '@/types/appointment';
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
-import { APPOINTMENT_TYPES } from '@/lib/appointmentTypes';
 import { PatientDeleteButton } from './PatientDeleteButton';
+import { PatientAppointmentHistory } from './PatientAppointmentHistory';
 
 interface CreatePatientDialogProps {
   open: boolean;
@@ -33,37 +32,17 @@ export function CreatePatientDialog({
   onPatientDeleted,
   patient
 }: CreatePatientDialogProps) {
-  const { t, dateFnsLocale } = useI18n();
+  const { t } = useI18n();
   const emptyForm = useMemo(createEmptyPatientForm, []);
   const [formData, setFormData] = useState(emptyForm);
   const { toast } = useToast();
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const isEditMode = Boolean(patient?.id);
   const [activeTab, setActiveTab] = useState('details');
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [historyRetry, setHistoryRetry] = useState(0);
 
   useEffect(() => {
     setActiveTab('details');
   }, [open, patient?.id]);
-
-  useEffect(() => {
-    if (!open || !patient?.id || activeTab !== 'history') return;
-    let active = true;
-    setAppointments([]);
-    setHistoryState('loading');
-    appointmentsStorage.getByPatient(patient.id).then((records) => {
-      if (!active) return;
-      setAppointments([...records].sort((first, second) =>
-        (Date.parse(second.startTime) || 0) - (Date.parse(first.startTime) || 0)
-      ));
-      setHistoryState('ready');
-    }).catch(() => {
-      if (active) setHistoryState('error');
-    });
-    return () => { active = false; };
-  }, [open, patient?.id, activeTab, historyRetry]);
 
   useEffect(() => {
     if (!open) return;
@@ -357,46 +336,11 @@ export function CreatePatientDialog({
           </TabsContent>
           {isEditMode && (
             <TabsContent forceMount value="history" className="col-start-1 row-start-1 mt-0 px-4 pb-4 pt-1 data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none sm:px-5" data-testid="patient-history">
-              {historyState === 'loading' && <output className="block py-6 text-sm text-muted-foreground">{t('patientHistory.loading')}</output>}
-              {historyState === 'error' && (
-                <div role="alert" className="space-y-3 py-6">
-                  <p className="text-sm text-destructive">{t('patientHistory.error')}</p>
-                  <Button variant="outline" onClick={() => setHistoryRetry((value) => value + 1)}>
-                    <RotateCw className="mr-2 h-4 w-4" />{t('patientHistory.retry')}
-                  </Button>
-                </div>
-              )}
-              {historyState === 'ready' && (appointments.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">{t('patientHistory.empty')}</p>
-              ) : (
-                <ol className="space-y-2">
-                  {appointments.map((appointment) => {
-                    const date = new Date(appointment.startTime);
-                    const appointmentType = APPOINTMENT_TYPES[appointment.type];
-                    return (
-                      <li
-                        key={appointment.id}
-                        className="grid min-w-0 grid-cols-[minmax(0,1fr)_1px_minmax(0,2fr)] items-stretch gap-3 rounded-lg border border-slate-200 border-l-4 bg-slate-50 px-3 py-2.5"
-                        style={{ borderLeftColor: appointmentType?.color ?? '#64748b' }}
-                        data-testid="patient-history-entry"
-                      >
-                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <time dateTime={isValid(date) ? appointment.startTime : undefined} className="block text-sm font-medium">
-                            {isValid(date) ? format(date, 'PP', { locale: dateFnsLocale }) : t('patientHistory.unknownDate')}
-                          </time>
-                          <span className="block break-words text-xs font-medium text-muted-foreground" data-testid="patient-history-type">
-                            {appointmentType ? t(appointmentType.labelKey) : appointment.type}
-                          </span>
-                        </div>
-                        <Separator orientation="vertical" />
-                        <p className="min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
-                          {appointment.notes?.trim() ? appointment.notes : t('patientHistory.noNotes')}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ))}
+              <PatientAppointmentHistory
+                key={patient?.id}
+                patientId={patient?.id}
+                active={open && activeTab === 'history'}
+              />
             </TabsContent>
           )}
           </div>

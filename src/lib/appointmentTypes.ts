@@ -28,6 +28,10 @@ export const APPOINTMENT_TYPES: Record<AppointmentType, { labelKey: string; desc
   urgent: { labelKey: 'appointment.types.urgent', descriptionKey: 'appointment.types.urgentDescription', color: '#b91c1c' },
 };
 
+export function appointmentBackgroundColor(color: string, isCurrent = false): string {
+  return `color-mix(in srgb, ${color} ${isCurrent ? 15 : 10}%, hsl(var(--background)))`;
+}
+
 export function darkenHexColor(color: string): string {
   const hex = color.match(/^#([\da-f]{6})$/i)?.[1];
   if (!hex) return color;
