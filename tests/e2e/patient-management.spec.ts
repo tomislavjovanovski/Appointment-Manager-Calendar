@@ -270,11 +270,7 @@ test.describe('Patient Management — Inline Creation During Booking', () => {
 
       await page.getByTestId('new-patient-save').click();
       await expect(page.getByTestId('new-patient-panel')).not.toBeVisible();
-      await expect(page.getByTestId('patient-select')).toContainText(`${newP.firstName} ${newP.lastName}`);
-      await page.getByTestId('patient-select').click();
-      await page.getByTestId('patient-search-input').fill(newP.lastName);
-      await expect(page.getByRole('option', { name: `${newP.firstName} ${newP.lastName}` })).toBeVisible();
-      await page.getByTestId('patient-select').click();
+      await expect(page.getByTestId('selected-patient')).toContainText(`${newP.firstName} ${newP.lastName}`);
     });
 
     await test.step('Complete rest of booking form', async () => {

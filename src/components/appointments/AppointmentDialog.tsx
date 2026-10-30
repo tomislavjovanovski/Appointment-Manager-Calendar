@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,10 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogOverlay,
-  DialogPortal,
 } from "@/components/ui/dialog";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -31,8 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";import { Switch } from '@/components/ui/switch';import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,10 +38,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, Check, ChevronsUpDown, Clock3, ClipboardList, FileText, X } from "lucide-react";
+import { CalendarDays, Check, Clock3, ClipboardList, FileText, X } from "lucide-react";
 import { appointmentsStorage, patientsStorage, settingsStorage } from "@/lib/storage";
 import { getAvailableStarts, getAvailableStartDurations, getWorkingTimeSlots } from "@/lib/appointmentAvailability";
 import { createEmptyPatientForm, normalizePatientForm, validatePatientForm } from '@/lib/patientForm';
+import { findExactPatients, normalizePatientName } from '../../../server/patientMatching.js';
 import type { Appointment, AppointmentSettings, Patient as StoredPatient } from "@/types/appointment";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from '@/i18n';
@@ -71,34 +67,15 @@ type AppointmentStatus = NonNullable<FormData["status"]>;
 
 const PickerAvailabilityContext = createContext<(day: Date) => Date[]>(() => []);
 
-// Tracks the visible area of the page so a full-screen sheet can shrink above the on-screen keyboard.
-function useVisualViewport(enabled: boolean) {
-  const [viewport, setViewport] = useState<{ height: number; top: number } | null>(null);
-  useEffect(() => {
-    const vv = typeof window === "undefined" ? undefined : window.visualViewport;
-    if (!enabled || !vv) return;
-    const update = () => setViewport({ height: vv.height, top: vv.offsetTop });
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, [enabled]);
-  return viewport;
-}
-
-function FreeStartTimes({ day, slots, duration, availableDurations, onSelect }: Readonly<{
+function FreeStartTimes({ day, slots, starts, duration, availableDurations, onSelect }: Readonly<{
   day: Date;
   slots: Date[];
+  starts: Date[];
   duration: number;
   availableDurations: Map<number, number>;
   onSelect: (date: Date, duration: number) => void;
 }>) {
-  const getStarts = useContext(PickerAvailabilityContext);
   const { t } = useI18n();
-  const starts = getStarts(day);
   const selectedIsAvailable = starts.some((start) => start.getTime() === day.getTime());
   const selectedEnd = addMinutes(day, duration);
   return (
@@ -326,10 +303,13 @@ export default function AppointmentDialog({
   const patientIdValue = watch("patientId");
   // local patients state: prefer prop but fall back to the configured storage source
   const [localPatients, setLocalPatients] = useState<PatientOption[]>(patients ?? []);
-  const [patientPickerOpen, setPatientPickerOpen] = useState(false);
-  const pickerViewport = useVisualViewport(isMobilePicker && patientPickerOpen);
+  const [suggestionLimit, setSuggestionLimit] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState(createEmptyPatientForm);
+  const [suggestionQuery, setSuggestionQuery] = useState({ firstName: '', lastName: '' });
+  const [patientRecords, setPatientRecords] = useState<StoredPatient[]>([]);
+  const [patientLoadError, setPatientLoadError] = useState(false);
+  const [patientsLoading, setPatientsLoading] = useState(true);
   const [savingNewPatient, setSavingNewPatient] = useState(false);
   const [blockingSlot, setBlockingSlot] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
@@ -358,11 +338,17 @@ export default function AppointmentDialog({
     }
   };
 
-  const getStarts = (day: Date) => availabilitySettings && !availabilityLoading && !availabilityError
+  const getStarts = useCallback((day: Date) => availabilitySettings && !availabilityLoading && !availabilityError
     ? getAvailableStarts(day, Number(durationValue ?? '30'), availabilitySettings, occupiedAppointments, appointment?.id)
-    : [];
-  const selectedStart = new Date(startValue);
-  const startIsAvailable = getStarts(selectedStart).some((start) => start.getTime() === selectedStart.getTime());
+    : [], [availabilitySettings, availabilityLoading, availabilityError, durationValue, occupiedAppointments, appointment?.id]);
+  const selectedStart = useMemo(() => new Date(startValue), [startValue]);
+  const selectedStarts = useMemo(() => getStarts(selectedStart), [getStarts, selectedStart]);
+  const startIsAvailable = selectedStarts.some((start) => start.getTime() === selectedStart.getTime());
+  const workingSlots = useMemo(() => availabilitySettings
+    ? getWorkingTimeSlots(selectedStart, availabilitySettings) : [], [selectedStart, availabilitySettings]);
+  const availableDurations = useMemo(() => availabilitySettings
+    ? getAvailableStartDurations(selectedStart, Number(durationValue ?? '30'), availabilitySettings, occupiedAppointments, appointment?.id)
+    : new Map<number, number>(), [selectedStart, durationValue, availabilitySettings, occupiedAppointments, appointment?.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -393,6 +379,46 @@ export default function AppointmentDialog({
   });
 
   const selectedPatient = localPatients.find((patient) => patient.id === patientIdValue);
+  const selectedPatientRecord = patientRecords.find((patient) => patient.id === patientIdValue);
+  const exactPatients = useMemo(() => findExactPatients(patientRecords, {
+    firstName: newPatientForm.firstName, lastName: newPatientForm.lastName,
+  }), [patientRecords, newPatientForm.firstName, newPatientForm.lastName]);
+  const patientNameIndex = useMemo(() => patientRecords.map((patient) => ({
+    patient, first: normalizePatientName(patient.firstName), last: normalizePatientName(patient.lastName),
+  })), [patientRecords]);
+  const patientNameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of patientNameIndex) {
+      const key = JSON.stringify([entry.first, entry.last]);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [patientNameIndex]);
+  const patientDistinction = (patient: StoredPatient) => {
+    const key = JSON.stringify([normalizePatientName(patient.firstName), normalizePatientName(patient.lastName)]);
+    if ((patientNameCounts.get(key) ?? 0) < 2) return '';
+    return patient.phone || patient.dateOfBirth || patient.email || `#${patient.id}`;
+  };
+  const suggestedPatients = useMemo(() => {
+    const first = normalizePatientName(suggestionQuery.firstName);
+    const last = normalizePatientName(suggestionQuery.lastName);
+    if (!first && !last) return [];
+    const exactMatches = findExactPatients(patientRecords, suggestionQuery);
+    const exactIds = new Set(exactMatches.map((patient) => patient.id));
+    return [...exactMatches, ...patientNameIndex.filter((entry) =>
+      !exactIds.has(entry.patient.id) && entry.first.startsWith(first) && entry.last.startsWith(last)
+    ).map((entry) => entry.patient)];
+  }, [patientNameIndex, patientRecords, suggestionQuery]);
+  const suggestionsPending = suggestionQuery.firstName !== newPatientForm.firstName ||
+    suggestionQuery.lastName !== newPatientForm.lastName;
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => {
+      setSuggestionQuery({ firstName: newPatientForm.firstName, lastName: newPatientForm.lastName });
+      setSuggestionLimit(10);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [open, newPatientForm.firstName, newPatientForm.lastName]);
 
   useEffect(() => {
     if (startValue && durationValue) {
@@ -410,13 +436,14 @@ export default function AppointmentDialog({
   useEffect(() => {
     if (open) {
       reset(defaultValues);
-      setPatientPickerOpen(false);
-      setSubmissionError(null);
-      setSubmissionErrorId(null);
-      setOpenTimePicker(null);
-      initialSlotSelectedRef.current = false;
-      resetNewPatientForm();
     }
+    setSuggestionQuery({ firstName: '', lastName: '' });
+    setSuggestionLimit(10);
+    setSubmissionError(null);
+    setSubmissionErrorId(null);
+    setOpenTimePicker(null);
+    initialSlotSelectedRef.current = false;
+    resetNewPatientForm();
   }, [open, reset, defaultValues]);
 
   useEffect(() => {
@@ -440,27 +467,6 @@ export default function AppointmentDialog({
   }, [open, effectiveMode, selectedDate, availabilityLoading, availabilityError, availabilitySettings, occupiedAppointments, defaultValues, mergedInitial, formState.dirtyFields.duration, formState.dirtyFields.type, setValue]);
 
   useEffect(() => {
-    const selectedPatientId = mergedInitial?.patientId ?? null;
-    if (!open || !selectedPatientId || !localPatients.length) {
-      return;
-    }
-
-    const hasMatchingPatient = localPatients.some((patient) => patient.id === selectedPatientId);
-    if (hasMatchingPatient && patientIdValue !== selectedPatientId) {
-      setValue("patientId", selectedPatientId, { shouldDirty: false, shouldValidate: true });
-    }
-  }, [open, mergedInitial?.patientId, localPatients, patientIdValue, setValue]);
-
-  useEffect(() => {
-    if (patients && patients.length) {
-      setLocalPatients((current) => {
-        const mergedPatients = new Map(current.map((patient) => [patient.id, patient]));
-        patients.forEach((patient) => mergedPatients.set(patient.id, patient));
-        return Array.from(mergedPatients.values());
-      });
-      return;
-    }
-
     if (!open) {
       return;
     }
@@ -468,6 +474,8 @@ export default function AppointmentDialog({
     let isMounted = true;
 
     const loadPatients = async () => {
+      setPatientsLoading(true);
+      setPatientLoadError(false);
       try {
         const storedPatients = await patientsStorage.getAll();
         const mapped = storedPatients.map((p: StoredPatient & { _id?: string; patientId?: string; name?: string }) => {
@@ -478,12 +486,16 @@ export default function AppointmentDialog({
         });
 
         if (isMounted) {
+          setPatientRecords(storedPatients);
           setLocalPatients(mapped);
         }
-      } catch {
+      } catch (error) {
         if (isMounted) {
-          setLocalPatients([]);
+          setPatientLoadError(true);
+          console.error('Unable to load patients for appointment booking:', error);
         }
+      } finally {
+        if (isMounted) setPatientsLoading(false);
       }
     };
 
@@ -511,20 +523,22 @@ export default function AppointmentDialog({
     setSubmissionErrorId(null);
 
     try {
-      const createdPatient = await patientsStorage.add({
-        ...patientForm,
-      });
+      if (exactPatients.length > 1) {
+        setSubmissionError(t('appointment.ambiguousPatient'));
+        setSubmissionErrorId('new-patient-panel');
+        return null;
+      }
+      const { patient: createdPatient, reused } = await patientsStorage.resolve(patientForm);
 
       const created = buildPatientOption(createdPatient);
       setLocalPatients((current) =>
         current.some((patient) => patient.id === created.id) ? current : [...current, created]
       );
       setValue('patientId', created.id, { shouldDirty: true, shouldValidate: true });
-      setPatientPickerOpen(false);
       resetNewPatientForm();
 
       toast({
-        title: t('appointment.patientCreated'),
+        title: t(reused ? 'appointment.patientReused' : 'appointment.patientCreated'),
         description: t('appointment.patientReady', { name: created.name }),
       });
 
@@ -723,123 +737,44 @@ export default function AppointmentDialog({
                   </section>
 
                   <section aria-label={t('appointment.patient')} className="relative flex min-w-0 flex-col gap-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
-                    <Label id="appointment-patient-label" htmlFor="patientId" className="absolute left-6 top-2.5 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
+                    <Label id="appointment-patient-label" htmlFor={selectedPatient ? undefined : 'patient-first-name'} className="text-sm font-medium">
                       {t('appointment.patient')}
                     </Label>
-                    {(() => {
-                      const trigger = (
-                        <Button
-                          id="patientId"
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          aria-labelledby="appointment-patient-label"
-                          aria-expanded={patientPickerOpen}
-                          data-testid="patient-select"
-                          className="h-10 w-full justify-between border-border bg-background font-normal shadow-sm hover:bg-background"
-                          onClick={isMobilePicker ? () => setPatientPickerOpen(true) : undefined}
-                        >
-                          <span className="truncate">{selectedPatient?.name ?? t('appointment.selectPatient')}</span>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                        </Button>
-                      );
-                      const patientCommand = (
-                        <Command className={isMobilePicker ? 'min-h-0 flex-1 rounded-none' : undefined}>
-                          <CommandInput
-                            data-testid="patient-search-input"
-                            placeholder={t('appointment.searchPatients')}
-                            className={isMobilePicker ? 'h-12 text-base' : undefined}
-                          />
-                          <CommandList className={isMobilePicker ? 'max-h-none min-h-0 flex-1' : undefined}>
-                            <CommandEmpty>{t('appointment.noPatients')}</CommandEmpty>
-                            <CommandGroup>
-                              {localPatients.map((patient) => (
-                                <CommandItem
-                                  key={patient.id}
-                                  value={`${patient.name} ${patient.searchValue ?? ''}`}
-                                  data-testid={`patient-option-${patient.id}`}
-                                  className={isMobilePicker ? 'border-b border-border/60 py-3 text-base last:border-b-0' : undefined}
-                                  onSelect={() => {
-                                    setValue('patientId', patient.id, { shouldDirty: true, shouldValidate: true });
-                                    setPatientPickerOpen(false);
-                                  }}
-                                >
-                                  <Check className={`mr-2 h-4 w-4 shrink-0 ${patient.id === patientIdValue ? 'opacity-100' : 'opacity-0'}`} />
-                                  <span className="truncate">{patient.name}</span>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      );
-                      if (isMobilePicker) {
-                        return (
-                          <>
-                            {trigger}
-                            <Dialog open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
-                              <DialogPortal>
-                              <DialogOverlay className="z-[2100] bg-black/50" />
-                              <DialogPrimitive.Content
-                                data-testid="patient-picker-sheet"
-                                aria-describedby={undefined}
-                                onOpenAutoFocus={(event) => event.preventDefault()}
-                                className="fixed inset-x-0 z-[2101] mx-auto box-border flex w-[calc(100%-1.5rem)] max-w-md flex-col overflow-hidden rounded-2xl border bg-background shadow-xl"
-                                style={{
-                                  top: `calc(${pickerViewport?.top ?? 0}px + max(0.75rem, env(safe-area-inset-top)))`,
-                                  height: pickerViewport
-                                    ? `calc(${pickerViewport.height}px - 1.5rem - env(safe-area-inset-top))`
-                                    : 'calc(100dvh - 1.5rem - env(safe-area-inset-top))',
-                                }}
-                              >
-                                <div className="flex shrink-0 items-center justify-between gap-2 border-b py-2 pl-4 pr-2">
-                                  <DialogTitle className="min-w-0 truncate text-base">{t('appointment.selectPatient')}</DialogTitle>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-9 w-9"
-                                    aria-label="Close"
-                                    onClick={() => setPatientPickerOpen(false)}
-                                  >
-                                    <X className="h-5 w-5" />
-                                  </Button>
-                                </div>
-                                {patientCommand}
-                              </DialogPrimitive.Content>
-                              </DialogPortal>
-                            </Dialog>
-                          </>
-                        );
-                      }
-                      return (
-                        <Popover open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
-                          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-                          <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-                            {patientCommand}
-                          </PopoverContent>
-                        </Popover>
-                      );
-                    })()}
                     {selectedPatient ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="mt-auto h-10 w-full text-sm"
-                        disabled={saving || savingNewPatient || formState.isSubmitting}
-                        onClick={() => {
-                          setValue('patientId', null, { shouldDirty: true, shouldValidate: true });
-                          setSubmissionError(null);
-                        }}
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        {t('appointment.addNewPatient')}
-                      </Button>
+                      <div className="space-y-2">
+                        <div data-testid="selected-patient" role="status" className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
+                          <Check className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="min-w-0 break-words">
+                            {selectedPatient.name}
+                            {selectedPatientRecord && patientDistinction(selectedPatientRecord) && (
+                              <span className="block text-xs text-muted-foreground">{patientDistinction(selectedPatientRecord)}</span>
+                            )}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          data-testid="change-patient-btn"
+                          className="h-10 w-full text-sm"
+                          disabled={saving || savingNewPatient || formState.isSubmitting}
+                          onClick={() => {
+                            setValue('patientId', null, { shouldDirty: true, shouldValidate: true });
+                            setSubmissionError(null);
+                            resetNewPatientForm();
+                            setSuggestionQuery({ firstName: '', lastName: '' });
+                          }}
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          {t('appointment.changePatient')}
+                        </Button>
+                      </div>
                     ) : (
-                      <div data-testid="new-patient-panel" className="mt-2 grid grid-cols-2 gap-2 sm:mt-auto sm:grid-cols-3">
+                      <div data-testid="new-patient-panel" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         <Input
                           id="patient-first-name"
                           data-testid="patient-first-name"
                           aria-label={t('appointment.firstName')}
+                          aria-describedby="patient-search-hint"
                           autoComplete="given-name"
                           placeholder={t('appointment.firstName')}
                           value={newPatientForm.firstName}
@@ -850,6 +785,7 @@ export default function AppointmentDialog({
                           id="patient-last-name"
                           data-testid="patient-last-name"
                           aria-label={t('appointment.lastName')}
+                          aria-describedby="patient-search-hint"
                           autoComplete="family-name"
                           placeholder={t('appointment.lastName')}
                           value={newPatientForm.lastName}
@@ -870,6 +806,51 @@ export default function AppointmentDialog({
                         />
                       </div>
                     )}
+                    {!selectedPatient && (
+                      <p id="patient-search-hint" data-testid="patient-search-hint" role="status" aria-live="polite" className="text-xs text-muted-foreground">
+                        {t(!newPatientForm.firstName.trim() && !newPatientForm.lastName.trim()
+                          ? 'appointment.nameSearchHint'
+                          : patientLoadError
+                            ? 'appointment.patientLoadFailed'
+                            : suggestionsPending || patientsLoading
+                              ? 'appointment.searchingPatients'
+                              : suggestedPatients.length > 0
+                                ? 'appointment.nameMatchesFound'
+                                : 'appointment.noNameMatches')}
+                      </p>
+                    )}
+                    {patientLoadError && selectedPatient && (
+                      <p role="alert" className="text-sm text-destructive">{t('appointment.patientLoadFailed')}</p>
+                    )}
+                    {!selectedPatient && !suggestionsPending && suggestedPatients.length > 0 && (
+                      <div className="space-y-1" data-testid="patient-name-matches">
+                        <div className="max-h-40 space-y-1 overflow-y-auto">
+                          {suggestedPatients.slice(0, suggestionLimit).map((patient) => (
+                            <Button
+                              key={patient.id}
+                              type="button"
+                              variant="outline"
+                              className="h-auto min-h-9 w-full justify-start whitespace-normal px-3 py-2 text-left text-sm"
+                              data-testid={`patient-name-match-${patient.id}`}
+                              disabled={saving || savingNewPatient || formState.isSubmitting}
+                              onClick={() => {
+                                setValue('patientId', patient.id, { shouldDirty: true, shouldValidate: true });
+                                setSubmissionError(null);
+                                resetNewPatientForm();
+                              }}
+                            >
+                              <span>{`${patient.firstName} ${patient.lastName}`.trim()}</span>
+                              {patientDistinction(patient) && <span className="text-xs text-muted-foreground">{patientDistinction(patient)}</span>}
+                            </Button>
+                          ))}
+                          {suggestedPatients.length > suggestionLimit && (
+                            <Button type="button" variant="ghost" data-testid="more-patient-matches" className="w-full whitespace-normal text-xs" onClick={() => setSuggestionLimit((limit) => limit + 10)}>
+                              {t('appointment.morePatients', { shown: suggestionLimit, total: suggestedPatients.length })}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {submissionError && submissionErrorId === 'new-patient-panel' && (
                       <p data-testid="new-patient-inline-error" role="alert" className="text-sm text-destructive">{submissionError}</p>
                     )}
@@ -887,11 +868,10 @@ export default function AppointmentDialog({
                   <>
                     <FreeStartTimes
                       day={selectedStart}
+                      starts={selectedStarts}
                       duration={Number(durationValue ?? '30')}
-                      slots={availabilitySettings ? getWorkingTimeSlots(selectedStart, availabilitySettings) : []}
-                      availableDurations={availabilitySettings
-                        ? getAvailableStartDurations(selectedStart, Number(durationValue ?? '30'), availabilitySettings, occupiedAppointments, appointment?.id)
-                        : new Map()}
+                      slots={workingSlots}
+                      availableDurations={availableDurations}
                       onSelect={(date, fittingDuration) => {
                         setValue('duration', String(fittingDuration) as AppointmentDuration, { shouldDirty: true, shouldValidate: true });
                         setValue('start', toDateTimeLocal(date), { shouldDirty: true, shouldValidate: true });

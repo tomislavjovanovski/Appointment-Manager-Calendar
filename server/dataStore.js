@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { findExactPatients } from './patientMatching.js';
 
 export const DEFAULT_SETTINGS = {
   locale: 'mk',
@@ -188,6 +189,25 @@ export function createDataStore({
 
   const readSettings = async () => mergeSettings(await readJsonFile(settingsFile, DEFAULT_SETTINGS));
 
+  const mergeJournalFile = path.join(dataDir, 'patient-merge-pending.json');
+  const recoverPatientMerge = async () => {
+    let raw;
+    try {
+      raw = await fs.readFile(mergeJournalFile, 'utf8');
+    } catch (error) {
+      if (error.code === 'ENOENT') return;
+      throw error;
+    }
+    // Keep the journal until both files are persisted, so interrupted merges can be replayed.
+    const { patients, appointments } = JSON.parse(raw);
+    if (!Array.isArray(patients) || !Array.isArray(appointments)) {
+      throw new Error('Invalid patient merge journal.');
+    }
+    await writeJsonFile(appointmentsFile, appointments);
+    await writeJsonFile(patientsFile, patients);
+    await fs.unlink(mergeJournalFile);
+  };
+
   const validateAppointment = (input, patients) => {
     const patientId = String(input.patientId ?? '').trim();
     const title = String(input.title ?? '').trim();
@@ -246,13 +266,14 @@ export function createDataStore({
     };
   };
 
-  return {
+  const store = {
     async initialize() {
       await Promise.all([
         ensureJsonFile(patientsFile, []),
         ensureJsonFile(appointmentsFile, []),
         ensureJsonFile(settingsFile, DEFAULT_SETTINGS),
       ]);
+      await recoverPatientMerge();
     },
 
     async getPatients() {
@@ -316,6 +337,62 @@ export function createDataStore({
       patients.push(patient);
       await writeJsonFile(patientsFile, patients);
       return patient;
+    },
+
+    async resolvePatient(input) {
+      const patients = await readPatients();
+      const matches = findExactPatients(patients, input);
+      if (matches.length > 1) {
+        const error = new Error('Several patients match this name. Select an existing patient before saving.');
+        error.statusCode = 409;
+        throw error;
+      }
+      if (matches.length === 1) return { patient: matches[0], reused: true };
+      return { patient: await store.createPatient(input), reused: false };
+    },
+
+    async mergePatients(targetId, sourceIds) {
+      if (typeof targetId !== 'string' || !Array.isArray(sourceIds) || !sourceIds.length ||
+          sourceIds.some((id) => typeof id !== 'string' || !id || id === targetId) ||
+          new Set(sourceIds).size !== sourceIds.length) {
+        const error = new Error('Choose a patient to keep and distinct patients to merge into it.');
+        error.statusCode = 400;
+        throw error;
+      }
+      const patients = await readPatients();
+      const appointments = await readAppointments();
+      const target = patients.find((patient) => patient.id === targetId);
+      const sources = sourceIds.map((id) => patients.find((patient) => patient.id === id));
+      if (!target || sources.some((patient) => !patient)) {
+        const error = new Error('One or more patients no longer exist. Reload the patient list.');
+        error.statusCode = 404;
+        throw error;
+      }
+      const merged = { ...target };
+      const notes = [String(target.notes ?? '').trim()].filter(Boolean);
+      for (const source of sources) {
+        const conflicts = [];
+        for (const field of ['firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'address', 'emergencyContact']) {
+          const value = String(source[field] ?? '').trim();
+          if (!String(merged[field] ?? '').trim()) merged[field] = value;
+          else if (value && value !== String(merged[field]).trim()) conflicts.push(`${field}: ${value}`);
+        }
+        const sourceNotes = String(source.notes ?? '').trim();
+        if (sourceNotes) conflicts.push(`notes: ${sourceNotes}`);
+        if (conflicts.length) {
+          notes.push(`[Merged patient ${source.id}: ${source.firstName} ${source.lastName}]\n${conflicts.join('\n')}`);
+        }
+      }
+      merged.notes = notes.join('\n\n');
+      const patientName = `${merged.firstName} ${merged.lastName}`.trim();
+      const affectedIds = new Set([targetId, ...sourceIds]);
+      const nextAppointments = appointments.map((appointment) =>
+        affectedIds.has(appointment.patientId) ? { ...appointment, patientId: targetId, patientName } : appointment);
+      const nextPatients = patients.filter((patient) => !sourceIds.includes(patient.id))
+        .map((patient) => patient.id === targetId ? merged : patient);
+      await writeJsonFile(mergeJournalFile, { patients: nextPatients, appointments: nextAppointments });
+      await recoverPatientMerge();
+      return merged;
     },
 
     async updatePatient(id, updates) {
@@ -489,4 +566,20 @@ export function createDataStore({
       await fs.unlink(googleTokensFile).catch(() => {});
     },
   };
+
+  // Serialize whole read/modify/write operations, including name resolution and cross-file merges.
+  let mutation = Promise.resolve();
+  const result = { ...store };
+  for (const method of ['createPatient', 'resolvePatient', 'mergePatients', 'updatePatient', 'deletePatient',
+    'createAppointment', 'updateAppointment', 'deleteAppointment']) {
+    result[method] = (...args) => {
+      const next = mutation.then(async () => {
+        await recoverPatientMerge();
+        return store[method](...args);
+      });
+      mutation = next.catch(() => {});
+      return next;
+    };
+  }
+  return result;
 }

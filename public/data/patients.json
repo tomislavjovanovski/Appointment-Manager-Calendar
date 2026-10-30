@@ -5962,5 +5962,17 @@
     "address": "",
     "emergencyContact": "",
     "notes": "Synthetic test record."
+  },
+  {
+    "id": "990e986c-5631-4e53-a3c7-65da33671cb5",
+    "createdAt": "2026-10-30T15:44:21.105Z",
+    "firstName": "Марко",
+    "lastName": "123",
+    "email": "",
+    "phone": "",
+    "dateOfBirth": "",
+    "address": "",
+    "emergencyContact": "",
+    "notes": ""
   }
 ]

@@ -33,7 +33,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /e2e\/(smoke|login|statistics)\.spec\.ts/,
+      testMatch: /e2e\/(smoke|login|statistics|patient-deduplication)\.spec\.ts/,
     },
   ],
 

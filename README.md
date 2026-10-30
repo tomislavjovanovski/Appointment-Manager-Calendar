@@ -56,9 +56,14 @@
 
 ### 🦷 Patient management
 
-- Select an existing patient or create a patient with a first and last name while booking.
+- Use the first/last-name fields to search existing patients or create a patient while booking; there is no separate patient dropdown. Select a suggestion to link that record, or save to automatically resolve the typed name. The selected name is shown with a **Change patient** action.
+- A single hint below the name fields changes with the search: initial instructions when empty, searching while loading or waiting for typing to stop, a prompt to choose a patient when matches exist, or a notice that saving will create a new patient when no matches exist. Search failures are shown instead of a misleading no-match notice.
+- Closing the booking dialog clears the entered patient details and suggestions and cancels pending suggestion timers, so reopening starts with a clean search.
+- Typing a first/last name in the booking form shows existing patient suggestions. Saving reuses a single exact name match (case-insensitive, with whitespace normalized); a first name alone also reuses a unique first-name match. Multiple exact matches require selecting a patient, and no match creates a new record. Reusing a patient does not overwrite their existing details. Manual patient creation remains available for different people sharing a name.
+- For large patient lists, name suggestions update locally 500 ms after typing stops, without per-keystroke requests, using pre-normalized names and memoized results. Saving always checks the current input immediately. Exact matches appear first. Suggestions show only names; identical-name records also show a phone number or birth date (falling back to email or record ID if neither is available). Suggestions initially render 10 matches and merge settings 10 duplicate groups, with **Show more** to access the rest. Searching always checks the entire loaded list; display limits never change duplicate detection. Booking availability is recalculated only when scheduling inputs or data change, not while typing patient details.
+- In **Settings → Data → Merge duplicate patients**, review same-name groups, choose the record to keep, select the duplicates to merge, and confirm. Only selected duplicates are removed after their appointments are reassigned. Empty fields are filled, and conflicting details and source notes are preserved in the kept patient's notes. Export a backup first; there is no in-app undo. Interrupted merges are recovered from a server-side journal on startup or before the next patient/appointment write.
 - Complete additional patient details later.
-- Searchable patient selection on mobile, with a layout designed to remain usable when the on-screen keyboard is open.
+- Inline patient search on mobile, without a separate picker sheet.
 - Patient overview counts, including total patients and patients added during the current month.
 
 ### 📊 Clinic overview and statistics
@@ -196,11 +201,13 @@ The backend is designed to run under **Phusion Passenger** on cPanel. Passenger 
 2. **Upload the backend files** to `~/devforge-api/`:
    - `server/index.js`
    - `server/app.js`
+   - `server/dataStore.js`, `server/patientMatching.js`, and `server/startup.js`
    - `server/manage-users.js`
    - The complete `server/auth/` directory
    - The backend package files, including `server/package.json`
 
    Do not upload `node_modules`. The current backend changes do not require new npm packages.
+   Deploy the patient matching/merge backend together with the frontend; booking now uses `POST /api/patients/resolve` and the settings merge tool uses `POST /api/patients/merge`.
 
 3. **Create the first administrator** before restarting the backend. See [Creating the first administrator](#creating-the-first-administrator).
 

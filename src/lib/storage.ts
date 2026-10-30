@@ -162,6 +162,18 @@ export const initializeData = async () => {
 export const patientsStorage = {
   getAll: async (): Promise<Patient[]> => apiCall('/patients') as Promise<Patient[]>,
   getWithActivity: async (): Promise<PatientWithActivity[]> => apiCall('/patients') as Promise<PatientWithActivity[]>,
+
+  resolve: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<{ patient: Patient; reused: boolean }> =>
+    apiCall('/patients/resolve', {
+      method: 'POST',
+      body: JSON.stringify(normalizePatientForm(patient)),
+    }),
+
+  merge: async (targetId: string, sourceIds: string[]): Promise<Patient> =>
+    apiCall('/patients/merge', {
+      method: 'POST',
+      body: JSON.stringify({ targetId, sourceIds }),
+    }),
   
   add: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> => {
     const payload = {

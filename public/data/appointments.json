@@ -6498,5 +6498,31 @@
     "type": "follow-up",
     "status": "scheduled",
     "notes": "Synthetic test record."
+  },
+  {
+    "id": "2bbf0d97-21df-441b-b5b4-4aa4618620ac",
+    "createdAt": "2026-10-30T15:40:06.834Z",
+    "patientId": "syn-patient-0159",
+    "patientName": "Marko 10 Andonov",
+    "title": "Процедура",
+    "startTime": "2026-10-30T08:30:00.000Z",
+    "endTime": "2026-10-30T09:00:00.000Z",
+    "duration": 30,
+    "type": "procedure",
+    "status": "scheduled",
+    "notes": ""
+  },
+  {
+    "id": "88dc66a4-0e04-4aa0-a30c-7d45e29eda0d",
+    "createdAt": "2026-10-30T15:44:28.685Z",
+    "patientId": "990e986c-5631-4e53-a3c7-65da33671cb5",
+    "patientName": "Марко 123",
+    "title": "Процедура",
+    "startTime": "2026-10-30T14:00:00.000Z",
+    "endTime": "2026-10-30T14:30:00.000Z",
+    "duration": 30,
+    "type": "procedure",
+    "status": "scheduled",
+    "notes": ""
   }
 ]

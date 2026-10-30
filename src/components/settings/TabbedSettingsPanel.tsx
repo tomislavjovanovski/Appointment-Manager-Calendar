@@ -26,6 +26,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/auth/AuthProvider';
 import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES, APPOINTMENT_DURATIONS, DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
+import { PatientMergePanel } from './PatientMergePanel';
 
 function SettingsTimeInput({ id, testId, value, onChange }: Readonly<{
   id: string;
@@ -90,8 +91,9 @@ type ApiHealthResponse = {
   appointmentsCount: number;
 };
 
-export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
+export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigation }: Readonly<{
   onSettingsSaved?: (settings: AppointmentSettings) => void;
+  onPatientsMerged?: () => void;
   navigation?: React.ReactNode;
 }>) {
   const { t, setLocale } = useI18n();
@@ -719,6 +721,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, navigation }: Readonly<{
 
         {/* Data */}
         <TabsContent value="data" className="mt-0 space-y-4 sm:space-y-6">
+          <PatientMergePanel onMerged={onPatientsMerged} />
           <SettingsSection icon={Database} title={t('settings.dataTitle')}>
             <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
               <Button onClick={handleExport} variant="outline" className="h-11 w-full">

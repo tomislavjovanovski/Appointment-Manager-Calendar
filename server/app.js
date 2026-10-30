@@ -77,6 +77,16 @@ export function createApp({ dataStore, dataDir, auth }) {
     res.status(201).json(patient);
   }));
 
+  app.post('/api/patients/resolve', asyncRoute(async (req, res) => {
+    requireObjectPayload(req.body, 'Patient');
+    res.json(await dataStore.resolvePatient(req.body));
+  }));
+
+  app.post('/api/patients/merge', asyncRoute(async (req, res) => {
+    requireObjectPayload(req.body, 'Patient merge');
+    res.json(await dataStore.mergePatients(req.body.targetId, req.body.sourceIds));
+  }));
+
   app.put('/api/patients/:id', asyncRoute(async (req, res) => {
     requireObjectPayload(req.body, 'Patient');
     const patient = await dataStore.updatePatient(req.params.id, req.body);
