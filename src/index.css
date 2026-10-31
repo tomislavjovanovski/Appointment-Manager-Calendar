@@ -257,7 +257,7 @@ All colors MUST be HSL.
   @media (min-width: 768px) {
     .weekly-scheduler div:has(> .rs__cell),
     .weekly-scheduler .rs__cell {
-      border-color: hsl(var(--border) / 0.55) !important;
+      border-color: hsl(var(--border) / 0.75) !important;
     }
 
     .weekly-scheduler .rs__time .MuiTypography-root {
