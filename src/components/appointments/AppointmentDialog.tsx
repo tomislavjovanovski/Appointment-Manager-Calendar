@@ -70,23 +70,27 @@ type AppointmentStatus = NonNullable<FormData["status"]>;
 
 const PickerAvailabilityContext = createContext<(day: Date) => Date[]>(() => []);
 
-function FreeStartTimes({ day, slots, starts, duration, availableDurations, onSelect }: Readonly<{
+function FreeStartTimes({ day, slots, starts, duration, availableDurations, loading, error, onSelect }: Readonly<{
   day: Date;
   slots: Date[];
   starts: Date[];
   duration: number;
   availableDurations: Map<number, number>;
+  loading: boolean;
+  error: boolean;
   onSelect: (date: Date, duration: number) => void;
 }>) {
   const { t } = useI18n();
-  const selectedIsAvailable = starts.some((start) => start.getTime() === day.getTime());
+  const selectedIsAvailable = !loading && !error && starts.some((start) => start.getTime() === day.getTime());
   const selectedEnd = addMinutes(day, duration);
   return (
-    <div className="w-full space-y-2 pb-1" data-testid="available-starts">
-      <p className="text-sm font-medium">{t('appointment.availableTimes')}</p>
+    <div className="w-full space-y-2 pb-1" data-testid="available-starts" aria-busy={loading}>
+      <p className={cn('text-sm font-medium', error && 'text-destructive')} role={error ? 'alert' : loading ? 'status' : undefined}>
+        {t(error ? 'appointment.availabilityFailed' : loading ? 'appointment.loadingAvailability' : 'appointment.availableTimes')}
+      </p>
       <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(3.25rem,1fr))] gap-1.5">
         {slots.map((start) => {
-          const fittingDuration = availableDurations.get(start.getTime());
+          const fittingDuration = loading || error ? undefined : availableDurations.get(start.getTime());
           const isAvailable = fittingDuration !== undefined;
           const isSelected = selectedIsAvailable && start >= day && start < selectedEnd;
           return (
@@ -98,7 +102,8 @@ function FreeStartTimes({ day, slots, starts, duration, availableDurations, onSe
             aria-pressed={isSelected}
             disabled={!isAvailable && !isSelected}
             className={cn(
-              'h-10 w-full min-w-0 px-1 text-xs tabular-nums sm:h-8',
+              'h-10 w-full min-w-0 px-1 text-xs tabular-nums transition-[background-color,box-shadow] duration-100 sm:h-8 md:duration-100',
+              isSelected ? 'text-primary-foreground' : 'text-foreground',
               isSelected && 'md:ring-2 md:ring-primary/30 md:ring-offset-1 md:ring-offset-background'
             )}
             title={fittingDuration === undefined ? undefined : t('settings.minutes', { n: fittingDuration })}
@@ -109,7 +114,7 @@ function FreeStartTimes({ day, slots, starts, duration, availableDurations, onSe
           </Button>
           );
         })}
-        {availableDurations.size === 0 && <p className="col-span-full text-sm text-muted-foreground">{t('appointment.noAvailableTimes')}</p>}
+        {!loading && !error && availableDurations.size === 0 && <p className="col-span-full text-sm text-muted-foreground">{t('appointment.noAvailableTimes')}</p>}
       </div>
     </div>
   );
@@ -327,7 +332,7 @@ export default function AppointmentDialog({
   const [submissionErrorId, setSubmissionErrorId] = useState<string | null>(null);
   const pickerContainerRef = useRef<HTMLDivElement>(null);
   const [openTimePicker, setOpenTimePicker] = useState<"start" | null>(null);
-  const [availabilitySettings, setAvailabilitySettings] = useState<AppointmentSettings | null>(null);
+  const [availabilitySettings, setAvailabilitySettings] = useState<AppointmentSettings | null>(() => settingsStorage.getCached());
   const [occupiedAppointments, setOccupiedAppointments] = useState<Appointment[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(true);
   const [availabilityError, setAvailabilityError] = useState(false);
@@ -353,22 +358,27 @@ export default function AppointmentDialog({
     ? getAvailableStarts(day, Number(durationValue ?? '30'), availabilitySettings, occupiedAppointments, appointment?.id)
     : [], [availabilitySettings, availabilityLoading, availabilityError, durationValue, occupiedAppointments, appointment?.id]);
   const selectedStart = useMemo(() => new Date(startValue), [startValue]);
-  const selectedStarts = useMemo(() => getStarts(selectedStart), [getStarts, selectedStart]);
-  const startIsAvailable = selectedStarts.some((start) => start.getTime() === selectedStart.getTime());
   const workingSlots = useMemo(() => availabilitySettings
     ? getWorkingTimeSlots(selectedStart, availabilitySettings) : [], [selectedStart, availabilitySettings]);
-  const availableDurations = useMemo(() => availabilitySettings
+  const availableDurations = useMemo(() => availabilitySettings && !availabilityLoading && !availabilityError
     ? getAvailableStartDurations(selectedStart, Number(durationValue ?? '30'), availabilitySettings, occupiedAppointments, appointment?.id)
-    : new Map<number, number>(), [selectedStart, durationValue, availabilitySettings, occupiedAppointments, appointment?.id]);
+    : new Map<number, number>(), [selectedStart, durationValue, availabilitySettings, occupiedAppointments, appointment?.id, availabilityLoading, availabilityError]);
+  const selectedStarts = useMemo(() => workingSlots.filter((start) =>
+    availableDurations.get(start.getTime()) === Number(durationValue ?? '30')
+  ), [workingSlots, availableDurations, durationValue]);
+  const startIsAvailable = selectedStarts.some((start) => start.getTime() === selectedStart.getTime());
 
   useEffect(() => {
-    if (!open) return;
     let isMounted = true;
     setAvailabilityLoading(true);
     setAvailabilityError(false);
-    void Promise.all([settingsStorage.get(), appointmentsStorage.getAll()]).then(([settings, appointments]) => {
+    void Promise.all([
+      settingsStorage.get().then((settings) => {
+        if (isMounted) setAvailabilitySettings(settings);
+      }),
+      appointmentsStorage.getAll(),
+    ]).then(([, appointments]) => {
       if (isMounted) {
-        setAvailabilitySettings(settings);
         setOccupiedAppointments(appointments);
       }
     }).catch(() => {
@@ -377,7 +387,7 @@ export default function AppointmentDialog({
       if (isMounted) setAvailabilityLoading(false);
     });
     return () => { isMounted = false; };
-  }, [open, refreshTrigger]);
+  }, [refreshTrigger]);
 
   const resetNewPatientForm = () => {
     setNewPatientForm(createEmptyPatientForm());
@@ -688,20 +698,20 @@ export default function AppointmentDialog({
               {/* Box 1: Title and Patient */}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <section aria-label={t('appointment.title')} className="min-w-0 space-y-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
-                    <div className="relative">
-                      <Label htmlFor="title" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
-                        {t('appointment.title')}
-                      </Label>
-                      <Input
-                        id="title"
-                        data-testid="appointment-title-input"
-                        autoComplete="off"
-                        {...register("title")}
-                        placeholder={t(APPOINTMENT_TYPES[watch("type") ?? 'procedure'].labelKey)}
-                        className="h-10 border-border bg-background shadow-sm"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="grid grid-cols-2 items-start gap-3 pt-2">
+                      <div className="relative min-w-0">
+                        <Label htmlFor="title" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
+                          {t('appointment.title')}
+                        </Label>
+                        <Input
+                          id="title"
+                          data-testid="appointment-title-input"
+                          autoComplete="off"
+                          {...register("title")}
+                          placeholder={t(APPOINTMENT_TYPES[watch("type") ?? 'procedure'].labelKey)}
+                          className="h-10 border-border bg-background shadow-sm"
+                        />
+                      </div>
                       <div className="relative min-w-0">
                         <Label id="appointment-type-label" htmlFor="type" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">{t('createAppointment.type')}</Label>
                         <Select
@@ -738,26 +748,28 @@ export default function AppointmentDialog({
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="relative min-w-0">
-                        <Label id="appointment-duration-label" htmlFor="duration" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">{t('createAppointment.duration')}</Label>
-                        <Select
-                          onValueChange={(val) => setValue("duration", (val ?? "30") as AppointmentDuration, {
-                            shouldDirty: true,
-                            shouldValidate: true,
-                          })}
-                          value={watch("duration") ?? "30"}
-                        >
-                          <SelectTrigger id="duration" aria-labelledby="appointment-duration-label" data-testid="duration-select" className="h-10 border-border bg-background shadow-sm">
-                            <SelectValue placeholder={t('appointment.selectDuration')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {APPOINTMENT_DURATIONS.map((minutes) => (
-                              <SelectItem key={minutes} value={String(minutes)} data-testid={`duration-option-${minutes}`}>
-                                {t('settings.minutes', { n: minutes })}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    </div>
+                    <div className="space-y-1.5 pt-2">
+                      <Label id="appointment-duration-label">{t('createAppointment.duration')}</Label>
+                      <div role="group" aria-labelledby="appointment-duration-label" data-testid="duration-select" className="grid grid-cols-5 gap-1 rounded-lg border border-border bg-background p-1">
+                        {APPOINTMENT_DURATIONS.map((minutes) => (
+                          <Button
+                            key={minutes}
+                            type="button"
+                            size="sm"
+                            variant={Number(durationValue) === minutes ? 'default' : 'ghost'}
+                            aria-pressed={Number(durationValue) === minutes}
+                            aria-label={t('settings.minutes', { n: minutes })}
+                            data-testid={`duration-option-${minutes}`}
+                            className={cn(
+                              'h-9 min-w-0 px-0.5 text-[11px] tabular-nums transition-[background-color,box-shadow] duration-100 sm:h-8 md:duration-100',
+                              Number(durationValue) === minutes ? 'text-primary-foreground' : 'text-foreground'
+                            )}
+                            onClick={() => setValue('duration', String(minutes) as AppointmentDuration, { shouldDirty: true, shouldValidate: true })}
+                          >
+                            {t('appointment.durationShort', { n: minutes })}
+                          </Button>
+                        ))}
                       </div>
                     </div>
                   </section>
@@ -886,27 +898,21 @@ export default function AppointmentDialog({
               {/* Box 3: Date (start/end) and Note */}
               <PickerAvailabilityContext.Provider value={getStarts}>
               <section className="space-y-3 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
-                {availabilityLoading ? (
-                  <p role="status" className="text-sm text-muted-foreground">{t('appointment.loadingAvailability')}</p>
-                ) : availabilityError ? (
-                  <p role="alert" className="text-sm text-destructive">{t('appointment.availabilityFailed')}</p>
-                ) : (
-                  <>
                     <FreeStartTimes
                       day={selectedStart}
                       starts={selectedStarts}
                       duration={Number(durationValue ?? '30')}
                       slots={workingSlots}
                       availableDurations={availableDurations}
+                      loading={availabilityLoading}
+                      error={availabilityError}
                       onSelect={(date, fittingDuration) => {
                         setValue('duration', String(fittingDuration) as AppointmentDuration, { shouldDirty: true, shouldValidate: true });
                         setValue('start', toDateTimeLocal(date), { shouldDirty: true, shouldValidate: true });
                         setValue('end', toDateTimeLocal(addMinutes(date, fittingDuration)), { shouldDirty: true, shouldValidate: true });
                       }}
                     />
-                    {!startIsAvailable && <p role="alert" className="text-sm text-destructive">{t('appointment.unavailableStart')}</p>}
-                  </>
-                )}
+                    {!availabilityLoading && !availabilityError && !startIsAvailable && <p role="alert" className="text-sm text-destructive">{t('appointment.unavailableStart')}</p>}
                 <div className="grid gap-3 sm:grid-cols-[minmax(210px,30fr)_minmax(145px,15fr)_minmax(0,65fr)]">
                     <div className="min-w-0 space-y-1.5">
                       <Label htmlFor="start" className="flex items-center gap-2">

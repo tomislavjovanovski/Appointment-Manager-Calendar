@@ -269,13 +269,13 @@ test.describe('Smoke — Application Loads', () => {
     await page.getByTestId('nav-scheduler').click();
     await page.getByTestId('new-appointment-btn').click();
     await expect(page.getByTestId('appointment-type-select')).toContainText('Протетика и ортодонција');
-    await expect(page.getByTestId('duration-select')).toContainText('60');
+    await expect(page.getByTestId('duration-option-60')).toHaveAttribute('aria-pressed', 'true');
     await bookingHelper.selectRadixOption(page, 'duration-select', 'duration-option-90');
-    await expect(page.getByTestId('duration-select')).toContainText('90');
+    await expect(page.getByTestId('duration-option-90')).toHaveAttribute('aria-pressed', 'true');
     await page.getByTestId('appointment-notes').fill('Manual duration is preserved');
-    await expect(page.getByTestId('duration-select')).toContainText('90');
+    await expect(page.getByTestId('duration-option-90')).toHaveAttribute('aria-pressed', 'true');
     await bookingHelper.selectRadixOption(page, 'appointment-type-select', 'appointment-type-option-procedure');
-    await expect(page.getByTestId('duration-select')).toContainText('45');
+    await expect(page.getByTestId('duration-option-45')).toHaveAttribute('aria-pressed', 'true');
   });
 
   // pageClean mocks the data endpoints; without them the real backend answers 401 and the browser logs it.

@@ -30,6 +30,13 @@ export const bookingHelper = {
 
     await expect(trigger).toBeVisible();
 
+    if (await trigger.getAttribute('role') === 'group') {
+      const option = trigger.getByTestId(optionTestId);
+      await option.click();
+      await expect(option).toHaveAttribute('aria-pressed', 'true');
+      return;
+    }
+
     await trigger.click();
 
     await expect(trigger).toHaveAttribute("aria-expanded", "true");
@@ -133,26 +140,9 @@ export const bookingHelper = {
       `appointment-type-option-${options.type}`,
     );
 
-  // Duration
-  const durationTrigger = dialog.getByTestId("duration-select");
-
-  const currentDuration =
-    (await durationTrigger.textContent())?.trim() ?? "";
-
-  const expected =
-    options.duration === 30
-      ? "Half Hour"
-      : options.duration === 60
-        ? "Full Hour"
-        : "Double Hour";
-
-  if (!currentDuration.includes(expected)) {
-    await this.selectRadixOption(
-      page,
-      "duration-select",
-      `duration-option-${options.duration}`,
-    );
-  }
+    const durationOption = dialog.getByTestId(`duration-option-${options.duration}`);
+    await durationOption.click();
+    await expect(durationOption).toHaveAttribute('aria-pressed', 'true');
 
     // Notes
     if (options.notes) {

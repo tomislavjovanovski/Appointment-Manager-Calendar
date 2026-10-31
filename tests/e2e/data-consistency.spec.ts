@@ -62,7 +62,7 @@ test.describe('UI ↔ Storage Consistency', () => {
     const record = stored[stored.length - 1];
 
     await expect(page.getByTestId('appointment-type-select')).toContainText(new RegExp(record.type, 'i'));
-    await expect(page.getByTestId('duration-select')).toContainText(String(record.duration));
+    await expect(page.getByTestId(`duration-option-${record.duration}`)).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('appointment-notes')).toHaveValue(record.notes);
     await expect(page.getByTestId('selected-patient')).toContainText(PATIENTS.alice.firstName);
     await expect(page.getByTestId('appointment-status-select')).toHaveCount(0);

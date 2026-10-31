@@ -401,7 +401,10 @@ const Index = () => {
       case 'statistics':
         return <MonthlyStatistics navigation={renderNavigationTabs()} refreshTrigger={refreshTrigger} />;
       case 'settings':
-        return <TabbedSettingsPanel navigation={renderNavigationTabs()} onSettingsSaved={setBrandSettings} onPatientsMerged={() => setRefreshTrigger((value) => value + 1)} />;
+        return <TabbedSettingsPanel navigation={renderNavigationTabs()} onSettingsSaved={(settings) => {
+          setBrandSettings(settings);
+          handleRefresh();
+        }} onPatientsMerged={() => setRefreshTrigger((value) => value + 1)} />;
       default:
         return <div>{t('notFound.message')}</div>;
     }
