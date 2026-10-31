@@ -60,6 +60,11 @@ All colors MUST be HSL.
     --transition-spring: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     --radius: 0.5rem;
+    --radius-control: 0.5rem;
+    --radius-panel: 0.75rem;
+    --radius-dialog: 1rem;
+    --heading: 215 55% 21%;
+    --workspace-background: 220 50% 98%;
 
     --sidebar-background: 210 40% 96%;
 
@@ -79,6 +84,8 @@ All colors MUST be HSL.
   }
 
   .dark {
+    --heading: 210 40% 98%;
+    --workspace-background: 222.2 84% 4.9%;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 

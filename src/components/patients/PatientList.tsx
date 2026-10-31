@@ -84,7 +84,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <User className="h-5 w-5" strokeWidth={2} />
             </span>
-            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground md:text-2xl">{t('patients.title')}</h2>
+            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground md:text-2xl md:font-bold md:text-heading">{t('patients.title')}</h2>
           </div>
           <p className="hidden max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground sm:block">{t('patients.subtitle')}</p>
         </div>
@@ -138,7 +138,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
       </div>
 
       <Card className="overflow-hidden border-border/80 shadow-soft">
-        <CardHeader className="border-b border-border/60 bg-muted/20 p-3 md:p-6 md:pb-4">
+        <CardHeader className="border-b border-border/60 bg-muted/20 p-3 md:p-5 md:pb-4">
           <div className="flex flex-col gap-3 md:gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="hidden space-y-1 md:block">
               <CardTitle className="text-lg font-semibold tracking-tight">{t('patients.directory')}</CardTitle>
@@ -154,10 +154,10 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                   placeholder={t('patients.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 border-border/80 bg-background/80 pl-10 text-base shadow-sm md:h-11 md:text-sm transition-colors focus-visible:ring-primary/25"
+                  className="h-10 border-border/80 bg-background/80 pl-10 text-base shadow-sm md:h-10 md:text-sm transition-colors focus-visible:ring-primary/25"
                 />
               </div>
-              <Badge variant="outline" className="h-10 shrink-0 rounded-xl px-2.5 text-xs font-medium md:h-11 md:px-4 md:text-sm">
+              <Badge variant="outline" className="h-10 shrink-0 rounded-xl px-2.5 text-xs font-medium md:h-10 md:px-3 md:text-xs">
                 {t('patients.shown', { count: filteredPatients.length })}
               </Badge>
             </div>
@@ -300,7 +300,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                         >
                         <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-medical-blue text-sm font-semibold text-primary-foreground shadow-sm">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-panel bg-primary/10 text-sm font-semibold text-primary">
                               {patientInitials(patient)}
                             </div>
                             <div className="min-w-0">

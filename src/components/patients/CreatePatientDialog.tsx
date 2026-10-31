@@ -144,7 +144,7 @@ export function CreatePatientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="block h-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] overflow-y-auto rounded-lg border-border/70 p-0 shadow-2xl sm:max-w-4xl" data-testid="patient-form-dialog">
+      <DialogContent className="block h-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] overflow-y-auto rounded-lg border-border/70 p-0 shadow-2xl sm:max-w-4xl md:shadow-medium" data-testid="patient-form-dialog">
         <div>
           <div className="shrink-0 border-b border-border/60 bg-muted/20 px-4 py-3 pr-12 sm:px-5 sm:pr-12">
             <DialogHeader className="space-y-0 text-left">
@@ -153,7 +153,7 @@ export function CreatePatientDialog({
                   {isEditMode ? <User className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <DialogTitle className="text-base font-semibold">
+                  <DialogTitle className="text-base font-semibold md:text-lg">
                     {isEditMode ? t('createPatient.editTitle') : t('createPatient.title')}
                   </DialogTitle>
                   <DialogDescription className="sr-only">
@@ -168,7 +168,7 @@ export function CreatePatientDialog({
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             {isEditMode && (
-              <TabsList className="mx-4 my-2 grid h-auto min-h-10 shrink-0 grid-cols-2 items-stretch gap-1 rounded-lg border border-slate-300 bg-slate-100 p-1 sm:mx-5">
+              <TabsList className="mx-4 my-2 grid h-auto min-h-10 shrink-0 grid-cols-2 items-stretch gap-1 rounded-lg border border-slate-300 bg-slate-100 p-1 sm:mx-5 md:border-border md:bg-muted/40">
                 <TabsTrigger value="details" className="min-h-8 min-w-0 whitespace-normal rounded-md border border-transparent px-2 py-1.5 text-xs transition-colors hover:bg-background/70 data-[state=active]:border-primary/25 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm" data-testid="patient-details-tab">
                   <User className="mr-1.5 h-3.5 w-3.5 shrink-0" />
                   {t('patientHistory.details')}
@@ -183,7 +183,7 @@ export function CreatePatientDialog({
           <TabsContent forceMount value="details" className="col-start-1 row-start-1 mt-0 data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
           <form onSubmit={handleSubmit} noValidate>
             <div className="space-y-3 px-4 py-3 sm:px-5">
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="firstName">{t('createPatient.firstName')}</Label>
@@ -219,7 +219,7 @@ export function CreatePatientDialog({
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
                   <div className="min-w-0 space-y-1.5">
                     <Label htmlFor="email" className="flex items-center gap-2">
@@ -270,7 +270,7 @@ export function CreatePatientDialog({
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+              <section className="rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-3">
                     <div className="space-y-1.5">

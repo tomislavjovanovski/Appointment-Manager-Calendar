@@ -11,6 +11,7 @@ import { PickersLayout, usePickerLayout } from "@mui/x-date-pickers/PickersLayou
 import type { PickersLayoutProps } from "@mui/x-date-pickers/PickersLayout";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -96,7 +97,10 @@ function FreeStartTimes({ day, slots, starts, duration, availableDurations, onSe
             variant={isSelected ? 'default' : 'outline'}
             aria-pressed={isSelected}
             disabled={!isAvailable && !isSelected}
-            className="h-10 w-full min-w-0 px-1 text-xs tabular-nums sm:h-8"
+            className={cn(
+              'h-10 w-full min-w-0 px-1 text-xs tabular-nums sm:h-8',
+              isSelected && 'md:ring-2 md:ring-primary/30 md:ring-offset-1 md:ring-offset-background'
+            )}
             title={fittingDuration === undefined ? undefined : t('settings.minutes', { n: fittingDuration })}
             aria-label={fittingDuration === undefined ? format(start, 'HH:mm') : `${format(start, 'HH:mm')}, ${t('settings.minutes', { n: fittingDuration })}`}
             onClick={() => { if (fittingDuration !== undefined) onSelect(start, fittingDuration); }}
@@ -627,7 +631,7 @@ export default function AppointmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         ref={pickerContainerRef}
-        className="border-border/70 p-0 shadow-2xl sm:max-w-[800px]"
+        className="border-border/70 p-0 shadow-2xl sm:max-w-[800px] md:shadow-medium"
         onOpenAutoFocus={(event) => {
           // Auto-focusing the title on mobile opens the keyboard and iOS password AutoFill.
           if (isMobilePicker || window.matchMedia('(pointer: coarse)').matches) {
@@ -645,7 +649,7 @@ export default function AppointmentDialog({
           }
         }}
       >
-        <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-h-[calc(100vh-2rem)]" data-testid="booking-dialog">
+        <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-[inherit] sm:max-h-[calc(100vh-2rem)]" data-testid="booking-dialog">
           <div className="border-b border-border/60 bg-gradient-to-br from-primary/10 via-background to-background px-5 py-3 sm:px-6">
             <DialogHeader className="space-y-2 text-left">
               <div className="flex items-start gap-3">
@@ -666,7 +670,7 @@ export default function AppointmentDialog({
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             {effectiveMode === 'edit' && (
-              <TabsList className="mx-5 my-2 grid h-auto min-h-10 grid-cols-2 items-stretch gap-1 rounded-lg border border-slate-300 bg-slate-100 p-1 sm:mx-6">
+              <TabsList className="mx-5 my-2 grid h-auto min-h-10 grid-cols-2 items-stretch gap-1 rounded-lg border border-slate-300 bg-slate-100 p-1 sm:mx-6 md:border-border md:bg-muted/40">
                 <TabsTrigger value="details" className="min-h-8 min-w-0 whitespace-normal rounded-md border border-transparent px-2 py-1.5 text-xs transition-colors hover:bg-background/70 data-[state=active]:border-primary/25 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm" data-testid="appointment-details-tab">
                   <ClipboardList className="mr-1.5 h-3.5 w-3.5 shrink-0" />
                   {t('createAppointment.appointmentDetails')}
@@ -683,7 +687,7 @@ export default function AppointmentDialog({
             <div className="space-y-3 px-5 py-4 sm:px-6">
               {/* Box 1: Title and Patient */}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <section aria-label={t('appointment.title')} className="min-w-0 space-y-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                  <section aria-label={t('appointment.title')} className="min-w-0 space-y-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
                     <div className="relative">
                       <Label htmlFor="title" className="absolute left-3 top-0 z-10 -translate-y-1/2 bg-background px-1 text-xs leading-none text-muted-foreground">
                         {t('appointment.title')}
@@ -758,7 +762,7 @@ export default function AppointmentDialog({
                     </div>
                   </section>
 
-                  <section aria-label={t('appointment.patient')} className="relative flex min-w-0 flex-col gap-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+                  <section aria-label={t('appointment.patient')} className="relative flex min-w-0 flex-col gap-1.5 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
                     <Label id="appointment-patient-label" htmlFor={selectedPatient ? undefined : 'patient-first-name'} className="text-sm font-medium">
                       {t('appointment.patient')}
                     </Label>
@@ -881,7 +885,7 @@ export default function AppointmentDialog({
 
               {/* Box 3: Date (start/end) and Note */}
               <PickerAvailabilityContext.Provider value={getStarts}>
-              <section className="space-y-3 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm">
+              <section className="space-y-3 rounded-2xl border border-slate-300 bg-slate-100 p-2.5 shadow-sm md:rounded-panel md:border-border md:bg-muted/30 md:p-3 md:shadow-none">
                 {availabilityLoading ? (
                   <p role="status" className="text-sm text-muted-foreground">{t('appointment.loadingAvailability')}</p>
                 ) : availabilityError ? (
@@ -1019,7 +1023,7 @@ export default function AppointmentDialog({
                   onClick={() => void blockSelectedSlot()}
                   title={t('appointment.blockSlot')}
                   aria-label={t('appointment.blockSlot')}
-                  className="h-10 min-w-0 justify-start truncate px-2 text-left text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto sm:px-3"
+                  className="h-10 min-w-0 justify-start truncate px-2 text-left text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto sm:px-3 md:hover:bg-destructive/10 md:hover:text-destructive"
                 >
                   {blockingSlot ? t('appointment.blockingSlot') : t('appointment.blockSlotShort')}
                 </Button>

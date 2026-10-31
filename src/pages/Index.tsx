@@ -431,7 +431,7 @@ const Index = () => {
           <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} patientStats={patientStatItems} patientStatsError={patientStatsError || overviewError} overviewLoading={overviewLoading} overviewError={overviewError} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="h-full w-full border-r-0" />
         </SheetContent>
       </Sheet>
-      <main className={`flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:px-3 md:py-4 ${activeTab === 'dashboard' ? 'md:bg-none md:bg-muted/40' : ''}`}>
+      <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:bg-none md:bg-workspace md:px-3 md:py-4">
         {activeTab !== 'dashboard' && user?.preferences?.desktopSidebarCollapsed === true && (
           <div className="mb-2 hidden md:block">
             <SidebarToggle collapsed className="w-8 px-0" />

@@ -124,7 +124,7 @@ export function MonthlyStatistics({ navigation, refreshTrigger = 0 }: Readonly<M
   const newShare = totalPatients ? Math.round(((current?.newPatients ?? 0) / totalPatients) * 100) : 0;
   const returningShare = totalPatients ? 100 - newShare : 0;
 
-  const sectionTitle = 'text-sm font-semibold tracking-tight text-foreground';
+  const sectionTitle = 'text-sm font-semibold tracking-tight text-foreground md:text-base md:text-heading';
   const cardClass = 'border-border/70 shadow-none';
 
   return (
@@ -135,7 +135,7 @@ export function MonthlyStatistics({ navigation, refreshTrigger = 0 }: Readonly<M
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <BarChart3 className="h-5 w-5" strokeWidth={2} />
             </span>
-            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground md:text-2xl">{t('statistics.title')}</h2>
+            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground md:text-2xl md:font-bold md:text-heading">{t('statistics.title')}</h2>
           </div>
           <p className="hidden max-w-xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground sm:block">{t('statistics.subtitle')}</p>
         </div>
@@ -183,14 +183,14 @@ export function MonthlyStatistics({ navigation, refreshTrigger = 0 }: Readonly<M
           <section aria-label={t('statistics.overview')} className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
             {kpis.map(({ icon: Icon, ...item }) => (
               <Card key={item.id} className={cardClass} data-testid={`stat-${item.id}`}>
-                <CardContent className="flex h-full flex-col gap-2 p-3.5 md:p-5 lg:p-4 xl:p-5">
+                <CardContent className="flex h-full flex-col gap-2 p-3.5 md:p-5">
                   <div className="flex items-start justify-between gap-2">
                     <span className="min-w-0 text-xs font-medium leading-tight text-muted-foreground md:text-sm">{item.label}</span>
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground md:h-8 md:w-8">
                       <Icon className="h-4 w-4" />
                     </span>
                   </div>
-                  <div className="break-words text-xl font-semibold leading-tight tracking-tight text-foreground tabular-nums md:text-3xl lg:text-2xl xl:text-3xl" data-testid="stat-value">{item.value}</div>
+                  <div className="break-words text-xl font-semibold leading-tight tracking-tight text-foreground tabular-nums md:text-2xl md:text-heading" data-testid="stat-value">{item.value}</div>
                   <div className="mt-auto">
                     <Change
                     current={item.current}

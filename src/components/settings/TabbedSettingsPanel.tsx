@@ -250,7 +250,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Settings className="h-5 w-5" strokeWidth={2} />
           </span>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t('settings.title')}</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl md:font-bold md:text-heading">{t('settings.title')}</h2>
         </div>
         <p className="hidden max-w-2xl pl-[2.75rem] text-sm leading-relaxed text-muted-foreground sm:block">{t('settings.subtitle')}</p>
       </div>
@@ -749,7 +749,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
         </TabsContent>
 
         <div className="sticky bottom-0 z-10 -mx-4 border-t border-border/60 bg-background/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-          <Button onClick={handleSave} disabled={logoUploading} data-testid="save-settings-btn" className="h-11 w-full bg-gradient-to-r from-accent to-accent-hover">
+          <Button onClick={handleSave} disabled={logoUploading} data-testid="save-settings-btn" className="h-11 w-full bg-gradient-to-r from-accent to-accent-hover md:bg-none md:bg-primary md:hover:bg-primary-hover">
             <Save className="mr-2 h-4 w-4" />
             {t('settings.save')}
           </Button>
@@ -769,7 +769,7 @@ function SettingsSection({ icon: Icon, title, description, action, contentClassN
 }>) {
   return (
     <Card className="min-w-0">
-      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 p-4 sm:p-6">
+      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 p-4 sm:p-6 md:p-5">
         <div className="min-w-0 space-y-1">
           <CardTitle className="flex items-center gap-2 text-base font-semibold sm:text-lg">
             <Icon className="h-5 w-5 shrink-0 text-primary" />
@@ -779,7 +779,7 @@ function SettingsSection({ icon: Icon, title, description, action, contentClassN
         </div>
         {action}
       </CardHeader>
-      <CardContent className={cn('space-y-4 p-4 pt-0 sm:p-6 sm:pt-0', contentClassName)}>
+      <CardContent className={cn('space-y-4 p-4 pt-0 sm:p-6 sm:pt-0 md:p-5 md:pt-0', contentClassName)}>
         {children}
       </CardContent>
     </Card>
