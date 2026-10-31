@@ -3,7 +3,10 @@ import { chromium } from '@playwright/test';
 
 const publicUrl = new URL('../public/', import.meta.url);
 const brand = JSON.parse(await readFile(new URL('../src/config/brand.json', import.meta.url), 'utf8'));
-const svg = await readFile(new URL('favicon.svg', publicUrl), 'utf8');
+const icon = await readFile(new URL('brand-icon.png', publicUrl));
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><image width="64" height="64" href="data:image/png;base64,${icon.toString('base64')}"/></svg>\n`;
+await writeFile(new URL('favicon.svg', publicUrl), svg);
+await writeFile(new URL('brand-mark-white.svg', publicUrl), svg);
 const browser = await chromium.launch({ headless: true });
 
 try {
@@ -89,9 +92,9 @@ try {
     theme_color: brand.themeColor,
     background_color: brand.backgroundColor,
     icons: [
-      { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: 'icon-192.png?v=calendar-smile-png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: 'icon-512.png?v=calendar-smile-png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: 'icon-maskable-512.png?v=calendar-smile-png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
   await writeFile(new URL('manifest.webmanifest', publicUrl), `${JSON.stringify(manifest, null, 2)}\n`);

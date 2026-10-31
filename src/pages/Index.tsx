@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { APP_NAVIGATION, Sidebar } from '@/components/layout/Sidebar';
+import { APP_NAVIGATION, Sidebar, SidebarToggle } from '@/components/layout/Sidebar';
+import { useAuth } from '@/auth/AuthProvider';
 import { WeeklyScheduler } from '@/components/dashboard/WeeklyScheduler';
 import { PatientList } from '@/components/patients/PatientList';
 import { MonthlyStatistics } from '@/components/statistics/MonthlyStatistics';
@@ -28,6 +29,7 @@ const rangesOverlap = (
 
 const Index = () => {
   const { t, initialSettings } = useI18n();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [brandSettings, setBrandSettings] = useState<Pick<AppointmentSettings, 'practiceName' | 'logoDataUrl'>>(initialSettings ?? {});
@@ -374,6 +376,8 @@ const Index = () => {
             />
             <div className="hidden md:block">
               <WeeklyScheduler
+                brandName={brandName}
+                logoDataUrl={brandSettings.logoDataUrl}
                 navigation={renderNavigationTabs()}
                 onCreateAppointment={handleCreateAppointment}
                 onAppointmentClick={handleAppointmentClick}
@@ -427,7 +431,12 @@ const Index = () => {
           <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} patientStats={patientStatItems} patientStatsError={patientStatsError || overviewError} overviewLoading={overviewLoading} overviewError={overviewError} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="h-full w-full border-r-0" />
         </SheetContent>
       </Sheet>
-      <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:px-3 md:py-4">
+      <main className={`flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:px-3 md:py-4 ${activeTab === 'dashboard' ? 'md:bg-none md:bg-muted/40' : ''}`}>
+        {activeTab !== 'dashboard' && user?.preferences?.desktopSidebarCollapsed === true && (
+          <div className="mb-2 hidden md:block">
+            <SidebarToggle collapsed className="w-8 px-0" />
+          </div>
+        )}
         <header className="mb-5 flex items-center justify-between md:hidden">
           <Button
             type="button"

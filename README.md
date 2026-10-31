@@ -1,4 +1,4 @@
-# мојЗабар
+# МојаОрдинација
 
 **Менаџмент на стоматолошки ординации**
 
@@ -6,13 +6,13 @@
 
 Термини, пациенти и организација на ординацијата — на едно место.
 
-мојЗабар is dental practice management software for independent dentists and small dental clinics in North Macedonia. It provides scheduling, patient records, appointment statistics, and configurable practice settings in a Macedonian/English interface, with a desktop calendar and a compact mobile agenda. It is a professional tool for dental teams, not a patient-facing dentist directory.
+МојаОрдинација is Dental Practice Management software for independent dentists and small dental clinics in North Macedonia. It provides scheduling, patient records, appointment statistics, and configurable practice settings in a Macedonian/English interface, with a desktop calendar and a compact mobile agenda. It is a professional tool for dental teams, not a patient-facing dentist directory.
 
 > **Current architecture:** React + TypeScript frontend, Express backend, and JSON-file storage. Google Calendar integration is currently disabled.
 
 ## ✨ At a glance
 
-**мојЗабар** brings appointments, patients, and day-to-day dental practice organization together.
+**МојаОрдинација** brings appointments, patients, and day-to-day dental practice organization together.
 
 - 📅 **Smart scheduling** — Weekly calendar, configurable appointment durations, and availability checks.
 - 👥 **Patient management** — Create, search, edit, merge, and delete patient records, with appointment history.
@@ -25,19 +25,23 @@
 
 ## Brand identity and assets
 
-- Approved Macedonian brand copy, metadata, and asset colors are maintained in [the shared brand configuration](src/config/brand.json). The Cyrillic name **мојЗабар** is unchanged in both interface languages.
-- [BrandLogo](src/components/brand/BrandLogo.tsx) combines the Cyrillic wordmark with a white calendar mark whose tooth is a transparent cutout. The same mark is used in the sidebar, login, startup/error pages, favicon, and install icons.
+- Approved Macedonian brand copy, metadata, and asset colors are maintained in [the shared brand configuration](src/config/brand.json). The Cyrillic name **МојаОрдинација** is unchanged in both interface languages. English interfaces use **Dental Practice Management**; Macedonian interfaces use **Менаџмент на стоматолошки ординации**.
+- [BrandLogo](src/components/brand/BrandLogo.tsx) displays [the supplied transparent PNG](public/brand-icon.png) directly, unmodified and with its aspect ratio preserved, beside the separate Cyrillic wordmark. Login keeps the wordmark white on the blue desktop panel. The same source icon generates the favicon, install icons and social preview. Its light calendar body is part of the artwork, not a background added by the component. Custom practice logos remain unchanged.
 - The identity uses a restrained blue (`#1d4ed8`), soft teal secondary surfaces, neutral backgrounds, and theme-aware foregrounds. The system font stack supports Macedonian Cyrillic and Latin without remote font requests.
-- Practice names and uploaded practice logos remain customizable and are displayed alongside the product identity. Browser titles retain the product name: `Practice name | мојЗабар`.
-- Run `npm run generate:brand` after changing the shared brand configuration or [SVG mark](public/favicon.svg) to regenerate the PNG install icons, Apple touch icon, ICO fallback, social preview, and [web app manifest](public/manifest.webmanifest). This uses the existing Playwright Chromium installation; no new dependencies are required.
+- Practice names and uploaded practice logos remain customizable and are displayed alongside the product identity. Browser titles retain the product name: `Practice name | МојаОрдинација`. Existing stored practice names are never rewritten.
+- The desktop calendar header displays `Practice name | МојаОрдинација` at matching sizes, with the product wordmark split into bright-blue `Моја` and dark-blue `Ординација` (theme-aware in dark mode).
+- Run `npm run generate:brand` after changing the shared brand configuration or [source icon](public/brand-icon.png) to regenerate SVG wrappers, PNG install icons, Apple touch icon, ICO fallback, social preview, and [web app manifest](public/manifest.webmanifest). This uses the existing Playwright Chromium installation; no new dependencies are required. The source is raster artwork; higher-resolution install icons cannot add detail absent from the supplied image.
 - Browser metadata is populated from the shared configuration by Vite. Public assets and the manifest are scoped to the existing `/app/` deployment. The manifest provides standalone installation metadata; no service worker or offline patient-data cache is introduced.
 - Legacy synthetic-data seed/email prefixes are intentionally retained for reproducibility and compatibility with existing generated records. Stored clinic data, authentication, and API contracts are not renamed.
+- Deployment: the internal `mojzabar` package name and lockfile identifiers remain unchanged for compatibility, not as user-facing branding. Generated reports and previous build output can still contain the previous identity until regenerated. Deploy rebuilt frontend files together with all regenerated public branding assets; purge CDN/browser metadata caches if used. Logo, favicon, install-icon and social-image URLs include a version query. Installed PWA names/icons may require an application relaunch or reinstallation to refresh.
+- No new production domain has been confirmed. Keep `/app/`, `CORS_ORIGINS`, deployment/server paths and existing public URLs unchanged. If a domain changes later, update hosting/DNS/TLS, allowed origins and public/share URLs together. No service-worker cache migration is needed because this project does not register a service worker.
 
 ## 🚀 Features
 
 ### 📅 Calendar and appointment booking
 
 - **Weekly desktop calendar** with seven equal day columns, compact time rows, and a date-range picker.
+- **Desktop sidebar and dashboard polish:** the same 80px overview sidebar on Calendar, Patients, Statistics and Settings keeps the four appointment counters and collapse icon. When collapsed, it takes zero width; an expand icon appears in the calendar header or above the other page content. The compact calendar header retains practice/product branding and the existing navigation/actions. The six unchanged category colours appear in a wrapping legend below the calendar. Muted grid/time labels, a light-blue current-day header, subtle card hover/focus borders, and category labels on sufficiently tall cards improve scanning without changing row heights, appointment positioning, or scheduling. Mobile agenda/navigation retains its existing presentation.
 - **Continuous mobile agenda** with compact appointment cards, pinned week/day controls, and a selected date that updates as soon as the next day heading is fully visible near the bottom of the screen. Only the remainder of the current week is prepared initially; the next week is prepared in the background when the last working day comes into view. Day timelines are cached between selection changes. Tap a date or Today to scroll smoothly to that day (respecting reduced-motion preferences); the week arrows jump to the first working day of the previous/next week. The agenda follows configured working days.
 - **Mobile week snapshot:** the Snapshot button next to Today creates an availability PNG of the selected week's working days. Free slots remain prominent; consecutive or overlapping bookings are combined into compact separators showing the busy time range and booking count, without merging across free gaps. Blocked time is marked **Unavailable**, and days without bookable slots show **No free slots**. Patient names, appointment types, phone numbers, and notes are never included. A preview modal offers **Share** (native iOS/Android share sheet, e.g. Viber, Facebook, Instagram, Save to Photos; requires HTTPS) and **Download**. The regular agenda is unchanged.
 - **Appointment durations** of 30, 45, 60, 90, and 120 minutes, using a 24-hour time format and automatically calculated end times.
@@ -54,7 +58,8 @@
 - **Appointment management:** edit or reschedule appointments, or delete them with confirmation.
 - **Edit appointment tabs:** **Appointment Details** opens by default with the existing editing form. **Appointment History** shows every saved appointment for the selected patient, newest first, with date, type and notes. The current saved appointment is labelled **Current appointment**; unsaved form changes are not shown in history until saved. Switching tabs preserves edits, and changing the selected patient changes whose history is displayed. Loading, empty, missing-patient and retry states are provided. Creating an appointment remains a single form without history tabs.
 - **Desktop drag-to-reschedule:** move an appointment to another calendar slot. Drops reject non-working days and an identical occupied start time; this is not full overlap enforcement (see [Known limitations](#known-limitations)).
-- **Calendar appointment cards:** a solid 4px type-colour left border (compensated for desktop calendar zoom to match the history cards) and a light 10% type-colour background keep the calendar calm and text readable. Appointments in progress use a stronger 15% tint, a darker left border and a clock indicator on desktop and mobile.
+- **Calendar appointment cards:** a 4px type-colour left accent (an inset rounded stripe on desktop, the existing left border on mobile) and a light 10% type-colour background keep the calendar calm and text readable. The desktop stripe compensates for calendar zoom. Appointments in progress use a stronger 15% tint, a darker accent and a clock indicator on desktop and mobile.
+- **Desktop card hierarchy:** very short cards below 40 rendered pixels show the patient name only. Normal 30-minute cards also show the category beneath the name. Cards from 60px allow a two-line name and show `Category · Start – End` on a single secondary row when the card is wide enough (220px before calendar zoom). Typography compensates for calendar zoom (approximately 13.6px name, 11px category, 10.6px time). Full names, category, time and phone remain in the hover tooltip. The mobile card layout is unchanged.
 
 ### 🦷 Patient management
 
@@ -156,7 +161,7 @@ The command prompts for a password. Authentication files are stored in the priva
 
 ### Data storage and file layout
 
-мојЗабар currently uses **JSON files**, not a database.
+МојаОрдинација currently uses **JSON files**, not a database.
 
 | Data | Storage |
 |---|---|
@@ -362,7 +367,7 @@ The private auth directory can remain in place; the old code does not use it. **
 
 ## Authentication and security
 
-мојЗабар currently supports **one clinic with one or more administrator accounts**. It does not yet support registration, password reset, social login, or account switching.
+МојаОрдинација currently supports **one clinic with one or more administrator accounts**. It does not yet support registration, password reset, social login, or account switching.
 
 - **Storage:** `users.json` and `sessions.json` live in `AUTH_DATA_DIR`, defaulting to `../private/auth` relative to the backend. On cPanel, use `/home/devforge/private/auth`, outside `public_html` and outside `public/data`.
 - **Permissions:** the auth directory should use `0700` permissions and its files `0600`. Writes are atomic (temporary file plus rename) and protected by a lock file shared by Passenger processes.

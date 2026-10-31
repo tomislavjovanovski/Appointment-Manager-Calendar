@@ -30,7 +30,7 @@ export default function PublicInfoPage() {
     <main className="relative flex min-h-[100dvh] items-center justify-center bg-muted/40 px-3 py-3 sm:px-6 sm:py-4">
       <section className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft lg:min-h-[650px]">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6 xl:p-8">
-          <Link to="/" aria-label={t('public.backToLogin')} className="shrink-0">
+          <Link to="/" aria-label={t('public.backToLogin')} className="min-w-0">
             <BrandLogo variant="horizontal" size={44} wordmarkClassName="text-foreground" />
           </Link>
           <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
@@ -45,7 +45,7 @@ export default function PublicInfoPage() {
               {path === '/contact' ? <Mail className="h-5 w-5" aria-hidden="true" /> : <ShieldCheck className="h-5 w-5" aria-hidden="true" />}
             </div>
             <div>
-              <p lang="mk" className="text-sm font-medium text-primary">{brand.productDescription}</p>
+              <p lang={locale} className="text-sm font-medium text-primary">{t('auth.workspace')}</p>
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground">{t(`public.${contentKey}.title`)}</h1>
             </div>
           </div>

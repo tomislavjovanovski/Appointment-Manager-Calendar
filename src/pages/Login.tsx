@@ -117,15 +117,15 @@ export default function Login() {
           <div className="relative">
             <BrandLogo variant="horizontal" tone="inverse" size={52} className="gap-3 text-white" wordmarkClassName="text-2xl" />
 
-            <div className="mt-6 max-w-md" lang="mk">
+            <div className="mt-6 max-w-md" lang={locale}>
               <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium tracking-wide text-blue-50">
-                {brand.productDescription}
+                {t('auth.workspace')}
               </p>
               <h2 className="text-3xl font-semibold leading-[1.15] tracking-tight">
-                {brand.slogan}
+                {t('auth.workspaceHeadline')}
               </h2>
               <p className="mt-3 max-w-sm text-sm leading-5 text-blue-100/90">
-                {brand.supportingDescription}
+                {t('auth.workspaceDescription')}
               </p>
             </div>
           </div>
@@ -181,9 +181,9 @@ export default function Login() {
         </aside>
 
         <div className="login-form-panel flex min-w-0 flex-col justify-center px-5 py-5 sm:px-10 sm:py-7 lg:px-10 xl:px-14">
-          <div className="login-mobile-brand mb-4 flex flex-col items-start gap-2 lg:hidden" lang="mk">
-            <BrandLogo variant="horizontal" size={44} className="gap-3" wordmarkClassName="text-2xl text-foreground" />
-            <p className="text-sm font-medium text-primary">{brand.productDescription}</p>
+          <div className="login-mobile-brand mb-4 flex flex-col items-start gap-2 lg:hidden" lang={locale}>
+            <BrandLogo variant="horizontal" size={44} className="gap-3" wordmarkClassName="text-[clamp(1rem,4.5vw,1.5rem)] text-foreground" />
+            <p className="text-sm font-medium text-primary">{t('auth.workspace')}</p>
           </div>
 
           <div className="mb-5">

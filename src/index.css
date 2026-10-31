@@ -237,6 +237,28 @@ All colors MUST be HSL.
     font-size: 13.75px;
   }
 
+  .weekly-scheduler .appointment-card-time {
+    display: none;
+  }
+
+  @container (min-width: 220px) {
+    .weekly-scheduler .appointment-card-time {
+      display: inline;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .weekly-scheduler div:has(> .rs__cell),
+    .weekly-scheduler .rs__cell {
+      border-color: hsl(var(--border) / 0.55) !important;
+    }
+
+    .weekly-scheduler .rs__time .MuiTypography-root {
+      color: hsl(var(--muted-foreground));
+      font-size: 15px;
+    }
+  }
+
   /* Hide React Scheduler navigation (date pickers) within weekly scheduler */
   .weekly-scheduler .rs__navigation {
     display: none !important;

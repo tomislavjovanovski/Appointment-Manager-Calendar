@@ -21,13 +21,28 @@ test.describe('Login', () => {
     await expect(page.getByTestId('nav-patients')).toHaveCount(0);
   });
 
-  test.describe('мојЗабар branding', () => {
+  test.describe('МојаОрдинација branding', () => {
+    test('keeps the Cyrillic wordmark and shows English product copy in the English interface', async ({ page }) => {
+      await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
+      await page.addInitScript(() => localStorage.setItem('medical.locale', 'en'));
+      await page.goto('/');
+      await expect(page).toHaveTitle('МојаОрдинација');
+      for (const width of [375, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        const panel = page.locator(width >= 1024 ? '.login-preview' : '.login-mobile-brand');
+        await expect(panel.getByText('МојаОрдинација', { exact: true })).toBeVisible();
+        await expect(panel.getByText('Dental Practice Management', { exact: true })).toBeVisible();
+        await expect(panel.getByText(brand.productDescription, { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      }
+    });
+
     for (const theme of ['light', 'dark']) {
       test(`shows the approved brand copy in ${theme} mode at mobile, tablet and desktop sizes`, async ({ page }) => {
         await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
         await page.addInitScript((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
         await page.goto('/');
-        await expect(page).toHaveTitle('мојЗабар');
+        await expect(page).toHaveTitle('МојаОрдинација');
         for (const viewport of [
           { width: 320, height: 740 },
           { width: 375, height: 812 },
@@ -41,12 +56,12 @@ test.describe('Login', () => {
           await expect(brandPanel).toBeVisible();
           const visibleBrandCopy = desktop
             ? [
-                'мојЗабар',
+                'МојаОрдинација',
                 'Менаџмент на стоматолошки ординации',
                 'Помалку администрација. Повеќе насмевки.',
                 'Термини, пациенти и организација на ординацијата — на едно место.',
               ]
-            : ['мојЗабар', 'Менаџмент на стоматолошки ординации'];
+            : ['МојаОрдинација', 'Менаџмент на стоматолошки ординации'];
           for (const text of visibleBrandCopy) {
             await expect(brandPanel.getByText(text, { exact: true })).toBeVisible();
           }
@@ -54,7 +69,7 @@ test.describe('Login', () => {
           await expect(page.getByTestId('login-submit')).toBeVisible();
           expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
           if (desktop) {
-            await expect(brandPanel.locator('img')).toHaveAttribute('src', '/app/brand-mark-white.svg');
+            await expect(brandPanel.locator('img')).toHaveAttribute('src', '/app/brand-icon.png?v=calendar-smile-png');
             await expect(brandPanel).toHaveCSS('color', 'rgb(255, 255, 255)');
             expect(await brandPanel.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain('linear-gradient');
             await expect(brandPanel.locator('.login-calendar-pattern')).toHaveCount(2);
@@ -114,8 +129,8 @@ test.describe('Login', () => {
         }, asset);
         expect(dimensions).toEqual({ width, height });
       }
-      await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/app/favicon.svg');
-      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/app/brand-social.png');
+      await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/app/favicon.svg?v=calendar-smile-png');
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/app/brand-social.png?v=calendar-smile-png');
     });
 
     test('shows the custom practice instead of product branding in the sidebar and resets the title after logout', async ({ page, context }) => {
