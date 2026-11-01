@@ -21,6 +21,7 @@ Notable product and engineering changes to МојаОрдинација, newest 
 - README reorganized into current product/setup guidance, a separate [operations guide](docs/Operations.md) and this changelog.
 - Documentation now distinguishes supported FZO patient imports and predefined category colors from unsupported general restores or customizable categories/colors. Notifications and automated reminders are not advertised as supported features.
 - Updated two stale branding tests to check the desktop calendar header and mobile navigation instead of expecting branding in the compact desktop sidebar. No application UI changed; E2E tests were not rerun for this correction.
+- Fixed the About calendar-caption test's relative `has` locator after adding the mobile preview; both affected Macedonian/English cases passed in a focused rerun.
 
 ### Verification
 

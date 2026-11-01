@@ -45,7 +45,10 @@ test.describe('Login', () => {
       const image = page.getByTestId('about-features').locator('img[src$="about-calendar.png"]');
       await expect(image).toHaveAttribute('src', '/app/about-calendar.png');
       await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(1262);
-      await expect(page.locator('figure').filter({ has: image }).locator('figcaption')).toContainText(locale === 'mk' ? 'измислени демо податоци' : 'fictional demo data');
+      const calendarFigure = page.getByTestId('about-features').locator('figure').filter({
+        has: page.locator('img[src$="about-calendar.png"]'),
+      });
+      await expect(calendarFigure.locator('figcaption')).toContainText(locale === 'mk' ? 'измислени демо податоци' : 'fictional demo data');
       const mobileImage = page.getByTestId('about-features').locator('img[src$="about-mobile.png"]');
       await mobileImage.scrollIntoViewIfNeeded();
       await expect.poll(() => mobileImage.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(390);
