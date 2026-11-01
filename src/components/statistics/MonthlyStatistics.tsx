@@ -119,10 +119,11 @@ export function MonthlyStatistics({ navigation, refreshTrigger = 0 }: Readonly<M
     },
   ] : [];
 
-  // Shares of the month's unique patients; returning is the complement so the two always add up to 100%.
-  const totalPatients = current?.uniquePatients ?? 0;
-  const newShare = totalPatients ? Math.round(((current?.newPatients ?? 0) / totalPatients) * 100) : 0;
-  const returningShare = totalPatients ? 100 - newShare : 0;
+  // Shares use completed visits; each patient is classified once as new or returning.
+  const totalPatients = current?.visitedPatients ?? 0;
+  const newShare = totalPatients ? ((current?.newPatients ?? 0) / totalPatients) * 100 : 0;
+  const returningShare = totalPatients ? ((current?.returningPatients ?? 0) / totalPatients) * 100 : 0;
+  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
   const sectionTitle = 'text-sm font-semibold tracking-tight text-foreground md:text-base md:text-heading';
   const cardClass = 'border-border/70 shadow-none';
@@ -206,35 +207,95 @@ export function MonthlyStatistics({ navigation, refreshTrigger = 0 }: Readonly<M
             ))}
           </section>
 
-          <section aria-labelledby="statistics-patients-title" className="space-y-2.5">
-            <h3 id="statistics-patients-title" className={sectionTitle}>{t('statistics.patients')}</h3>
-            <div className="grid grid-cols-2 gap-3 lg:max-w-xl lg:gap-4" data-testid="statistics-patients">
-              {[
-                { id: 'new', label: t('statistics.newPatients'), icon: UserPlus, value: current.newPatients, share: newShare },
-                { id: 'returning', label: t('statistics.returningPatients'), icon: UserCheck, value: current.returningPatients, share: returningShare },
-              ].map(({ icon: Icon, ...item }) => (
-                <Card key={item.id} className={cardClass} data-testid={`patients-${item.id}`}>
-                  <CardContent className="flex items-start gap-3 p-3.5 md:p-4">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="text-xs leading-snug text-muted-foreground">{item.label}</div>
-                      <div className="flex flex-wrap items-baseline gap-x-1.5">
-                        <span className="text-xl font-semibold leading-tight text-foreground tabular-nums" data-testid="patients-value">{item.value}</span>
-                        <span className="text-xs font-medium text-muted-foreground tabular-nums" aria-hidden="true">·</span>
-                        <span className="text-xs font-medium text-muted-foreground tabular-nums" data-testid="patients-percent">{item.share}%</span>
-                        <span className="sr-only">{t('statistics.patientShare', { count: item.value, total: totalPatients })}</span>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.55fr)] lg:gap-4">
+            <section aria-labelledby="statistics-utilization-title">
+              <Card className={cn(cardClass, 'h-full')} data-testid="statistics-utilization">
+                <CardContent className="flex h-full flex-col justify-center gap-3.5 p-4 md:p-5">
+                  <h3 id="statistics-utilization-title" className={sectionTitle}>{t('statistics.utilization')}</h3>
+                  {current.utilizationPercent === null ||
+                    current.utilizationBookedMinutes === null ||
+                    current.utilizationAvailableMinutes === null ? (
+                    <p className="text-sm text-muted-foreground" data-testid="utilization-unavailable">
+                      {t('statistics.utilizationUnavailable')}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                        <span className="text-3xl font-semibold leading-none tracking-tight text-emerald-600 tabular-nums dark:text-emerald-400" data-testid="utilization-percent">
+                          {formatPercent(current.utilizationPercent)}
+                        </span>
+                        <span className="text-sm font-medium text-muted-foreground tabular-nums" data-testid="utilization-hours">
+                          {t('statistics.utilizationHours', {
+                            booked: formatHours(current.utilizationBookedMinutes),
+                            available: formatHours(current.utilizationAvailableMinutes),
+                          })}
+                        </span>
                       </div>
-                      <div className="h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                        <div className="h-full rounded-full bg-primary/60" style={{ width: `${item.share}%` }} />
+                      <div
+                        role="progressbar"
+                        aria-label={t('statistics.utilization')}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.min(100, Math.max(0, current.utilizationPercent))}
+                        aria-valuetext={formatPercent(current.utilizationPercent)}
+                        className="h-2.5 overflow-hidden rounded-full bg-muted"
+                      >
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-[width]"
+                          style={{ width: `${Math.min(100, Math.max(0, current.utilizationPercent))}%` }}
+                        />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+
+            <section aria-labelledby="statistics-patients-title" className="space-y-2.5">
+              <h3 id="statistics-patients-title" className={sectionTitle}>{t('statistics.patients')}</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" data-testid="statistics-patients">
+                {[
+                  { id: 'new', label: t('statistics.newPatients'), icon: UserPlus, value: current.newPatients, share: newShare },
+                  { id: 'returning', label: t('statistics.returningPatients'), icon: UserCheck, value: current.returningPatients, share: returningShare },
+                ].map(({ icon: Icon, ...item }) => (
+                  <Card key={item.id} className={cardClass} data-testid={`patients-${item.id}`}>
+                    <CardContent className="flex items-start gap-3 p-3.5 md:p-4">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="text-xs leading-snug text-muted-foreground">{item.label}</div>
+                        <div className="flex flex-wrap items-baseline gap-x-1.5">
+                          <span className="text-xl font-semibold leading-tight text-foreground tabular-nums" data-testid="patients-value">{item.value}</span>
+                          <span className="text-xs font-medium text-muted-foreground tabular-nums" aria-hidden="true">·</span>
+                          <span className="text-xs font-medium text-muted-foreground tabular-nums" data-testid="patients-percent">{formatPercent(item.share)}</span>
+                          <span className="sr-only">{t('statistics.patientShare', { count: item.value, total: totalPatients })}</span>
+                        </div>
+                        <div
+                          role="progressbar"
+                          aria-label={item.label}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={item.share}
+                          aria-valuetext={formatPercent(item.share)}
+                          className="h-1 overflow-hidden rounded-full bg-muted"
+                        >
+                          <div className="h-full rounded-full bg-primary/70" style={{ width: `${item.share}%` }} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-4 py-3 sm:col-span-2 xl:col-span-1 xl:flex-col xl:items-start xl:justify-center xl:border-y-0 xl:border-r-0 xl:border-l xl:rounded-none xl:bg-transparent xl:py-2">
+                  <span className="text-xs font-medium text-muted-foreground">{t('statistics.returningRate')}</span>
+                  <span className="text-2xl font-semibold leading-none tracking-tight text-emerald-600 tabular-nums dark:text-emerald-400" data-testid="patients-returning-rate">
+                    {formatPercent(returningShare)}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('statistics.patientHistoryScope')}</p>
+            </section>
+          </div>
 
           <section aria-labelledby="statistics-by-type-title" className="space-y-2.5">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">

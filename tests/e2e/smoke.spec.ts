@@ -236,6 +236,7 @@ test.describe('Smoke — Application Loads', () => {
     await page.reload();
     await expect(page.getByTestId('desktop-sidebar')).toHaveAttribute('data-collapsed', 'true');
     await page.getByTestId('nav-settings').click();
+    await page.getByTestId('settings-tab-profile').click();
     await expect(page.getByTestId('settings-sidebar-collapsed')).toBeChecked();
     await page.getByTestId('settings-sidebar-collapsed').click();
     await expect(page.getByTestId('desktop-sidebar')).toHaveAttribute('data-collapsed', 'false');
@@ -256,6 +257,7 @@ test.describe('Smoke — Application Loads', () => {
     }));
     await page.goto('/app/');
     await page.getByTestId('nav-settings').click();
+    await page.getByTestId('settings-tab-appointments').click();
     await expect(page.getByTestId('settings-type-duration-procedure')).toContainText('30');
     await expect(page.getByTestId('settings-type-duration-prosthetics-orthodontics')).toContainText('60');
     await page.getByTestId('settings-type-duration-procedure').click();
@@ -310,6 +312,31 @@ test.describe('Smoke — Application Loads', () => {
     }
   });
 
+  test('settings groups keep existing tools accessible', async ({ pageWithPatients: page }) => {
+    await page.route('**/api/health/details', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, dataDir: 'test', patientsCount: 2, appointmentsCount: 0 }),
+    }));
+    await page.goto('/app/');
+    await page.getByTestId('nav-settings').click();
+
+    await expect(page.getByTestId('practice-name-input')).toBeVisible();
+    await page.getByTestId('settings-tab-working-hours').click();
+    await expect(page.getByTestId('working-day-toggle-mon')).toBeVisible();
+    await page.getByTestId('settings-tab-appointments').click();
+    await expect(page.getByTestId('settings-type-duration-procedure')).toBeVisible();
+    await page.getByTestId('settings-tab-notifications').click();
+    await expect(page.getByLabel(/Потсетник истиот ден|Same day reminder/)).toBeVisible();
+    await expect(page.getByText(/Менаџер за известувања|Notification Manager/)).toBeVisible();
+    await page.getByTestId('settings-tab-profile').click();
+    await expect(page.getByTestId('settings-sidebar-collapsed')).toBeVisible();
+    await page.getByTestId('settings-tab-system-data').click();
+    await expect(page.getByTestId('patient-import-panel')).toBeVisible();
+    await expect(page.getByTestId('patient-merge-panel')).toBeVisible();
+    await expect(page.getByTestId('api-health-status')).toHaveText(/Достапен|Online/);
+  });
+
   test('patients page displays seeded patients', async ({
     pageWithPatients: page,
   }) => {
@@ -329,6 +356,49 @@ test.describe('Smoke — Application Loads', () => {
     await expect(page.getByTestId('scheduler-grid')).toBeVisible();
     // At least the start-of-day slot should exist
     await expect(page.getByTestId('time-slot-8:00').first()).toBeVisible();
+  });
+
+  test('calendar grid contrast stays aligned without viewport overflow', async ({ pageWithPatients: page }) => {
+    await page.goto('/app/');
+    for (const width of [1440, 1920, 1366, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.getByTestId('nav-scheduler').click();
+      await expect(page.getByTestId('scheduler-grid')).toBeVisible();
+
+      const lineColors = await page.evaluate(() => {
+        const hour = document.querySelector<HTMLElement>(
+          '.weekly-scheduler .rs__cell:has(> div[data-hour-boundary="true"])',
+        );
+        const halfHour = document.querySelector<HTMLElement>(
+          '.weekly-scheduler .rs__cell:has(> div[data-half-hour-boundary="true"])',
+        );
+        const day = document.querySelector<HTMLElement>(
+          '.weekly-scheduler .rs__cell:not(.rs__time):has(> div[data-slot-time])',
+        );
+        const timeColumn = document.querySelector<HTMLElement>('.weekly-scheduler .rs__cell.rs__time');
+        const today = document.querySelector<HTMLElement>('.weekly-scheduler .rs__cell.rs__today_cell');
+        if (!hour || !halfHour || !day || !timeColumn || !today) return null;
+        return {
+          hour: getComputedStyle(hour).borderBottomColor,
+          halfHour: getComputedStyle(halfHour).borderBottomColor,
+          daySeparator: getComputedStyle(day).borderRightColor,
+          timeBackground: getComputedStyle(timeColumn).backgroundColor,
+          todayBackground: getComputedStyle(today).backgroundColor,
+        };
+      });
+      expect(lineColors).not.toBeNull();
+      expect(lineColors?.hour).not.toBe(lineColors?.halfHour);
+      expect(lineColors?.daySeparator).not.toBe(lineColors?.halfHour);
+      expect(lineColors?.timeBackground).not.toBe('rgba(0, 0, 0, 0)');
+      expect(lineColors?.todayBackground).not.toBe('rgba(0, 0, 0, 0)');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    }
+
+    for (const width of [390, 375]) {
+      await page.setViewportSize({ width, height: 812 });
+      await expect(page.getByTestId('mobile-agenda')).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    }
   });
 
   test('settings page allows saving practice name', async ({

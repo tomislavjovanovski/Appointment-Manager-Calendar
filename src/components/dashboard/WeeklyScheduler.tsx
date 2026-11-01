@@ -599,6 +599,8 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                       {...(testId ? { 'data-testid': testId } : {})}
                       data-slot-day={start?.getDay()}
                       data-slot-time={label}
+                      data-hour-boundary={end?.getMinutes() === 0 ? 'true' : undefined}
+                      data-half-hour-boundary={end?.getMinutes() === 30 ? 'true' : undefined}
                       data-working-day={isEnabled ? 'true' : 'false'}
                       data-blocked={isBlocked ? 'true' : 'false'}
                       aria-disabled={isEnabled ? 'false' : 'true'}

@@ -112,6 +112,7 @@ test.describe('Backend Core Persistence', () => {
     try {
       await page.goto('/');
       await page.getByTestId('nav-settings').click();
+      await page.getByTestId('settings-tab-working-hours').click();
       await page.getByTestId('settings-start-time-input').fill('07:30');
       await page.getByTestId('settings-end-time-input').fill('16:30');
       await page.getByTestId('save-settings-btn').click();

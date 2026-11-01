@@ -15,21 +15,21 @@ const appointment = (id: string, patientId: string, start: string, end: string, 
 });
 
 const APPOINTMENTS = [
-  appointment('a1', 'alice', '2026-09-10T09:00:00', '2026-09-10T10:00:00', 'consultation'),
-  appointment('a2', 'alice', '2026-10-05T09:00:00', '2026-10-05T09:30:00', 'follow-up'),
-  appointment('a3', 'bob', '2026-10-05T10:00:00', '2026-10-05T11:00:00', 'procedure'),
-  appointment('a4', 'carol', '2026-10-07T09:00:00', '2026-10-07T10:30:00', 'prosthetics-orthodontics'),
+  appointment('a1', 'alice', '2026-09-10T09:00:00', '2026-09-10T10:00:00', 'consultation', 'completed'),
+  appointment('a2', 'alice', '2026-10-05T09:00:00', '2026-10-05T09:30:00', 'follow-up', 'completed'),
+  appointment('a3', 'bob', '2026-10-05T10:00:00', '2026-10-05T11:00:00', 'procedure', 'completed'),
+  appointment('a4', 'carol', '2026-10-07T09:00:00', '2026-10-07T10:30:00', 'prosthetics-orthodontics', 'completed'),
   appointment('a5', 'bob', '2026-10-20T09:00:00', '2026-10-20T09:30:00', 'follow-up'),
   appointment('a6', 'dave', '2026-10-21T09:00:00', '2026-10-21T10:00:00', 'consultation', 'cancelled'),
 ];
 
 const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
 
-async function openStatistics(page: Page) {
+async function openStatistics(page: Page, appointments = APPOINTMENTS, settings: Record<string, unknown> = SETTINGS) {
   await page.clock.setFixedTime(new Date('2026-10-15T10:00:00'));
-  await page.route('**/api/appointments', (route) => route.fulfill(json(APPOINTMENTS)));
+  await page.route('**/api/appointments', (route) => route.fulfill(json(appointments)));
   await page.route('**/api/patients', (route) => route.fulfill(json([])));
-  await page.route('**/api/settings', (route) => route.fulfill(json(SETTINGS)));
+  await page.route('**/api/settings', (route) => route.fulfill(json(settings)));
   await page.goto('/app/');
 }
 
@@ -56,6 +56,7 @@ async function expectPatients(page: Page, [newPatients, newPercent]: string[], [
   await expect(page.getByTestId('patients-new').getByTestId('patients-percent')).toHaveText(newPercent);
   await expect(page.getByTestId('patients-returning').getByTestId('patients-value')).toHaveText(returning);
   await expect(page.getByTestId('patients-returning').getByTestId('patients-percent')).toHaveText(returningPercent);
+  await expect(page.getByTestId('patients-returning-rate')).toHaveText(returningPercent);
 }
 
 test.describe('Monthly statistics', () => {
@@ -67,8 +68,10 @@ test.describe('Monthly statistics', () => {
     await expect(card(page, 'days-worked').getByTestId('stat-value')).toHaveText('3 од 22');
     await expect(card(page, 'appointments').getByTestId('stat-value')).toHaveText('4');
     await expect(card(page, 'patients').getByTestId('stat-value')).toHaveText('3');
-    await expectPatients(page, ['2', '67%'], ['1', '33%']);
+    await expectPatients(page, ['2', '66.7%'], ['1', '33.3%']);
     await expect(card(page, 'hours-worked').getByTestId('stat-value')).toHaveText('3 ч 30 мин');
+    await expect(page.getByTestId('utilization-percent')).toHaveText('14.6%');
+    await expect(page.getByTestId('utilization-hours')).toHaveText('3 ч 30 мин од 24 ч');
     await expectChange(card(page, 'days-worked').getByTestId('stat-change'), '+2');
     await expectChange(card(page, 'appointments').getByTestId('stat-change'), '+3');
     await expectChange(card(page, 'patients').getByTestId('stat-change'), '+2');
@@ -91,17 +94,43 @@ test.describe('Monthly statistics', () => {
     await page.getByTestId('statistics-prev-month').click();
     await expect(page.getByTestId('statistics-month-label')).toHaveText('септември 2026');
     await expect(card(page, 'days-worked').getByTestId('stat-value')).toHaveText('1 од 22');
-    await expectPatients(page, ['1', '100%'], ['0', '0%']);
+    await expectPatients(page, ['1', '100.0%'], ['0', '0.0%']);
+    await expect(page.getByTestId('utilization-percent')).toHaveText('12.5%');
     await expectChange(card(page, 'appointments').getByTestId('stat-change'), '+1');
     await expectTypeRow(page, 'consultation', ['1', '+1', '1 ч', '+1 ч']);
 
     await page.getByTestId('statistics-prev-month').click();
     await expect(page.getByTestId('statistics-empty')).toBeVisible();
-    await expectPatients(page, ['0', '0%'], ['0', '0%']);
+    await expectPatients(page, ['0', '0.0%'], ['0', '0.0%']);
+    await expect(page.getByTestId('utilization-percent')).toHaveText('0.0%');
 
     await page.getByTestId('statistics-this-month').click();
     await expect(page.getByTestId('statistics-month-label')).toHaveText('октомври 2026');
     await expect(page.getByTestId('statistics-this-month')).toHaveCount(0);
+  });
+
+  test('uses completed visits for patient categories and avoids double-counting utilization', async ({ page }) => {
+    const appointments = [
+      appointment('prior-completed', 'returning', '2026-09-10T09:00:00', '2026-09-10T10:00:00', 'consultation', 'completed'),
+      appointment('returning-visit', 'returning', '2026-10-05T09:00:00', '2026-10-05T10:00:00', 'consultation', 'completed'),
+      appointment('overlap', 'returning', '2026-10-05T09:30:00', '2026-10-05T10:30:00', 'procedure'),
+      appointment('new-prior-scheduled', 'new', '2026-09-10T10:00:00', '2026-09-10T11:00:00', 'consultation'),
+      appointment('new-visit', 'new', '2026-10-05T10:30:00', '2026-10-05T11:30:00', 'consultation', 'completed'),
+      appointment('scheduled-only', 'scheduled-only', '2026-10-05T12:00:00', '2026-10-05T13:00:00', 'consultation'),
+      appointment('cancelled-only', 'cancelled-only', '2026-10-06T09:00:00', '2026-10-06T10:00:00', 'consultation', 'cancelled'),
+      appointment('no-show-only', 'no-show-only', '2026-10-07T09:00:00', '2026-10-07T10:00:00', 'consultation', 'no-show'),
+      appointment('non-working-day', 'weekend-visit', '2026-10-10T09:00:00', '2026-10-10T10:00:00', 'consultation', 'completed'),
+    ];
+    const settings = {
+      ...SETTINGS,
+      blockedSlots: [{ id: 'break', startTime: '2026-10-05T09:30:00', endTime: '2026-10-05T10:00:00' }],
+    };
+    await openStatistics(page, appointments, settings);
+    await page.getByTestId('nav-statistics').click();
+
+    await expectPatients(page, ['2', '66.7%'], ['1', '33.3%']);
+    await expect(page.getByTestId('utilization-hours')).toHaveText('3 ч од 7 ч 30 мин');
+    await expect(page.getByTestId('utilization-percent')).toHaveText('40.0%');
   });
 
   test('fits the mobile screen and is reachable from the mobile menu', async ({ page }) => {

@@ -21,6 +21,59 @@ test.describe('Login', () => {
     await expect(page.getByTestId('nav-patients')).toHaveCount(0);
   });
 
+  for (const locale of ['mk', 'en'] as const) {
+    test(`presents nine verified dental features from login in ${locale} on mobile, tablet and desktop`, async ({ page }) => {
+      await page.addInitScript((language) => localStorage.setItem('medical.locale', language), locale);
+      await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
+      const protectedRequests: string[] = [];
+      page.on('request', (request) => {
+        if (/\/api\/(patients|appointments|settings)/.test(request.url())) protectedRequests.push(request.url());
+      });
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto('/app/');
+      const label = locale === 'mk' ? 'За нас и можности' : 'About & features';
+      await page.getByRole('link', { name: label, exact: true }).last().click();
+      await expect(page).toHaveURL(/\/app\/about$/);
+      await expect(page.getByRole('heading', { level: 1 })).toContainText(
+        locale === 'mk' ? 'Едноставно управување со модерна стоматолошка ординација.' : 'Simple management for a modern dental practice.',
+      );
+      const grid = page.getByTestId('about-feature-grid');
+      await expect(grid.locator('li')).toHaveCount(9);
+      await expect(grid).toContainText('.xls');
+      await expect(grid).toContainText('.xml');
+      await expect(grid).not.toContainText(/reminder|notification|потсет|известува/i);
+      const image = page.getByTestId('about-features').locator('img');
+      await expect(image).toHaveAttribute('src', '/app/about-calendar.png');
+      await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(1262);
+      await expect(page.locator('figcaption')).toContainText(locale === 'mk' ? 'измислени демо податоци' : 'fictional demo data');
+      for (const width of [375, 390, 768, 1024, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        const columns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+        expect(columns).toBe(width < 640 ? 1 : width < 1024 ? 2 : 3);
+      }
+      await page.evaluate(() => document.documentElement.classList.add('dark'));
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await page.getByRole('link', { name: locale === 'mk' ? 'Назад на најава' : 'Back to sign in', exact: true }).last().click();
+      await expect(page.getByTestId('login-form')).toBeVisible();
+      expect(protectedRequests).toEqual([]);
+    });
+  }
+
+  test('keeps the about page reachable directly and from public pages, including with a session', async ({ page, context }) => {
+    await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
+    await page.goto('/app/about/');
+    await expect(page.getByTestId('about-features')).toBeVisible();
+    await page.getByRole('link', { name: 'Најчести прашања', exact: true }).click();
+    await page.getByRole('link', { name: 'За нас и можности', exact: true }).click();
+    await expect(page.getByTestId('about-features')).toBeVisible();
+    await mockApp(context);
+    await page.route('**/api/auth/me', (route) => route.fulfill(json({ user: E2E_USER, csrfToken: 't' })));
+    await page.goto('/app/about');
+    await expect(page.getByTestId('about-feature-grid').locator('li')).toHaveCount(9);
+    await expect(page.getByTestId('login-form')).toHaveCount(0);
+  });
+
   test.describe('МојаОрдинација branding', () => {
     test('keeps the Cyrillic wordmark and shows English product copy in the English interface', async ({ page }) => {
       await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));

@@ -2,11 +2,13 @@ import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import BrandLogo from '@/components/brand/BrandLogo';
+import AboutFeatures from '@/components/brand/AboutFeatures';
 import brand from '@/config/brand.json';
 import { readRememberedLocale } from '@/i18n/storedLocale';
 import { translate } from '@/i18n/dictionary';
+import { cn } from '@/lib/utils';
 
-const publicPaths = ['/faq', '/privacy', '/terms', '/contact'] as const;
+const publicPaths = ['/about', '/faq', '/privacy', '/terms', '/contact'] as const;
 type PublicPath = (typeof publicPaths)[number];
 
 function getPath(pathname: string): PublicPath {
@@ -28,7 +30,7 @@ export default function PublicInfoPage() {
 
   return (
     <main className="relative flex min-h-[100dvh] items-center justify-center bg-muted/40 px-3 py-3 sm:px-6 sm:py-4">
-      <section className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft lg:min-h-[650px]">
+      <section className={cn('relative flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft lg:min-h-[650px]', path === '/about' && 'max-w-6xl')}>
         <div className="flex flex-wrap items-center justify-between gap-4 p-6 xl:p-8">
           <Link to="/" aria-label={t('public.backToLogin')} className="min-w-0">
             <BrandLogo variant="horizontal" size={44} wordmarkClassName="text-foreground" />
@@ -39,7 +41,7 @@ export default function PublicInfoPage() {
           </Link>
         </div>
 
-        <article className="flex-1 p-6 xl:p-8">
+        {path === '/about' ? <AboutFeatures locale={locale} /> : <article className="flex-1 p-6 xl:p-8">
           <div className="flex items-start gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               {path === '/contact' ? <Mail className="h-5 w-5" aria-hidden="true" /> : <ShieldCheck className="h-5 w-5" aria-hidden="true" />}
@@ -58,11 +60,12 @@ export default function PublicInfoPage() {
             <h2 className="pt-2 text-lg font-semibold text-foreground">{t(`public.${contentKey}.sectionTitle`)}</h2>
             <p>{t(`public.${contentKey}.sectionText`)}</p>
           </div>
-        </article>
+        </article>}
 
         <footer className="border-t border-border p-6 xl:p-8">
           <nav aria-label={t('public.footerLabel')} className="flex flex-wrap justify-start gap-x-4 gap-y-2 text-xs text-muted-foreground">
             {[
+              ['about', t('public.about.link')],
               ['faq', t('public.faq.link')],
               ['privacy', t('public.privacy.link')],
               ['terms', t('public.terms.link')],

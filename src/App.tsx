@@ -23,6 +23,7 @@ function AppRoutes() {
         <Sonner />
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/about" element={<PublicInfoPage />} />
           <Route path="/faq" element={<PublicInfoPage />} />
           <Route path="/privacy" element={<PublicInfoPage />} />
           <Route path="/terms" element={<PublicInfoPage />} />
@@ -38,7 +39,7 @@ function AppRoutes() {
 function AuthGate() {
   const { status } = useAuth();
   const location = useLocation();
-  const publicInfoPath = ['/faq', '/privacy', '/terms', '/contact'].includes(location.pathname);
+  const publicInfoPath = ['/about', '/faq', '/privacy', '/terms', '/contact'].includes(location.pathname.replace(/\/$/, ''));
 
   if (status === "authenticated") {
     return (
@@ -48,9 +49,7 @@ function AuthGate() {
     );
   }
 
-  if (status !== "authenticated") {
-    return publicInfoPath ? <PublicInfoPage /> : <Login />;
-  }
+  return publicInfoPath ? <PublicInfoPage /> : <Login />;
 }
 
 const App = () => (

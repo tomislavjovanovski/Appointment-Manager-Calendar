@@ -41,6 +41,12 @@ All colors MUST be HSL.
     --border: 214 24% 82%;
     --input: 214 24% 78%;
     --calendar-grid: 214 20% 65%;
+    --calendar-grid-hour: 214 28% 84%;
+    --calendar-grid-half: 216 38% 93%;
+    --calendar-grid-day: 214 28% 87%;
+    --calendar-grid-outer: 214 32% 83%;
+    --calendar-time-background: 210 40% 98%;
+    --calendar-today-background: 224 100% 97%;
     --ring: 224 76% 48%;
 
     --medical-blue: 212 100% 47%;
@@ -114,6 +120,12 @@ All colors MUST be HSL.
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --calendar-grid: 215 20% 45%;
+    --calendar-grid-hour: 215 20% 38%;
+    --calendar-grid-half: 215 20% 24%;
+    --calendar-grid-day: 215 20% 30%;
+    --calendar-grid-outer: 215 20% 38%;
+    --calendar-time-background: 217.2 32.6% 12%;
+    --calendar-today-background: 224 35% 15%;
     --ring: 212.7 26.8% 83.9%;
     --sidebar-background: 215 30% 12%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -258,6 +270,32 @@ All colors MUST be HSL.
     .weekly-scheduler div:has(> .rs__cell),
     .weekly-scheduler .rs__cell {
       border-color: hsl(var(--border) / 0.75) !important;
+    }
+
+    .weekly-scheduler {
+      border: 1px solid hsl(var(--calendar-grid-outer));
+    }
+
+    .weekly-scheduler .rs__cell {
+      border-bottom-color: hsl(var(--calendar-grid-half)) !important;
+      border-right-color: hsl(var(--calendar-grid-day)) !important;
+    }
+
+    .weekly-scheduler .rs__cell:has(> div[data-hour-boundary="true"]) {
+      border-bottom-color: hsl(var(--calendar-grid-hour)) !important;
+    }
+
+    .weekly-scheduler .rs__cell.rs__time {
+      border-right-color: hsl(var(--calendar-grid-hour)) !important;
+      background-color: hsl(var(--calendar-time-background)) !important;
+    }
+
+    .weekly-scheduler .rs__header.rs__time {
+      background-color: hsl(var(--calendar-time-background)) !important;
+    }
+
+    .weekly-scheduler .rs__cell.rs__today_cell {
+      background-color: hsl(var(--calendar-today-background)) !important;
     }
 
     .weekly-scheduler .rs__time .MuiTypography-root {

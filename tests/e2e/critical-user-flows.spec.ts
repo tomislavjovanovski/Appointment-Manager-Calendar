@@ -104,6 +104,7 @@ test.describe('Critical User Flows', () => {
     pageClean: page,
   }) => {
     await page.getByTestId('nav-settings').click();
+    await page.getByTestId('settings-tab-working-hours').click();
 
     const saturdayToggle = page.getByTestId('working-day-toggle-sat');
     const sundayToggle = page.getByTestId('working-day-toggle-sun');
@@ -130,6 +131,7 @@ test.describe('Critical User Flows', () => {
     await expect(page.getByTestId('booking-dialog')).not.toBeVisible();
 
     await page.getByTestId('nav-settings').click();
+    await page.getByTestId('settings-tab-working-hours').click();
     await saturdayToggle.click();
     await page.getByTestId('save-settings-btn').click();
     await expect(page.getByTestId('toast-success')).toBeVisible();
@@ -254,7 +256,9 @@ test.describe('Critical User Flows', () => {
   }) => {
     await page.getByTestId('nav-settings').click();
 
+    await page.getByTestId('settings-tab-practice').click();
     await bookingHelper.selectRadixOption(page, 'settings-locale-select', 'settings-locale-option-mk');
+    await page.getByTestId('settings-tab-working-hours').click();
     await page.getByTestId('settings-start-time-input').fill('07:00');
     await page.getByTestId('settings-end-time-input').fill('16:00');
     await bookingHelper.selectRadixOption(
@@ -273,6 +277,7 @@ test.describe('Critical User Flows', () => {
 
     await page.reload();
     await page.getByTestId('nav-settings').click();
+    await page.getByTestId('settings-tab-working-hours').click();
 
     await expect(page.getByTestId('settings-start-time-input')).toHaveValue('07:00');
     await expect(page.getByTestId('settings-end-time-input')).toHaveValue('16:00');

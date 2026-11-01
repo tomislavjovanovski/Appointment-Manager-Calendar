@@ -66,7 +66,7 @@ export function PatientAppointmentHistory({
             return (
               <li
                 key={appointment.id}
-                className="grid min-w-0 grid-cols-[minmax(0,1fr)_1px_minmax(0,2fr)] items-stretch gap-3 rounded-lg border border-slate-200 border-l-4 bg-slate-50 px-3 py-2.5"
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)_1px_minmax(0,2fr)] items-stretch gap-3 rounded-lg border border-border/70 border-l-4 bg-muted/30 px-3 py-2.5"
                 style={{ borderLeftColor: appointmentType?.color ?? '#64748b' }}
                 data-testid="patient-history-entry"
               >

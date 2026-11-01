@@ -167,6 +167,7 @@ export default function Login() {
             </div>
             <nav aria-label={t('public.footerLabel')} className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-blue-100/90">
               {[
+                ['about', t('public.about.link')],
                 ['faq', t('public.faq.link')],
                 ['privacy', t('public.privacy.link')],
                 ['terms', t('public.terms.link')],
@@ -297,6 +298,9 @@ export default function Login() {
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {t('auth.secureAccess')}
           </div>
+          <Link to="/about" className="mt-3 inline-flex min-h-10 items-center justify-center gap-1.5 text-sm font-medium text-primary hover:underline lg:justify-start">
+            {t('public.about.link')}<ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
       </section>
     </main>

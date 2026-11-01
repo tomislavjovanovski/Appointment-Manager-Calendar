@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Clock, Calendar, Save, Mail, MessageSquare, Bell, Puzzle, Database, Activity, RefreshCw, Server, Trash2, Building2, Languages, type LucideIcon } from 'lucide-react';
+import { Settings, Clock, Calendar, Save, Mail, MessageSquare, Bell, Database, Activity, RefreshCw, Server, Trash2, Building2, Languages, type LucideIcon } from 'lucide-react';
 import { AppointmentSettings } from '@/types/appointment';
 import { settingsStorage } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -234,10 +234,12 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
   };
 
   const tabs = [
-    { value: 'general', icon: Settings, label: t('settings.tabGeneral') },
-    { value: 'integration', icon: Puzzle, label: t('settings.tabIntegration') },
-    { value: 'data', icon: Database, label: t('settings.tabData') },
-    { value: 'api-health', icon: Activity, label: t('settings.tabApiHealth') },
+    { value: 'practice', icon: Building2, label: t('settings.tabPractice') },
+    { value: 'working-hours', icon: Clock, label: t('settings.tabWorkingHours') },
+    { value: 'appointments', icon: Calendar, label: t('settings.tabAppointments') },
+    { value: 'notifications', icon: Bell, label: t('settings.tabNotifications') },
+    { value: 'profile', icon: Settings, label: t('settings.tabProfile') },
+    { value: 'system-data', icon: Database, label: t('settings.tabSystemData') },
   ];
 
   const workingDaysOrdered = [...DAYS_OF_WEEK].sort((a, b) => ((a.id + 6) % 7) - ((b.id + 6) % 7));
@@ -257,13 +259,15 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
       <div className="ml-auto flex items-center justify-end sm:pt-0.5">{navigation}</div>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-4 sm:space-y-6">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 shadow-sm lg:grid-cols-4">
+      <Tabs defaultValue="practice" className="space-y-4 sm:space-y-6">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 shadow-sm sm:grid-cols-4">
           {tabs.map(({ value, icon: Icon, label }) => (
             <TabsTrigger
               key={value}
               value={value}
+              data-testid={`settings-tab-${value}`}
               className="flex h-10 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-xs data-[state=active]:shadow-sm sm:text-sm"
+              title={label}
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="truncate">{label}</span>
@@ -271,8 +275,8 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
           ))}
         </TabsList>
 
-        {/* General */}
-        <TabsContent value="general" className="mt-0 space-y-4 sm:space-y-6">
+        <TabsContent value="practice" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsGroupHeading title={t('settings.tabPractice')} description={t('settings.groupPracticeDescription')} />
           <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             <SettingsSection icon={Building2} title={t('settings.practiceSection')} description={t('settings.practiceBrandHint')}>
               <div className="space-y-2">
@@ -338,7 +342,10 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
               </Select>
             </SettingsSection>
           </div>
+        </TabsContent>
 
+        <TabsContent value="profile" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsGroupHeading title={t('settings.tabProfile')} description={t('settings.groupProfileDescription')} />
           <SettingsSection icon={Settings} title={t('settings.desktopSidebar')} description={t('settings.desktopSidebarHint')}>
             <div className="flex items-center justify-between gap-4">
               <Label htmlFor="desktop-sidebar-collapsed">{t('settings.collapseSidebar')}</Label>
@@ -355,7 +362,10 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
               />
             </div>
           </SettingsSection>
+        </TabsContent>
 
+        <TabsContent value="appointments" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsGroupHeading title={t('settings.tabAppointments')} description={t('settings.groupAppointmentsDescription')} />
           <SettingsSection icon={Clock} title={t('settings.typeDurations')} description={t('settings.typeDurationsHint')}>
             <p className="text-sm text-muted-foreground">{t('settings.defaultAppointmentTypeHint')}</p>
             <RadioGroup
@@ -404,7 +414,11 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
               ))}
             </RadioGroup>
           </SettingsSection>
+          <GoogleCalendarSync />
+        </TabsContent>
 
+        <TabsContent value="working-hours" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsGroupHeading title={t('settings.tabWorkingHours')} description={t('settings.groupWorkingHoursDescription')} />
           <SettingsSection icon={Clock} title={t('settings.workingHours')} contentClassName="space-y-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               <div className="space-y-2">
@@ -521,8 +535,8 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
           </SettingsSection>
         </TabsContent>
 
-        {/* Integration */}
-        <TabsContent value="integration" className="mt-0 space-y-4 sm:space-y-6">
+        <TabsContent value="notifications" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsGroupHeading title={t('settings.tabNotifications')} description={t('settings.groupNotificationsDescription')} />
           <SettingsSection icon={Bell} title={t('settings.notificationSettings')}>
             <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
               <div className="space-y-4 rounded-xl border border-border/60 p-3 sm:p-4">
@@ -671,81 +685,92 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
           </SettingsSection>
 
           <NotificationManager />
-
-          <GoogleCalendarSync />
         </TabsContent>
 
-        {/* Data */}
-        <TabsContent value="data" className="mt-0 space-y-4 sm:space-y-6">
-          <PatientImportPanel onImported={() => {
-            setPatientImportVersion((version) => version + 1);
-            onPatientsMerged?.();
-          }} />
-          <PatientMergePanel key={patientImportVersion} onMerged={onPatientsMerged} />
-        </TabsContent>
+        <TabsContent value="system-data" className="mt-0 space-y-4 sm:space-y-6">
+          <SettingsGroupHeading title={t('settings.operationalTools')} description={t('settings.groupSystemDataDescription')} />
 
-        {/* API health */}
-        <TabsContent value="api-health" className="mt-0 space-y-4 sm:space-y-6">
-          <SettingsSection
-            icon={Server}
-            title={t('settings.apiHealthTitle')}
-            description={t('settings.apiHealthSubtitle')}
-            action={(
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={loadApiHealth}
-                disabled={apiHealthLoading}
-                aria-label={t('settings.apiHealthRefresh')}
-              >
-                <RefreshCw className={`h-4 w-4 sm:mr-2 ${apiHealthLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">{t('settings.apiHealthRefresh')}</span>
-              </Button>
-            )}
-          >
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-              <HealthStat label={t('settings.apiHealthStatus')}>
-                <Badge variant={apiHealth?.ok ? 'default' : 'destructive'}>
-                  {apiHealth?.ok ? t('settings.apiHealthOnline') : t('settings.apiHealthOffline')}
-                </Badge>
-              </HealthStat>
-              <HealthStat label={t('settings.apiHealthPatients')}>
-                <span className="text-xl font-semibold sm:text-2xl">{apiHealth?.patientsCount ?? '—'}</span>
-              </HealthStat>
-              <HealthStat label={t('settings.apiHealthAppointments')}>
-                <span className="text-xl font-semibold sm:text-2xl">{apiHealth?.appointmentsCount ?? '—'}</span>
-              </HealthStat>
-              <HealthStat label={t('settings.apiHealthLastChecked')}>
-                <span className="break-words text-sm font-medium">
-                  {lastHealthCheck ? new Date(lastHealthCheck).toLocaleString() : '—'}
-                </span>
-              </HealthStat>
-            </div>
+          <section aria-labelledby="settings-import-title" className="space-y-3">
+            <h3 id="settings-import-title" className="text-base font-semibold tracking-tight text-foreground">{t('settings.tabData')}</h3>
+            <PatientImportPanel onImported={() => {
+              setPatientImportVersion((version) => version + 1);
+              onPatientsMerged?.();
+            }} />
+            <PatientMergePanel key={patientImportVersion} onMerged={onPatientsMerged} />
+          </section>
 
-            <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label>{t('settings.apiHealthEndpoint')}</Label>
-                <p className="break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-foreground sm:text-sm">{apiHealthUrl}</p>
+          <section aria-labelledby="settings-api-health-title" className="space-y-3 border-t border-border/60 pt-5">
+            <h3 id="settings-api-health-title" className="text-base font-semibold tracking-tight text-foreground">{t('settings.tabApiHealth')}</h3>
+            <SettingsSection
+              icon={Server}
+              title={t('settings.apiHealthTitle')}
+              description={t('settings.apiHealthSubtitle')}
+              action={(
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={loadApiHealth}
+                  disabled={apiHealthLoading}
+                  aria-label={t('settings.apiHealthRefresh')}
+                >
+                  <RefreshCw className={`h-4 w-4 sm:mr-2 ${apiHealthLoading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">{t('settings.apiHealthRefresh')}</span>
+                </Button>
+              )}
+            >
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                <HealthStat label={t('settings.apiHealthStatus')}>
+                  <Badge
+                    data-testid="api-health-status"
+                    aria-live="polite"
+                    variant={apiHealth?.ok ? 'default' : apiHealthError || apiHealth ? 'destructive' : 'secondary'}
+                    className={apiHealth?.ok ? 'bg-emerald-600 text-white hover:bg-emerald-600' : undefined}
+                  >
+                    {apiHealthError
+                      ? t('settings.apiHealthCheckFailed')
+                      : apiHealth
+                        ? apiHealth.ok ? t('settings.apiHealthOnline') : t('settings.apiHealthOffline')
+                        : apiHealthLoading ? t('settings.apiHealthChecking') : t('settings.apiHealthUnknown')}
+                  </Badge>
+                </HealthStat>
+                <HealthStat label={t('settings.apiHealthPatients')}>
+                  <span className="text-xl font-semibold sm:text-2xl">{apiHealth?.patientsCount ?? '—'}</span>
+                </HealthStat>
+                <HealthStat label={t('settings.apiHealthAppointments')}>
+                  <span className="text-xl font-semibold sm:text-2xl">{apiHealth?.appointmentsCount ?? '—'}</span>
+                </HealthStat>
+                <HealthStat label={t('settings.apiHealthLastChecked')}>
+                  <span className="break-words text-sm font-medium">
+                    {lastHealthCheck ? new Date(lastHealthCheck).toLocaleString() : '—'}
+                  </span>
+                </HealthStat>
               </div>
-              <div className="space-y-2">
-                <Label>{t('settings.apiHealthDataDir')}</Label>
-                <p className="break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-foreground sm:text-sm">{apiHealth?.dataDir ?? '—'}</p>
-              </div>
-            </div>
 
-            {apiHealthError && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                <strong>{t('settings.apiHealthErrorLabel')}</strong> {apiHealthError}
+              <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t('settings.apiHealthEndpoint')}</Label>
+                  <p className="break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-foreground sm:text-sm">{apiHealthUrl}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('settings.apiHealthDataDir')}</Label>
+                  <p className="break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-foreground sm:text-sm">{apiHealth?.dataDir ?? '—'}</p>
+                </div>
               </div>
-            )}
 
-            <div className="space-y-1 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-              <p><strong>{t('settings.apiHealthHowItWorks')}</strong></p>
-              <p>{t('settings.apiHealthHowItWorksText')}</p>
-            </div>
-          </SettingsSection>
+              {apiHealthError && (
+                <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  <strong>{t('settings.apiHealthErrorLabel')}</strong> {apiHealthError}
+                </div>
+              )}
+
+              <div className="space-y-1 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                <p><strong>{t('settings.apiHealthHowItWorks')}</strong></p>
+                <p>{t('settings.apiHealthHowItWorksText')}</p>
+              </div>
+            </SettingsSection>
+          </section>
         </TabsContent>
 
         <div className="sticky bottom-0 z-10 -mx-4 border-t border-border/60 bg-background/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
@@ -755,6 +780,15 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
           </Button>
         </div>
       </Tabs>
+    </div>
+  );
+}
+
+function SettingsGroupHeading({ title, description }: Readonly<{ title: string; description: string }>) {
+  return (
+    <div className="border-b border-border/60 pb-3">
+      <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">{title}</h3>
+      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
     </div>
   );
 }

@@ -218,7 +218,7 @@ for (const mobile of [false, true]) {
     } else {
       await page.getByTestId('nav-settings').click();
     }
-    await page.getByRole('tab', { name: /Data/ }).click();
+    await page.getByTestId('settings-tab-system-data').click();
     await expect(page.getByTestId('patient-duplicate-group')).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.getByTestId('patient-merge-panel')).toContainText('Source care note');
