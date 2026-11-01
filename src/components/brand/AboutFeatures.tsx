@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, CalendarDays, CalendarPlus, Check, Clock3, History, Laptop, SlidersHorizontal, Upload, UsersRound } from 'lucide-react';
+import { ArrowRight, BarChart3, CalendarDays, CalendarPlus, Check, Clock3, History, Laptop, SlidersHorizontal, Smartphone, Upload, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { buttonVariants } from '@/components/ui/button';
 import brand from '@/config/brand.json';
@@ -51,6 +51,43 @@ export default function AboutFeatures({ locale }: Readonly<{ locale: AppLocale }
         />
         <figcaption className="border-t border-border px-4 py-3 text-xs leading-5 text-muted-foreground">{t('public.about.previewCaption')}</figcaption>
       </figure>
+
+      <section aria-labelledby="mobile-preview-heading" className="mt-6 grid items-center gap-6 rounded-xl border border-border bg-muted/30 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+        <div className="max-w-xl">
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-[#244DDE] dark:text-blue-400">
+            <Smartphone className="h-4 w-4" aria-hidden="true" />{t('public.about.mobile.eyebrow')}
+          </span>
+          <h2 id="mobile-preview-heading" className="mt-3 text-2xl font-semibold tracking-tight text-[#183153] dark:text-foreground">{t('public.about.mobile.title')}</h2>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">{t('public.about.mobile.description')}</p>
+          <ul className="mt-5 space-y-3 text-sm leading-6 text-[#183153] dark:text-foreground">
+            {['days', 'appointments', 'availability'].map((key) => (
+              <li key={key} className="flex items-start gap-2">
+                <Check className="mt-1 h-4 w-4 shrink-0 text-[#244DDE] dark:text-blue-400" aria-hidden="true" />
+                {t(`public.about.mobile.${key}`)}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <figure className="mx-auto w-full max-w-[300px]">
+          <div className="relative rounded-[2.5rem] border border-slate-600 bg-slate-900 p-2 shadow-soft">
+            <span aria-hidden="true" className="absolute -left-[3px] top-24 h-8 w-[3px] rounded-l bg-slate-600" />
+            <span aria-hidden="true" className="absolute -left-[3px] top-36 h-8 w-[3px] rounded-l bg-slate-600" />
+            <span aria-hidden="true" className="absolute -right-[3px] top-28 h-12 w-[3px] rounded-r bg-slate-600" />
+            <div className="overflow-hidden rounded-[2rem] bg-white">
+              <img
+                src={`${import.meta.env.BASE_URL}about-mobile.png`}
+                alt={t('public.about.mobile.alt')}
+                width={390}
+                height={844}
+                className="block h-auto w-full"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <figcaption className="mt-3 text-xs leading-5 text-muted-foreground">{t('public.about.mobile.caption')}</figcaption>
+        </figure>
+      </section>
 
       <section id="features" aria-labelledby="features-heading" className="scroll-mt-6 pt-10 sm:pt-12">
         <h2 id="features-heading" className="text-2xl font-semibold tracking-tight text-[#183153] dark:text-foreground">{t('public.about.featuresTitle')}</h2>

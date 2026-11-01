@@ -42,10 +42,14 @@ test.describe('Login', () => {
       await expect(grid).toContainText('.xls');
       await expect(grid).toContainText('.xml');
       await expect(grid).not.toContainText(/reminder|notification|потсет|известува/i);
-      const image = page.getByTestId('about-features').locator('img');
+      const image = page.getByTestId('about-features').locator('img[src$="about-calendar.png"]');
       await expect(image).toHaveAttribute('src', '/app/about-calendar.png');
       await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(1262);
-      await expect(page.locator('figcaption')).toContainText(locale === 'mk' ? 'измислени демо податоци' : 'fictional demo data');
+      await expect(page.locator('figure').filter({ has: image }).locator('figcaption')).toContainText(locale === 'mk' ? 'измислени демо податоци' : 'fictional demo data');
+      const mobileImage = page.getByTestId('about-features').locator('img[src$="about-mobile.png"]');
+      await mobileImage.scrollIntoViewIfNeeded();
+      await expect.poll(() => mobileImage.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(390);
+      await expect(mobileImage).toHaveAttribute('alt', /МојаОрдинација/);
       for (const width of [375, 390, 768, 1024, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -186,7 +190,7 @@ test.describe('Login', () => {
       await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/app/brand-social.png?v=calendar-smile-png');
     });
 
-    test('shows the custom practice instead of product branding in the sidebar and resets the title after logout', async ({ page, context }) => {
+    test('shows custom practice branding in the desktop calendar and mobile sidebar and resets the title after logout', async ({ page, context }) => {
       await mockApp(context);
       await context.route('**/api/settings', (route) => route.fulfill(json({
         locale: 'en', practiceName: 'Dental Studio',
@@ -198,32 +202,51 @@ test.describe('Login', () => {
       await page.goto('/');
       await expect(page).toHaveTitle(`Dental Studio | ${brand.name}`);
       const sidebar = page.getByTestId('desktop-sidebar');
+      await expect(sidebar).toBeVisible();
       await expect(sidebar.getByTestId('sidebar-product-brand')).toHaveCount(0);
-      await expect(sidebar.getByTestId('sidebar-practice-brand')).toContainText('Dental Studio');
-      await expect(sidebar.getByTestId('sidebar-practice-brand').locator('img')).toBeVisible();
-      await expect(sidebar.getByTestId('sidebar-practice-brand').locator('span'))
-        .toHaveClass(/text-xl.*font-semibold.*tracking-tight/);
+      await expect(sidebar.getByTestId('sidebar-practice-brand')).toHaveCount(0);
+      const calendarBrand = page.getByTestId('scheduler-grid').getByRole('heading', { level: 2 });
+      await expect(calendarBrand).toHaveText(/^Dental Studio\s*\|\s*МојаОрдинација$/);
+      await expect(calendarBrand.locator('..').locator('img')).toHaveAttribute(
+        'src', /^data:image\/png;base64,/,
+      );
+      await expect(calendarBrand.locator('..').locator('img')).toBeVisible();
       await page.evaluate(() => document.documentElement.classList.add('dark'));
-      await expect(sidebar.getByTestId('sidebar-practice-brand')).toBeVisible();
+      await expect(calendarBrand).toBeVisible();
       await page.setViewportSize({ width: 375, height: 812 });
       await expect(page.locator('header').getByText(brand.name, { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
       await expect(page.getByTestId('mobile-sidebar').getByTestId('sidebar-product-brand')).toHaveCount(0);
-      await expect(page.getByTestId('mobile-sidebar').getByTestId('sidebar-practice-brand')).toContainText('Dental Studio');
+      const mobileBrand = page.getByTestId('mobile-sidebar').getByTestId('sidebar-practice-brand');
+      await expect(mobileBrand).toContainText('Dental Studio');
+      await expect(mobileBrand.locator('img')).toBeVisible();
+      await expect(mobileBrand.locator('span')).toHaveClass(/text-xl.*font-semibold.*tracking-tight/);
       await page.getByTestId('mobile-sidebar').getByTestId('logout-button').click();
       await expect(page.getByTestId('login-form')).toBeVisible();
       await expect(page).toHaveTitle(brand.name);
     });
 
-    test('shows the product brand in the sidebar when no custom practice is configured', async ({ page, context }) => {
+    test('shows the product brand in the desktop calendar and mobile sidebar when no custom practice is configured', async ({ page, context }) => {
       await mockApp(context);
       await context.route('**/api/auth/me', (route) => route.fulfill(json({ user: E2E_USER, csrfToken: 't' })));
       await page.goto('/');
 
       const sidebar = page.getByTestId('desktop-sidebar');
       await expect(page).toHaveTitle(brand.name);
-      await expect(sidebar.getByTestId('sidebar-product-brand')).toContainText(brand.name);
+      await expect(sidebar).toBeVisible();
+      await expect(sidebar.getByTestId('sidebar-product-brand')).toHaveCount(0);
       await expect(sidebar.getByTestId('sidebar-practice-brand')).toHaveCount(0);
+      const calendarBrand = page.getByTestId('scheduler-grid').getByRole('heading', { level: 2 });
+      await expect(calendarBrand).toHaveText(brand.name);
+      await expect(calendarBrand.locator('..').locator('img')).toHaveAttribute(
+        'src', '/app/brand-icon.png?v=calendar-smile-png',
+      );
+      await expect(calendarBrand.locator('..').locator('img')).toBeVisible();
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+      const mobileSidebar = page.getByTestId('mobile-sidebar');
+      await expect(mobileSidebar.getByTestId('sidebar-product-brand')).toContainText(brand.name);
+      await expect(mobileSidebar.getByTestId('sidebar-practice-brand')).toHaveCount(0);
     });
 
     test('uses the dental practice identity throughout public information pages', async ({ page }) => {

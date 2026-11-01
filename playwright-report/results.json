@@ -27,7 +27,7 @@
         "testDir": "/home/tomche/Appointment-Manager-Calendar/tests",
         "testIgnore": [],
         "testMatch": [
-          "/e2e\\/(smoke|login)\\.spec\\.ts/"
+          "/e2e\\/(smoke|login|statistics)\\.spec\\.ts/"
         ],
         "timeout": 30000
       }
@@ -71,51 +71,60 @@
   },
   "suites": [
     {
-      "title": "e2e/smoke.spec.ts",
-      "file": "e2e/smoke.spec.ts",
+      "title": "e2e/login.spec.ts",
+      "file": "e2e/login.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [],
       "suites": [
         {
-          "title": "Smoke — Application Loads",
-          "file": "e2e/smoke.spec.ts",
-          "line": 11,
+          "title": "Login",
+          "file": "e2e/login.spec.ts",
+          "line": 16,
           "column": 6,
-          "specs": [
+          "specs": [],
+          "suites": [
             {
-              "title": "desktop sidebar preference persists and never collapses the mobile menu",
-              "ok": true,
-              "tags": [],
-              "tests": [
+              "title": "мојЗабар branding",
+              "file": "e2e/login.spec.ts",
+              "line": 24,
+              "column": 8,
+              "specs": [
                 {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
+                  "title": "serves consistent browser metadata, manifest, and correctly sized brand icons",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
                     {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3760,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-10-14T12:00:13.634Z",
+                      "timeout": 30000,
                       "annotations": [],
-                      "attachments": []
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1572,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-30T10:23:15.247Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
                     }
                   ],
-                  "status": "expected"
+                  "id": "537b83cfbdf14afda252-363c08363a9de7db461a",
+                  "file": "e2e/login.spec.ts",
+                  "line": 67,
+                  "column": 5
                 }
-              ],
-              "id": "aa58ad17b2d44b8d86cc-ef751b42a0db0acb1b0a",
-              "file": "e2e/smoke.spec.ts",
-              "line": 12,
-              "column": 3
+              ]
             }
           ]
         }
@@ -124,8 +133,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-14T12:00:12.671Z",
-    "duration": 4899.215,
+    "startTime": "2026-10-30T10:23:13.901Z",
+    "duration": 3170.0830000000005,
     "expected": 1,
     "skipped": 0,
     "unexpected": 0,

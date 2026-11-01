@@ -134,7 +134,7 @@ Settings stays on one page, organized into:
 | **Кориснички профил** | Per-user desktop sidebar collapse preference, restored at login. Mobile navigation is unchanged. |
 | **Систем и податоци** | Separate patient import/merge and API Health sections. Health includes status, data directory, record counts, last check and manual refresh. |
 
-The public **About & features** page at `/app/about` is accessible from login on desktop/mobile and from public-page footers. It presents the nine capabilities above in Macedonian and English, using [an actual calendar capture](public/about-calendar.png) with clearly labeled fictional demo data.
+The public **About & features** page at `/app/about` is accessible from login on desktop/mobile and from public-page footers. It presents the nine capabilities above in Macedonian and English, using actual [desktop calendar](public/about-calendar.png) and [mobile agenda](public/about-mobile.png) captures with clearly labeled fictional demo data.
 
 FAQ, privacy, terms and contact pages are available at `/app/faq`, `/app/privacy`, `/app/terms` and `/app/contact`. Their content is explicitly marked as **placeholder information**, not finalized policy, legal text or support channels.
 

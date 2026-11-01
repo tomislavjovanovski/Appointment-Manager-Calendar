@@ -9,6 +9,7 @@ Notable product and engineering changes to МојаОрдинација, newest 
 - Public **About & features** page at `/app/about`, linked from desktop/mobile login and public-page footers.
 - Nine verified dental-practice capabilities in Macedonian and English, with concise benefit-oriented descriptions and responsive feature cards.
 - Calendar preview captured from the actual application using fictional demo patients.
+- Mobile agenda preview in a restrained phone frame alongside the desktop presentation, captured at 390px with fictional demo patients and localized descriptions. Application screens are unchanged.
 - Monthly working-time utilization and completed-visit-based new/returning patient counts and percentage shares.
 
 ### Changed
@@ -19,6 +20,7 @@ Notable product and engineering changes to МојаОрдинација, newest 
 - Patient-history rows use shared theme tokens.
 - README reorganized into current product/setup guidance, a separate [operations guide](docs/Operations.md) and this changelog.
 - Documentation now distinguishes supported FZO patient imports and predefined category colors from unsupported general restores or customizable categories/colors. Notifications and automated reminders are not advertised as supported features.
+- Updated two stale branding tests to check the desktop calendar header and mobile navigation instead of expecting branding in the compact desktop sidebar. No application UI changed; E2E tests were not rerun for this correction.
 
 ### Verification
 
