@@ -30,7 +30,7 @@ async function openStatistics(page: Page, appointments = APPOINTMENTS, settings:
   await page.route('**/api/appointments', (route) => route.fulfill(json(appointments)));
   await page.route('**/api/patients', (route) => route.fulfill(json([])));
   await page.route('**/api/settings', (route) => route.fulfill(json(settings)));
-  await page.goto('/app/');
+  await page.goto('/');
 }
 
 const card = (page: Page, id: string) => page.getByTestId(`stat-${id}`);

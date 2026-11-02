@@ -38,7 +38,7 @@ test.describe('Appointment edit history', () => {
       records[1] = { ...records[1], ...updates };
       await route.fulfill({ json: records[1] });
     });
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('appointment-block').filter({ hasText: 'Alice Thornton' }).click();
     await expect(page.getByTestId('appointment-details-tab')).toHaveAttribute('data-state', 'active');
     await page.getByTestId('appointment-notes').fill('Unsaved progress notes');
@@ -74,7 +74,7 @@ test.describe('Appointment edit history', () => {
   test('follows the selected patient, handles missing and empty histories, and retries failures', async ({ page }) => {
     const current = historyAppointment('current', PATIENTS.alice.id, '2026-10-26T10:00:00', 'Alice saved note');
     await page.route('**/api/appointments', (route) => route.fulfill({ json: [current] }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('appointment-block').filter({ hasText: 'Alice Thornton' }).click();
     await page.getByTestId('appointment-history-tab').click();
     await expect(page.getByTestId('patient-history-entry')).toContainText('Alice saved note');
@@ -112,7 +112,7 @@ test.describe('Appointment edit history', () => {
     await page.route('**/api/appointments', (route) => route.fulfill({ json: [
       historyAppointment('current', PATIENTS.alice.id, '2026-10-26T10:00:00', notes),
     ] }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('mobile-appointment').filter({ hasText: 'Alice Thornton' }).click();
     await expect(page.getByTestId('appointment-history-tab')).toHaveText('Историја на термини');
     await page.getByTestId('appointment-history-tab').click();
@@ -135,7 +135,7 @@ test.describe('Appointment edit history', () => {
       historyAppointment('bob', PATIENTS.bob.id, '2026-10-12T10:00:00', 'Private Bob note'),
     ];
     await page.route('**/api/appointments', (route) => route.fulfill({ json: records }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('nav-patients').click();
     await page.getByTestId('patient-row').filter({ hasText: PATIENTS.alice.email }).click();
     await page.getByTestId('patient-notes').fill('Unsaved patient notes');

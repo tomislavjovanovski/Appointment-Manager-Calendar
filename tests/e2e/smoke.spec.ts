@@ -72,7 +72,7 @@ test.describe('Smoke — Application Loads', () => {
       appointment('third', '2026-10-26T10:00:00', '2026-10-26T10:30:00'),
       appointment('full-day', '2026-10-27T08:00:00', '2026-10-27T12:00:00'),
     ] }));
-    await page.goto('/app/');
+    await page.goto('/');
     const button = page.getByTestId('mobile-snapshot-btn');
     await expect(button).toBeEnabled();
     await button.click();
@@ -99,7 +99,7 @@ test.describe('Smoke — Application Loads', () => {
       locale: 'en', startTime: '08:00', endTime: '10:00',
       workingDays: [0, 1, 2, 3, 4, 5, 6], timeSlotMinutes: 30,
     } }));
-    await page.goto('/app/');
+    await page.goto('/');
     const days = page.getByTestId('mobile-agenda-day');
     const controls = page.getByTestId('mobile-agenda-controls');
     await expect(days.first()).toBeVisible();
@@ -153,7 +153,7 @@ test.describe('Smoke — Application Loads', () => {
       startTime: appointmentDate.toISOString(), endTime: end.toISOString(),
       duration: 30, type: 'follow-up', status: 'scheduled', title: 'Follow-up', notes: '',
     }] }));
-    await page.goto('/app/');
+    await page.goto('/');
     const days = page.getByTestId('mobile-agenda-day');
     await expect(days.first()).toBeVisible();
     for (const date of await days.evaluateAll((elements) => elements.map((element) => element.getAttribute('data-date')!))) {
@@ -173,7 +173,7 @@ test.describe('Smoke — Application Loads', () => {
       locale: 'en', startTime: '08:00', endTime: '18:00',
       workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30,
     } }));
-    await page.goto('/app/');
+    await page.goto('/');
     const days = page.getByTestId('mobile-agenda-day');
     const controls = page.getByTestId('mobile-agenda-controls');
     await expect(days).toHaveCount(5);
@@ -196,7 +196,7 @@ test.describe('Smoke — Application Loads', () => {
       locale: 'en', startTime: '08:00', endTime: '18:00',
       workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30,
     } }));
-    await page.goto('/app/');
+    await page.goto('/');
     const days = page.getByTestId('mobile-agenda-day');
     const controls = page.getByTestId('mobile-agenda-controls');
     await expect(days).toHaveCount(2);
@@ -229,7 +229,7 @@ test.describe('Smoke — Application Loads', () => {
       status: 200, contentType: 'application/json',
       body: JSON.stringify({ ok: true, dataDir: 'test', patientsCount: 2, appointmentsCount: 0 }),
     }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('sidebar-toggle').click();
     await expect(page.getByTestId('desktop-sidebar')).toHaveAttribute('data-collapsed', 'true');
     await expect(page.getByTestId('desktop-sidebar').getByTestId('appointment-stats')).toBeHidden();
@@ -255,7 +255,7 @@ test.describe('Smoke — Application Loads', () => {
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, dataDir: 'test', patientsCount: 2, appointmentsCount: 0 }),
     }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('nav-settings').click();
     await page.getByTestId('settings-tab-appointments').click();
     await expect(page.getByTestId('settings-type-duration-procedure')).toContainText('30');
@@ -318,7 +318,7 @@ test.describe('Smoke — Application Loads', () => {
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, dataDir: 'test', patientsCount: 2, appointmentsCount: 0 }),
     }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('nav-settings').click();
 
     await expect(page.getByTestId('practice-name-input')).toBeVisible();
@@ -359,7 +359,7 @@ test.describe('Smoke — Application Loads', () => {
   });
 
   test('calendar grid contrast stays aligned without viewport overflow', async ({ pageWithPatients: page }) => {
-    await page.goto('/app/');
+    await page.goto('/');
     for (const width of [1440, 1920, 1366, 1024]) {
       await page.setViewportSize({ width, height: 900 });
       await page.getByTestId('nav-scheduler').click();

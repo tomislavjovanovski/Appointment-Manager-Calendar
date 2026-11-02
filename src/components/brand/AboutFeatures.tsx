@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, CalendarDays, CalendarPlus, Check, Clock3, History, Laptop, SlidersHorizontal, Smartphone, Upload, UsersRound } from 'lucide-react';
+import { ArrowRight, BarChart3, CalendarDays, CalendarPlus, Check, Clock3, History, Laptop, Share2, SlidersHorizontal, Smartphone, Upload, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { buttonVariants } from '@/components/ui/button';
 import brand from '@/config/brand.json';
@@ -22,23 +22,23 @@ export default function AboutFeatures({ locale }: Readonly<{ locale: AppLocale }
   const t = (key: string) => translate(locale, key);
 
   return (
-    <article className="px-5 pb-6 sm:px-8 sm:pb-8 xl:px-10" data-testid="about-features">
-      <header className="border-t border-border pt-8 sm:pt-10">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[#244DDE] dark:text-blue-400">{t('public.about.eyebrow')}</p>
-        <h1 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-[#183153] dark:text-foreground sm:text-4xl lg:text-5xl">
-          <span lang="mk" className="mb-2 block text-[#244DDE] dark:text-blue-400">{brand.name}</span>
+    <article className="pb-6 sm:pb-8" data-testid="about-features">
+      <header className="border-b border-border px-5 pb-8 pt-7 sm:px-8 sm:pb-10 sm:pt-9 xl:px-10">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">{t('public.about.eyebrow')}</p>
+        <h1 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-heading sm:text-4xl lg:text-5xl">
+          <span lang="mk" className="mb-2 block text-primary">{brand.name}</span>
           {t('public.about.headline')}
         </h1>
-        <p className="mt-5 text-lg font-medium text-[#183153] dark:text-foreground sm:text-xl">{t('public.about.tagline')}</p>
+        <p className="mt-5 text-lg font-medium text-heading sm:text-xl">{t('public.about.tagline')}</p>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">{t('public.about.intro')}</p>
-        <a href="#features" className={cn(buttonVariants({ variant: 'outline' }), 'mt-5 gap-2 border-[#244DDE]/25 text-[#244DDE] dark:text-blue-400')}>
+        <a href="#features" className={cn(buttonVariants({ variant: 'outline' }), 'mt-5 min-h-11 gap-2 border-primary/25 text-primary')}>
           {t('public.about.explore')}<ArrowRight className="h-4 w-4" aria-hidden="true" />
         </a>
       </header>
 
-      <figure className="mt-8 overflow-hidden rounded-xl border border-border bg-muted/30 shadow-soft sm:mt-10">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-medium text-[#183153] dark:text-foreground">
-          <CalendarDays className="h-4 w-4 text-[#244DDE] dark:text-blue-400" aria-hidden="true" />
+      <figure className="mx-5 mt-6 overflow-hidden rounded-xl border border-border bg-muted/30 shadow-soft sm:mx-8 sm:mt-8 xl:mx-10">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-medium text-heading">
+          <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" />
           {t('public.about.previewTitle')}
         </div>
         <img
@@ -52,21 +52,28 @@ export default function AboutFeatures({ locale }: Readonly<{ locale: AppLocale }
         <figcaption className="border-t border-border px-4 py-3 text-xs leading-5 text-muted-foreground">{t('public.about.previewCaption')}</figcaption>
       </figure>
 
-      <section aria-labelledby="mobile-preview-heading" className="mt-6 grid items-center gap-6 rounded-xl border border-border bg-muted/30 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+      <section aria-labelledby="mobile-preview-heading" className="mx-5 mt-6 grid items-center gap-6 rounded-xl border border-border bg-muted/30 p-5 sm:mx-8 sm:p-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12 xl:mx-10">
         <div className="max-w-xl">
-          <span className="inline-flex items-center gap-2 text-sm font-medium text-[#244DDE] dark:text-blue-400">
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
             <Smartphone className="h-4 w-4" aria-hidden="true" />{t('public.about.mobile.eyebrow')}
           </span>
-          <h2 id="mobile-preview-heading" className="mt-3 text-2xl font-semibold tracking-tight text-[#183153] dark:text-foreground">{t('public.about.mobile.title')}</h2>
+          <h2 id="mobile-preview-heading" className="mt-3 text-2xl font-semibold tracking-tight text-heading">{t('public.about.mobile.title')}</h2>
           <p className="mt-3 text-sm leading-7 text-muted-foreground">{t('public.about.mobile.description')}</p>
           <ul className="mt-5 space-y-3 text-sm leading-6 text-[#183153] dark:text-foreground">
             {['days', 'appointments', 'availability'].map((key) => (
               <li key={key} className="flex items-start gap-2">
-                <Check className="mt-1 h-4 w-4 shrink-0 text-[#244DDE] dark:text-blue-400" aria-hidden="true" />
+                  <Check className="mt-1 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                 {t(`public.about.mobile.${key}`)}
               </li>
             ))}
           </ul>
+          <div className="mt-6 rounded-xl border border-primary/15 bg-background/70 p-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-heading">
+              <Share2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              {t('public.about.mobile.shareTitle')}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('public.about.mobile.shareDescription')}</p>
+          </div>
         </div>
         <figure className="mx-auto w-full max-w-[300px]">
           <div className="relative rounded-[2.5rem] border border-slate-600 bg-slate-900 p-2 shadow-soft">
@@ -89,31 +96,31 @@ export default function AboutFeatures({ locale }: Readonly<{ locale: AppLocale }
         </figure>
       </section>
 
-      <section id="features" aria-labelledby="features-heading" className="scroll-mt-6 pt-10 sm:pt-12">
-        <h2 id="features-heading" className="text-2xl font-semibold tracking-tight text-[#183153] dark:text-foreground">{t('public.about.featuresTitle')}</h2>
+      <section id="features" aria-labelledby="features-heading" className="mx-5 scroll-mt-6 pt-10 sm:mx-8 sm:pt-12 xl:mx-10">
+        <h2 id="features-heading" className="text-2xl font-semibold tracking-tight text-heading">{t('public.about.featuresTitle')}</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('public.about.featuresIntro')}</p>
         <ul className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3" data-testid="about-feature-grid">
           {features.map(({ key, icon: Icon }) => (
-            <li key={key} className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-[#244DDE]/[0.07] text-[#244DDE] dark:bg-blue-400/10 dark:text-blue-400">
+            <li key={key} className="rounded-xl border border-border bg-card p-5 shadow-soft">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
               </div>
-              <h3 className="text-base font-semibold leading-6 text-[#183153] dark:text-foreground">{t(`public.about.${key}.title`)}</h3>
+              <h3 className="text-base font-semibold leading-6 text-heading">{t(`public.about.${key}.title`)}</h3>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{t(`public.about.${key}.description`)}</p>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="mt-8 flex flex-col items-start gap-5 rounded-xl border border-[#244DDE]/15 bg-[#244DDE]/[0.04] p-5 sm:mt-10 sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="about-closing-heading">
+      <section className="mx-5 mt-8 flex flex-col items-start gap-5 rounded-xl border border-primary/15 bg-primary/[0.04] p-5 sm:mx-8 sm:mt-10 sm:flex-row sm:items-center sm:justify-between sm:p-6 xl:mx-10" aria-labelledby="about-closing-heading">
         <div className="max-w-2xl">
-          <h2 id="about-closing-heading" className="flex items-start gap-2 text-lg font-semibold text-[#183153] dark:text-foreground">
-            <Clock3 className="mt-1 h-5 w-5 shrink-0 text-[#244DDE] dark:text-blue-400" aria-hidden="true" />
+          <h2 id="about-closing-heading" className="flex items-start gap-2 text-lg font-semibold text-heading">
+            <Clock3 className="mt-1 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
             {t('public.about.closingTitle')}
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('public.about.closingText')}</p>
         </div>
-        <Link to="/" className={cn(buttonVariants(), 'shrink-0 gap-2 bg-[#244DDE] text-white hover:bg-[#183153]')}>
+        <Link to="/" className={cn(buttonVariants(), 'min-h-11 shrink-0 gap-2 bg-primary text-primary-foreground hover:bg-primary-hover')}>
           {t('auth.submit')}<ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </section>

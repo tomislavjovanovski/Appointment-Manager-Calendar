@@ -35,7 +35,7 @@ const excludePrivateData = (): Plugin => {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/app/",
+  base: "/",
   server: {
     host: "::",
     port: Number(process.env.DEV_PORT ?? 8081),

@@ -38,7 +38,7 @@ test.describe('Patient appointment history', () => {
       historyAppointment('blank', PATIENTS.alice.id, '2026-08-10T09:00:00Z', ''),
     ];
     await page.route('**/api/appointments', (route) => route.fulfill({ json: records }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('nav-patients').click();
     await openHistoryPatient(page);
     await page.getByTestId('patient-details-tab').click();
@@ -74,7 +74,7 @@ test.describe('Patient appointment history', () => {
 
   test('shows empty history and retries a failed request without submitting patient details', async ({ page }) => {
     await page.route('**/api/appointments', (route) => route.fulfill({ json: [] }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('nav-patients').click();
     await expect(page.getByTestId('patient-row')).toHaveCount(2);
     await page.route('**/api/appointments', (route) => route.fulfill({ status: 500, json: { error: 'Unavailable' } }));
@@ -92,7 +92,7 @@ test.describe('Patient appointment history', () => {
     await page.route('**/api/appointments', (route) => route.fulfill({ json: [
       historyAppointment('long', PATIENTS.alice.id, '2026-10-10T09:00:00Z', 'Treatment'.repeat(100)),
     ] }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByRole('button', { name: 'Open navigation' }).click();
     await page.getByTestId('mobile-sidebar').getByTestId('nav-patients').click();
     await page.getByTestId('patient-card').filter({ hasText: PATIENTS.alice.firstName }).click();
@@ -122,7 +122,7 @@ test.describe('Patient appointment history', () => {
       await route.fulfill({ json: { success: true } });
     });
     await page.route('**/api/appointments', (route) => route.fulfill({ json: [] }));
-    await page.goto('/app/');
+    await page.goto('/');
     await page.getByTestId('nav-patients').click();
 
     const aliceRow = page.getByTestId('patient-row').filter({ hasText: PATIENTS.alice.email });

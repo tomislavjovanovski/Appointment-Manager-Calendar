@@ -30,10 +30,10 @@ test.describe('Login', () => {
         if (/\/api\/(patients|appointments|settings)/.test(request.url())) protectedRequests.push(request.url());
       });
       await page.setViewportSize({ width: 375, height: 812 });
-      await page.goto('/app/');
+      await page.goto('/');
       const label = locale === 'mk' ? 'За нас и можности' : 'About & features';
       await page.getByRole('link', { name: label, exact: true }).last().click();
-      await expect(page).toHaveURL(/\/app\/about$/);
+      await expect(page).toHaveURL(/\/about$/);
       await expect(page.getByRole('heading', { level: 1 })).toContainText(
         locale === 'mk' ? 'Едноставно управување со модерна стоматолошка ординација.' : 'Simple management for a modern dental practice.',
       );
@@ -43,7 +43,7 @@ test.describe('Login', () => {
       await expect(grid).toContainText('.xml');
       await expect(grid).not.toContainText(/reminder|notification|потсет|известува/i);
       const image = page.getByTestId('about-features').locator('img[src$="about-calendar.png"]');
-      await expect(image).toHaveAttribute('src', '/app/about-calendar.png');
+      await expect(image).toHaveAttribute('src', '/about-calendar.png');
       await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(1262);
       const calendarFigure = page.getByTestId('about-features').locator('figure').filter({
         has: page.locator('img[src$="about-calendar.png"]'),
@@ -53,7 +53,7 @@ test.describe('Login', () => {
       await mobileImage.scrollIntoViewIfNeeded();
       await expect.poll(() => mobileImage.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(390);
       await expect(mobileImage).toHaveAttribute('alt', /МојаОрдинација/);
-      for (const width of [375, 390, 768, 1024, 1440]) {
+      for (const width of [360, 390, 768, 1280, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         const columns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
@@ -69,14 +69,18 @@ test.describe('Login', () => {
 
   test('keeps the about page reachable directly and from public pages, including with a session', async ({ page, context }) => {
     await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
-    await page.goto('/app/about/');
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/about/');
     await expect(page.getByTestId('about-features')).toBeVisible();
+    await page.getByRole('button', { name: 'Отвори го менито за навигација' }).click();
     await page.getByRole('link', { name: 'Најчести прашања', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Отвори го менито за навигација' })).toHaveAttribute('aria-expanded', 'false');
+    await page.getByRole('button', { name: 'Отвори го менито за навигација' }).click();
     await page.getByRole('link', { name: 'За нас и можности', exact: true }).click();
     await expect(page.getByTestId('about-features')).toBeVisible();
     await mockApp(context);
     await page.route('**/api/auth/me', (route) => route.fulfill(json({ user: E2E_USER, csrfToken: 't' })));
-    await page.goto('/app/about');
+    await page.goto('/about');
     await expect(page.getByTestId('about-feature-grid').locator('li')).toHaveCount(9);
     await expect(page.getByTestId('login-form')).toHaveCount(0);
   });
@@ -129,7 +133,7 @@ test.describe('Login', () => {
           await expect(page.getByTestId('login-submit')).toBeVisible();
           expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
           if (desktop) {
-            await expect(brandPanel.locator('img')).toHaveAttribute('src', '/app/brand-icon.png?v=calendar-smile-png');
+            await expect(brandPanel.locator('img')).toHaveAttribute('src', '/brand-icon.png?v=calendar-smile-png');
             await expect(brandPanel).toHaveCSS('color', 'rgb(255, 255, 255)');
             expect(await brandPanel.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain('linear-gradient');
             await expect(brandPanel.locator('.login-calendar-pattern')).toHaveCount(2);
@@ -150,7 +154,7 @@ test.describe('Login', () => {
       await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', brand.name);
       await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', brand.themeColor);
       const manifestPath = await page.locator('link[rel="manifest"]').getAttribute('href');
-      expect(manifestPath).toBe('/app/manifest.webmanifest');
+      expect(manifestPath).toBe('/manifest.webmanifest');
       const response = await request.get(manifestPath!);
       expect(response.ok()).toBe(true);
       const manifest = await response.json();
@@ -158,16 +162,16 @@ test.describe('Login', () => {
         name: brand.name, short_name: brand.name, description: brand.metaDescription,
         lang: 'mk', start_url: './', scope: './', display: 'standalone', theme_color: brand.themeColor,
       });
-      const icoResponse = await request.get('/app/favicon.ico');
+      const icoResponse = await request.get('/favicon.ico');
       expect(icoResponse.ok()).toBe(true);
       expect(icoResponse.headers()['content-type']).toContain('image/x-icon');
       for (const [asset, width, height] of [
-        ['/app/favicon.svg', 64, 64],
-        ['/app/apple-touch-icon.png', 180, 180],
-        ['/app/icon-192.png', 192, 192],
-        ['/app/icon-512.png', 512, 512],
-        ['/app/icon-maskable-512.png', 512, 512],
-        ['/app/brand-social.png', 1200, 630],
+        ['/favicon.svg', 64, 64],
+        ['/apple-touch-icon.png', 180, 180],
+        ['/icon-192.png', 192, 192],
+        ['/icon-512.png', 512, 512],
+        ['/icon-maskable-512.png', 512, 512],
+        ['/brand-social.png', 1200, 630],
       ] as const) {
         const dimensions = await page.evaluate(async (src) => {
           const image = new Image();
@@ -189,8 +193,8 @@ test.describe('Login', () => {
         }, asset);
         expect(dimensions).toEqual({ width, height });
       }
-      await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/app/favicon.svg?v=calendar-smile-png');
-      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/app/brand-social.png?v=calendar-smile-png');
+      await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg?v=calendar-smile-png');
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/brand-social.png?v=calendar-smile-png');
     });
 
     test('shows custom practice branding in the desktop calendar and mobile sidebar and resets the title after logout', async ({ page, context }) => {
@@ -242,7 +246,7 @@ test.describe('Login', () => {
       const calendarBrand = page.getByTestId('scheduler-grid').getByRole('heading', { level: 2 });
       await expect(calendarBrand).toHaveText(brand.name);
       await expect(calendarBrand.locator('..').locator('img')).toHaveAttribute(
-        'src', '/app/brand-icon.png?v=calendar-smile-png',
+        'src', '/brand-icon.png?v=calendar-smile-png',
       );
       await expect(calendarBrand.locator('..').locator('img')).toBeVisible();
       await page.setViewportSize({ width: 375, height: 812 });
@@ -256,12 +260,24 @@ test.describe('Login', () => {
       await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
       await page.setViewportSize({ width: 375, height: 812 });
       for (const path of ['faq', 'privacy', 'terms', 'contact']) {
-        await page.goto(`/app/${path}`);
-        await expect(page).toHaveTitle(brand.name);
-        await expect(page.getByText(brand.name, { exact: true })).toBeVisible();
+        await page.goto(`/${path}`);
+        await expect(page).toHaveTitle(new RegExp(`^.+ \\| ${brand.name}$`));
+        await expect(page.getByRole('banner').getByText(brand.name, { exact: true })).toBeVisible();
         await expect(page.getByText(brand.productDescription, { exact: true })).toBeVisible();
-        expect(await page.locator('body').innerText()).not.toMatch(/iTermin|ClinicCalendar|Lovable/);
-        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+        const description = await page.locator('meta[name="description"]').getAttribute('content');
+        expect(description).toContain(brand.name);
+        await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', description ?? '');
+        const pageText = await page.locator('body').innerText();
+        expect(pageText).not.toMatch(/iTermin|ClinicCalendar|Lovable/);
+        expect(pageText).not.toMatch(/placeholder content|will be finalized|will be added here|placeholder содржина|ќе биде финализирана/i);
+        if (path === 'privacy' || path === 'contact') {
+          await expect(page.getByRole('link', { name: 'kontakt@mojaordinacija.mk' }))
+            .toHaveAttribute('href', 'mailto:kontakt@mojaordinacija.mk');
+        }
+        for (const width of [360, 390, 768, 1280, 1440]) {
+          await page.setViewportSize({ width, height: 900 });
+          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+        }
       }
     });
   });

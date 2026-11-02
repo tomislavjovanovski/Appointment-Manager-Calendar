@@ -5,7 +5,7 @@ import { findExactPatients } from '../../server/patientMatching.js';
 
 test('closing clears patient names and suggestions before reopening, including pending searches', async ({ pageWithPatients: page }) => {
   await page.clock.setFixedTime(new Date('2026-10-26T08:00:00'));
-  await page.goto('/app/');
+  await page.goto('/');
   await page.getByTestId('new-appointment-btn').click();
   await page.getByTestId('patient-first-name').fill('Alice');
   await expect(page.getByTestId(`patient-name-match-${PATIENTS.alice.id}`)).toBeVisible();
@@ -37,7 +37,7 @@ for (const mobile of [false, true]) {
       patientReads += 1;
       return route.fulfill({ json: patients });
     });
-    await page.goto('/app/');
+    await page.goto('/');
     if (mobile) await page.getByTestId('mobile-free-slot').first().click();
     else await page.getByTestId('new-appointment-btn').click();
     const firstName = page.getByTestId('patient-first-name');
@@ -93,7 +93,7 @@ for (const mobile of [false, true]) {
         expect(matches).toHaveLength(1);
         await route.fulfill({ json: { patient: matches[0], reused: true } });
       });
-      await page.goto('/app/');
+      await page.goto('/');
       if (mobile) await page.getByTestId('mobile-free-slot').first().click();
       else await page.getByTestId('new-appointment-btn').click();
       await expect(page.getByTestId('patient-search-hint')).toContainText('Type a first or last name');
@@ -128,7 +128,7 @@ test('ambiguous names require selecting a suggestion and a new name is resolved 
       patient: { ...PATIENTS.alice, ...route.request().postDataJSON(), id: 'new-person' }, reused: false,
     } });
   });
-  await page.goto('/app/');
+  await page.goto('/');
   await page.getByTestId('new-appointment-btn').click();
   await page.getByTestId('patient-first-name').fill('Ali');
   await expect(page.getByTestId('patient-name-matches').getByRole('button')).toHaveCount(2);
@@ -174,7 +174,7 @@ test('editing preserves the selected patient and allows switching through name s
   await page.route('**/api/appointments/existing-visit', (route) => route.fulfill({
     json: { ...appointment, ...route.request().postDataJSON() },
   }));
-  await page.goto('/app/');
+  await page.goto('/');
   await page.getByTestId('appointment-block').filter({ hasText: 'Alice' }).first().click();
   await expect(page.getByTestId('selected-patient')).toContainText('Alice Thornton');
   await expect(page.getByTestId('patient-select')).toHaveCount(0);
@@ -211,7 +211,7 @@ for (const mobile of [false, true]) {
       patients = patients.filter((patient) => patient.id !== 'alice-duplicate');
       await route.fulfill({ json: patients[0] });
     });
-    await page.goto('/app/');
+    await page.goto('/');
     if (mobile) {
       await page.getByRole('button', { name: 'Open navigation' }).click();
       await page.getByTestId('mobile-sidebar').getByTestId('nav-settings').click();
