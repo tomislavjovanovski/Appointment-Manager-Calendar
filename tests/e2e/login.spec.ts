@@ -14,6 +14,41 @@ async function mockApp(ctx: BrowserContext) {
 }
 
 test.describe('Login', () => {
+  for (const locale of ['mk', 'en'] as const) {
+    test(`shows branded session loading without a login flash on refresh in ${locale}`, async ({ page, context }) => {
+      await mockApp(context);
+      await page.addInitScript((language) => localStorage.setItem('medical.locale', language), locale);
+      await page.route('**/api/auth/me', (route) => route.fulfill(json({ user: E2E_USER, csrfToken: 't' })));
+      await page.goto('/');
+      await expect(page.getByTestId('nav-patients').first()).toBeVisible();
+
+      await page.evaluate((language) => localStorage.setItem('medical.locale', language), locale);
+      await page.unroute('**/api/auth/me');
+      let releaseSession: () => void = () => {};
+      const pendingSession = new Promise<void>((resolve) => { releaseSession = resolve; });
+      await page.route('**/api/auth/me', async (route) => {
+        await pendingSession;
+        await route.fulfill(json({ user: E2E_USER, csrfToken: 't' }));
+      });
+      await page.reload();
+      const loading = page.getByRole('status');
+      await expect(loading).toContainText(brand.name);
+      await expect(loading).toContainText(locale === 'mk' ? 'Проверка на сесијата…' : 'Checking session…');
+      await expect(page.getByTestId('login-form')).toHaveCount(0);
+      await expect(page.getByTestId('nav-patients')).toHaveCount(0);
+      releaseSession();
+      await expect(page.getByTestId('nav-patients').first()).toBeVisible();
+      await expect(page.getByTestId('login-form')).toHaveCount(0);
+    });
+  }
+
+  test('keeps public pages accessible while session verification is pending', async ({ page }) => {
+    await page.route('**/api/auth/me', () => {});
+    await page.goto('/about');
+    await expect(page.getByTestId('about-features')).toBeVisible();
+    await expect(page.getByTestId('login-form')).toHaveCount(0);
+  });
+
   test('shows the login page when there is no session and blocks the app', async ({ page }) => {
     await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
     await page.goto('/');

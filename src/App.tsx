@@ -7,6 +7,10 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
 import { I18nProvider, useI18n } from "@/i18n";
 import { AuthProvider, useAuth } from "@/auth/AuthProvider";
+import BrandLogo from "@/components/brand/BrandLogo";
+import { Loader2 } from "lucide-react";
+import { translate } from "@/i18n/dictionary";
+import { readRememberedLocale } from "@/i18n/storedLocale";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
@@ -46,6 +50,19 @@ function AuthGate() {
       <I18nProvider>
         <AppRoutes />
       </I18nProvider>
+    );
+  }
+
+  if (status === "loading" && !publicInfoPath) {
+    const locale = readRememberedLocale();
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background p-6" lang={locale}>
+        <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
+          <BrandLogo variant="horizontal" size={40} />
+          <Loader2 className="h-6 w-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">{translate(locale, 'auth.checkingSession')}</p>
+        </div>
+      </main>
     );
   }
 

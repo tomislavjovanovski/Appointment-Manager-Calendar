@@ -135,6 +135,8 @@ Settings stays on one page, organized into:
 | **Систем и податоци** | Separate patient import/merge and API Health sections. Health includes status, data directory, record counts, last check and manual refresh. |
 
 The public **About & features** page at `/about` is accessible from login on desktop/mobile and from public-page footers. It presents the nine capabilities above in Macedonian and English, using actual [desktop calendar](public/about-calendar.png) and [mobile agenda](public/about-mobile.png) captures with clearly labeled fictional demo data.
+
+Refreshing the application shows a branded, localized session-loading screen instead of flashing the login form. Protected content remains hidden until authentication succeeds; public information pages remain accessible while the session check is pending.
 FAQ, privacy, terms and contact pages are available at `/faq`, `/privacy`, `/terms` and `/contact`. Their content is explicitly marked as **placeholder information**, not finalized policy, legal text or support channels.
 
 ## Development and testing
