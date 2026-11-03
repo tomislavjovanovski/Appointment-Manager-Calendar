@@ -22,7 +22,7 @@ The application uses **JSON files**, not a database.
 |---|---|
 | Patients, appointments, settings and legacy Google tokens | `public/data/`, relative to the repository root |
 | Users and sessions | `AUTH_DATA_DIR`, or `private/auth/` beside `server/` by default |
-| Built frontend | `dist/`, deployed under `/app/` |
+| Built frontend | `dist/`, deployed at the domain root |
 
 [server/index.js](../server/index.js) fixes the normal application-data path to `../public/data` relative to the backend. A general production `DATA_DIR` environment override is **not implemented**. The guarded local override below is for development only.
 
@@ -32,7 +32,7 @@ The application uses **JSON files**, not a database.
 backend/             # Server code, outside the public web root
 private/data/        # Patients, appointments and settings
 private/auth/        # Users and sessions
-public_html/app/     # Built frontend only
+public_html/         # Built frontend only, when the domain document root is public_html
 ```
 
 This layout is a recommendation, not an automatic migration or an existing production path override. Moving the data requires updating the backend's path configuration, preserving all records and verifying access before restart.
@@ -130,9 +130,9 @@ These mechanisms do not replace private storage, HTTPS, backups or deployment ve
    npm run build
    ```
 
-   Confirm `dist/data` is absent. Upload the contents of `dist/` to the frontend's `/app/` directory, including brand and About preview assets.
+   Confirm `dist/data` is absent. Upload the contents of `dist/` directly to the domain's document root, including `.htaccess`, brand and About preview assets. The `.htaccess` file provides the SPA fallback so direct visits and refreshes on routes such as `/about` serve `index.html`; it requires Apache `mod_rewrite` and `AllowOverride` to be enabled. For an Nginx-only static host, configure the equivalent `try_files $uri $uri/ /index.html` fallback in the site's server configuration instead.
 
-9. Open `/app/` over HTTPS and verify sign-in/out, calendar, patients, statistics, Settings and `/app/about`. Verify protected API access and public-page deep links.
+9. Open the domain root over HTTPS and verify sign-in/out, calendar, patients, statistics, Settings and `/about`. Verify protected API access and public-page deep links.
 
 Deploy frontend/backend changes together when API contracts change. Name resolution, merge, FZO import and user preferences require the corresponding backend endpoints; a healthy but stale backend can still return `404`.
 
@@ -153,6 +153,26 @@ Startup diagnostics are not intended to log patient data or tokens. Keep logs pr
 Initialization retries transient filesystem failures (`EMFILE`, `ENFILE`, `EAGAIN`, `EBUSY`, `EIO`, `ETIMEDOUT`) and per-attempt timeouts. Permission errors such as `EACCES` fail immediately. Defaults are created only for genuinely missing files (`ENOENT`); initialization does not overwrite existing records.
 
 If the UI appears empty, verify the API, resolved data path, file permissions and logs before recreating records. Settings offers authenticated diagnostics at `/api/health/details`, showing the data directory and record counts with manual refresh.
+
+### Detailed keepalive measurements
+
+[scripts/keepalive.sh](../scripts/keepalive.sh) is a deployable replacement for the production keepalive script. It leaves `/api/health`, its response, and the cron frequency unchanged. It makes one curl invocation, follows redirects as the previous script did, retains the 60-second timeout, and does not retry.
+
+To deploy, back up the existing `/home/devforge/keepalive.sh` to a private location, upload this script to that same path, and preserve its executable permission if cron executes it directly. Keep the existing cron entry and schedule. Restrict the existing `/home/devforge/keepalive.log` to the account owner; new files are created with private permissions. No Node application restart is required.
+
+Each run logs UTC start/end timestamps, fractional-second DNS/connect/TLS/pretransfer/TTFB/total timings, redirect duration/count, final HTTP status, and curl exit code. Curl errors are retained rather than discarded. Response bodies, headers, cookies, authentication data and application records are not logged. Do not configure credential-bearing or sensitive URLs. `curl -q` ignores user curl configuration; environment proxy settings still apply.
+
+`RESULT=OK` requires HTTP 200 and total time below five seconds. Slow HTTP 200 responses are `SLOW_RESPONSE`; non-200 responses are `HTTP_ERROR`; transport errors are `REQUEST_FAILED`. The script exits with curl's failure code, or 3 for an HTTP error, or 2 for invalid metrics. Slow successful responses exit 0.
+
+The curl timing fields are cumulative, not separate phase durations. For a direct HTTPS request without redirects, approximate TCP time is connect minus DNS, TLS time is TLS minus connect, and post-connection waiting is TTFB minus pretransfer. That waiting includes Passenger/proxy queues as well as application execution. Redirects complicate phase subtraction: inspect redirect count/duration first. These measurements cannot prove readiness or identify process lifetimes by themselves; correlate UTC timestamps with startup logs and hosting resource usage.
+
+For isolated testing, `KEEPALIVE_LOG` and `KEEPALIVE_URL` override the defaults:
+
+```bash
+KEEPALIVE_LOG=/private/test/keepalive.log \
+KEEPALIVE_URL=http://127.0.0.1:3000/api/health \
+bash scripts/keepalive.sh
+```
 
 ## Backups and rollback
 
