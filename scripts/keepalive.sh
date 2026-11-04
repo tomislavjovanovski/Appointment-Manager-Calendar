@@ -124,6 +124,17 @@ SLOW_LIMIT_SECONDS=5
     elif awk -v total="$TOTAL_SECONDS" -v ttfb="$TTFB_SECONDS" \
         'BEGIN { exit !((total + 0) >= 5 || (ttfb + 0) >= 5) }'; then
         printf 'RESULT=SLOW_RESPONSE\n'
+        # One immediate follow-up probe: a fast retry indicates the slowness was a cold
+        # Passenger spawn (worker is warm now); a slow retry indicates a persistently slow app.
+        # Kept on one source line for the same wrapping reason as WRITE_OUT above.
+        WARM_RETRY_WRITE_OUT='warm_retry_http_code=%{http_code}\nwarm_retry_ttfb_seconds=%{time_starttransfer}\nwarm_retry_total_seconds=%{time_total}\n'
+        WARM_RETRY_METRICS="$(curl -q --silent --show-error --location --max-time 60 \
+            --output /dev/null \
+            --write-out "$WARM_RETRY_WRITE_OUT" \
+            "$URL")"
+        WARM_RETRY_EXIT=$?
+        printf '%s\n' "$WARM_RETRY_METRICS"
+        printf 'warm_retry_exit=%s\n' "$WARM_RETRY_EXIT"
         RC=0
     else
         printf 'RESULT=OK\n'

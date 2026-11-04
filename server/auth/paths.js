@@ -8,9 +8,11 @@ const serverDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
  * Directory for users.json and sessions.json.
  * Default: one level above the backend folder, e.g. /home/devforge/private/auth on cPanel,
  * which is outside public_html and outside the patient data directory.
+ * `serverDir` lets a bundled entry point pass its own directory, because in a single-file
+ * bundle this module's import.meta.url points at the bundle, not at server/auth/.
  */
-export function resolveAuthDir(env = process.env) {
-  return env.AUTH_DATA_DIR ? path.resolve(env.AUTH_DATA_DIR) : path.resolve(serverDir, '../private/auth');
+export function resolveAuthDir(env = process.env, { serverDir: baseDir = serverDir } = {}) {
+  return env.AUTH_DATA_DIR ? path.resolve(env.AUTH_DATA_DIR) : path.resolve(baseDir, '../private/auth');
 }
 
 /** Logs whether login is possible. Never throws, so a broken auth file cannot stop the app from serving 401s. */

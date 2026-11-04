@@ -104,14 +104,14 @@ These mechanisms do not replace private storage, HTTPS, backups or deployment ve
 - Passenger manages the application process and socket. **Do not set `PORT`.**
 - The startup entry calls `app.listen(PORT, HOST)` exactly once.
 - [index.js](../server/index.js) must remain free of top-level `await`: Passenger loads it with `require()`.
-- Deploy the complete backend from [server/](../server/), including [app.js](../server/app.js), [dataStore.js](../server/dataStore.js), [startup.js](../server/startup.js), patient matching/import helpers, [manage-users.js](../server/manage-users.js), the auth directory and backend package/lock files.
-- Install backend dependencies from [server/package.json](../server/package.json); do not upload local `node_modules`.
+- Deploy the backend either as the bundled `dist-server/` folder from `npm run build:server` (recommended: no host-side dependency install, faster cold spawns; see [Reducing cold-spawn latency](#reducing-cold-spawn-latency)) or as the complete source backend from [server/](../server/), including [app.js](../server/app.js), [dataStore.js](../server/dataStore.js), [startup.js](../server/startup.js), patient matching/import helpers, [manage-users.js](../server/manage-users.js), the auth directory and backend package/lock files.
+- For a source deployment, install backend dependencies from [server/package.json](../server/package.json); do not upload local `node_modules`. The bundled deployment needs no dependency install.
 
 ### Deployment checklist
 
 1. Back up the current backend, frontend, application JSON and private auth data to known private paths. Confirm that the backup can be restored.
 2. Verify the private data layout and backend path configuration. Do not assume the recommended layout is already implemented.
-3. Upload the complete backend as a consistent version and install its dependencies using the hosting environment.
+3. Build and upload the backend: run `npm run build:server` and upload the contents of `dist-server/` to the backend application directory (or upload the complete source backend and install its dependencies using the hosting environment).
 4. Configure the private auth directory and production environment. Create the first administrator only if one does not already exist.
 5. Restart Passenger using the host's application controls or `touch tmp/restart.txt` from the backend application directory.
 6. Check logs for `server.listening` and `auth.ready` with a non-zero active-user count.
@@ -136,12 +136,24 @@ These mechanisms do not replace private storage, HTTPS, backups or deployment ve
 
 Deploy frontend/backend changes together when API contracts change. Name resolution, merge, FZO import and user preferences require the corresponding backend endpoints; a healthy but stale backend can still return `404`.
 
+### Reducing cold-spawn latency
+
+Production measurements (November 3–4, 2026) show that slow keepalive responses are dominated by cold Passenger spawns: a fresh worker normally reaches `server.listening` in about 300–400 ms, but a spawn during the host's 02:00–07:00 UTC backup/maintenance window took 6–9 seconds because the page cache was evicted and the CPU was contended. The measures below reduce or eliminate that cost.
+
+**Single-folder backend bundle.** `npm run build:server` builds a complete, self-contained backend in `dist-server/`: `index.js` (the bundled web application and Passenger startup file), `manage-users.js` (the bundled admin CLI) and a dependency-free `package.json`. Deploying the backend is then one step: upload the *contents* of `dist-server/` into the backend application directory, overwriting `index.js`, `manage-users.js` and `package.json`. No `npm install` and no `node_modules` are needed on the host, and a cold spawn reads one ~1.2 MB file instead of hundreds of `node_modules` files — the dominant cost when the page cache is cold. File names are unchanged, so the Passenger startup file setting and the documented `node manage-users.js` commands keep working. The bundles contain no top-level `await`, so Passenger's `require()` loading continues to work, and the default `public/data` and `private/auth` locations resolve relative to the deployed directory exactly as before.
+
+**Keep a worker alive through the backup window.** The spawn itself can be avoided entirely: in the host's Passenger/cPanel application settings, set minimum instances to 1 and/or raise the pool idle time above the keepalive interval, or densify the keepalive cron (for example every 5 minutes between 02:00 and 07:00 UTC). A warm worker answered in 70–190 ms even during the backup window.
+
+**Node 22 compile cache.** When the host's Node selector offers Node 22+, set the `NODE_COMPILE_CACHE` environment variable to a private writable directory. V8 then persists compiled bytecode between spawns, cutting module evaluation time on both warm and cold starts. Node 20 does not support this flag.
+
+**Scrypt prewarm.** After `server.listening`, the backend computes the dummy password hash in the background and logs `auth.prewarm.ok` with its duration (or `auth.prewarm.failed`; both are non-fatal). This does not affect time-to-first-byte; it removes the extra scrypt cost that the first unknown-email login attempt on a fresh worker previously paid.
+
 ## Startup logs and troubleshooting
 
 Startup emits structured JSON events:
 
-- `startup.begin`, including `moduleLoadMs`
-- `auth.init.begin`, `auth.init.ok`
+- `startup.begin`, including `moduleLoadMs` plus host-contention diagnostics (`cpuUserMs`, `cpuSystemMs`, `majorPageFaults`, `fsReads`, `involuntaryContextSwitches`)
+- `auth.init.begin`, `auth.init.ok`, each including `uptimeMs`
 - `datastore.init.attempt`, `datastore.init.ok`, `datastore.init.failed`
 - `server.listening`, `server.listen.failed`
 - `auth.ready`, `auth.no_users`, `auth.users.unavailable`
@@ -156,7 +168,7 @@ If the UI appears empty, verify the API, resolved data path, file permissions an
 
 ### Detailed keepalive measurements
 
-[scripts/keepalive.sh](../scripts/keepalive.sh) is a deployable replacement for the production keepalive script. It leaves `/api/health`, its response, and the cron frequency unchanged. Its default target is `https://mojaordinacija.mk/api/health`; `KEEPALIVE_URL` can override it. Each run performs one curl transfer, follows redirects as the previous script did, retains the 60-second timeout, and does not retry. Query strings, fragments and `@` characters are rejected so a credential-bearing URL is not accidentally logged by curl errors.
+[scripts/keepalive.sh](../scripts/keepalive.sh) is a deployable replacement for the production keepalive script. It leaves `/api/health`, its response, and the cron frequency unchanged. Its default target is `https://mojaordinacija.mk/api/health`; `KEEPALIVE_URL` can override it. Each run performs one curl transfer, follows redirects as the previous script did, and retains the 60-second timeout. A response is not retried, with one exception: after a slow HTTP 200 (`SLOW_RESPONSE`), the script immediately sends one follow-up probe and logs `warm_retry_http_code`, `warm_retry_ttfb_seconds`, `warm_retry_total_seconds` and `warm_retry_exit`. A fast retry indicates the slowness was a cold Passenger spawn (the worker is warm now); a slow retry indicates a persistently slow application or host. The retry does not change the run's `RESULT` or exit code. Query strings, fragments and `@` characters are rejected so a credential-bearing URL is not accidentally logged by curl errors.
 
 To deploy, back up the existing `/home/devforge/keepalive.sh` to a private location, upload this script to that same path, and preserve its executable permission if cron executes it directly. Keep the existing cron entry and schedule. Restrict the existing `/home/devforge/keepalive.log` to the account owner; new files are created with private permissions. No Node application restart is required.
 
@@ -164,11 +176,11 @@ Each run logs UTC start/end timestamps, the keepalive process PID, curl version,
 
 `RESULT=OK` requires HTTP 200 and both total time and TTFB below five seconds. Slow HTTP 200 responses are `SLOW_RESPONSE`; non-200 responses are `HTTP_ERROR`; transport errors are `REQUEST_FAILED`. The script exits with curl's failure code, or 3 for an HTTP error, or 2 for invalid metrics/configuration. Slow successful responses exit 0.
 
-The curl timing fields are cumulative, not separate phase durations. For a request without redirects, the script estimates TCP setup as connect minus DNS, TLS handshake as app-connect minus connect (HTTPS only), and response wait after pretransfer as TTFB minus pretransfer. That wait includes Passenger/proxy queues as well as application execution. Redirects complicate phase subtraction: inspect redirect count/duration first. These measurements cannot identify the Node worker PID or prove which process served the request; correlate UTC timestamps with Passenger startup logs. The backend's `server.listening` timestamp can be compared with the probe's TTFB/end time, while `moduleLoadMs` is process uptime at `startup.begin`, not a pure module-loader measurement.
+The curl timing fields are cumulative, not separate phase durations. For a request without redirects, the script estimates TCP setup as connect minus DNS, TLS handshake as app-connect minus connect (HTTPS only), and response wait after pretransfer as TTFB minus pretransfer. That wait includes Passenger/proxy queues as well as application execution. Redirects complicate phase subtraction: inspect redirect count/duration first. These measurements cannot identify the Node worker PID or prove which process served the request; correlate UTC timestamps with Passenger startup logs. The backend's `server.listening` timestamp can be compared with the probe's TTFB/end time, while `moduleLoadMs` is process uptime at `startup.begin`, not a pure module-loader measurement: it covers Node bootstrap, module loading and all module-scope work in `index.js`, so the `auth.init` duration is a subset of `moduleLoadMs`, not an addition to it. The `uptimeMs` field on `auth.init.begin`/`auth.init.ok` splits that window into before-auth, auth, and after-auth segments.
 
 The attached Oct 14–Nov 3, 2026 logs show why this comparison matters: of 431 recorded probe runs, 399 returned 200, 21 returned 404, five timed out after 60 seconds with no response bytes, and six failed with curl exit 127 after a malformed deployed `--write-out` argument. Among the 111 runs with parsed timing fields, median TTFB was about 0.096 seconds, p95 was about 4.214 seconds, and the maximum was about 46.262 seconds. One precise probe began at 06:30:01.684 UTC and took 45.193 seconds to first byte. Passenger logged `startup.begin` at 06:30:46.860 UTC and `server.listening` at 06:30:46.877 UTC for the new PID, matching the probe's first-byte time. Its `moduleLoadMs: 28767` implies the process began about 28.8 seconds before `startup.begin` (roughly 16.4 seconds after the probe began); datastore initialization and listen then took 4 ms and 12 ms. This strongly associates that sample with Passenger waiting for a worker to become ready, rather than JSON datastore initialization. The 21 consecutive 404s from Nov 2 21:30 UTC through Nov 3 07:30 UTC are a separate target/routing/deployment problem to resolve; the attached pre-update script defaulted to `devforge.mk`, not the current `mojaordinacija.mk` domain. Confirm the URL configured in the actual cron environment before interpreting those 404s.
 
-Passenger logs also report auth-init durations around ten seconds in some workers, despite the current `createAuth()` path performing only synchronous configuration/router construction. The durations are real wall-clock intervals, but do not by themselves prove that auth code consumed ten seconds of CPU. The script can show when a slow external probe ends; use the accompanying Passenger timestamps and a Node CPU/scheduling profile to determine whether time is spent loading/evaluating modules, constructing auth, or waiting for the host to schedule the process.
+Passenger logs also report auth-init durations around ten seconds in some workers, despite the current `createAuth()` path performing only synchronous configuration/router construction. The durations are real wall-clock intervals, but do not by themselves prove that auth code consumed ten seconds of CPU. The script can show when a slow external probe ends; use the accompanying Passenger timestamps and the `startup.begin` diagnostics to determine whether time is spent loading/evaluating modules, constructing auth, or waiting for the host to schedule the process: `cpuUserMs`/`cpuSystemMs` far below `moduleLoadMs` indicates CPU starvation or descheduling, while large `majorPageFaults`/`fsReads` indicate a cold page cache, such as a nightly backup evicting `node_modules` and the Node binary. The November 3–4, 2026 incidents (TTFB 8.9 s and 9.2 s at 03:30 and 06:30 UTC) followed exactly this pattern: every startup phase — including the pure in-memory `createAuth()` — inflated together on the first spawn after a multi-hour idle gap inside the host backup window, while the small datastore JSON reads stayed at 3–4 ms.
 
 For isolated testing, `KEEPALIVE_LOG` and `KEEPALIVE_URL` override the defaults:
 

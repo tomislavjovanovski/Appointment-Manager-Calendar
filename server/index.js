@@ -5,6 +5,7 @@ import { createAuth, readAuthConfig } from './auth/index.js';
 import { createAuthStore } from './auth/authStore.js';
 import { bootstrapAdminFromEnv } from './auth/bootstrap.js';
 import { reportAuthStatus, resolveAuthDir } from './auth/paths.js';
+import { prewarmDummyHash } from './auth/password.js';
 import { createDataStore } from './dataStore.js';
 import { createLogger, exitWithFailure, serializeError, startServer } from './startup.js';
 
@@ -42,12 +43,18 @@ const dataStore = createDataStore({
 });
 
 // Authentication data (users, sessions) lives outside the web root and outside the patient data directory.
-const AUTH_DIR = resolveAuthDir();
+// __dirname is passed explicitly so the default stays correct when this file is deployed as a single-file bundle.
+const AUTH_DIR = resolveAuthDir(process.env, { serverDir: __dirname });
 const authStore = createAuthStore({ authDir: AUTH_DIR, logger });
+// uptimeMs lets log readers separate this window from startup.begin's moduleLoadMs,
+// which is total process uptime and therefore *includes* the auth.init duration.
 const authInitStartedAt = performance.now();
-logger.info('auth.init.begin');
+logger.info('auth.init.begin', { uptimeMs: Math.round(process.uptime() * 1000) });
 const auth = createAuth({ store: authStore, config: readAuthConfig(), logger });
-logger.info('auth.init.ok', { durationMs: Math.round(performance.now() - authInitStartedAt) });
+logger.info('auth.init.ok', {
+  durationMs: Math.round(performance.now() - authInitStartedAt),
+  uptimeMs: Math.round(process.uptime() * 1000),
+});
 
 const app = createApp({ dataStore, dataDir: DATA_DIR, auth });
 
@@ -59,6 +66,14 @@ process.on('uncaughtException', (error, origin) => {
 startServer({ app, dataStore, port: PORT, host: HOST, logger })
   .then(() => bootstrapAdminFromEnv({ authStore, logger }))
   .then(() => reportAuthStatus({ authStore, authDir: AUTH_DIR, logger }))
+  .then(() => {
+    // Warm the scrypt dummy hash after the server is accepting requests, so the first
+    // unknown-email login on a fresh worker pays one scrypt instead of three. Non-fatal.
+    const prewarmStartedAt = performance.now();
+    return prewarmDummyHash(authStore.hashParams)
+      .then(() => logger.info('auth.prewarm.ok', { durationMs: Math.round(performance.now() - prewarmStartedAt) }))
+      .catch((error) => logger.warn('auth.prewarm.failed', { error: serializeError(error) }));
+  })
   .catch((error) => {
     logger.error('startup.failed', { error: serializeError(error) });
     exitWithFailure();

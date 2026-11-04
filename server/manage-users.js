@@ -9,9 +9,16 @@
 //   node manage-users.js enable --email admin@example.com
 //   node manage-users.js list
 
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { AuthInputError, createAuthStore } from './auth/authStore.js';
 import { resolveAuthDir } from './auth/paths.js';
 import { PASSWORD_RULES } from './auth/password.js';
+
+// Passed explicitly so the default auth dir stays correct when this file is deployed as a
+// single-file bundle (its import.meta.url then points at the bundle, not at server/auth/).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const AUTH_DIR = resolveAuthDir(process.env, { serverDir: __dirname });
 
 const USAGE = `Usage:
   node manage-users.js create --email <email>
@@ -20,7 +27,7 @@ const USAGE = `Usage:
   node manage-users.js enable --email <email>
   node manage-users.js list
 
-Auth data directory: ${resolveAuthDir()} (override with AUTH_DATA_DIR)`;
+Auth data directory: ${AUTH_DIR} (override with AUTH_DATA_DIR)`;
 
 const parseArgs = (argv) => {
   const [command, ...rest] = argv;
@@ -91,7 +98,7 @@ async function readNewPassword() {
 
 async function main() {
   const { command, options } = parseArgs(process.argv.slice(2));
-  const store = createAuthStore({ authDir: resolveAuthDir() });
+  const store = createAuthStore({ authDir: AUTH_DIR });
   const needsEmail = ['create', 'set-password', 'disable', 'enable'].includes(command);
   if (needsEmail && !options.email) throw new AuthInputError('--email is required.', 'EARGS');
 

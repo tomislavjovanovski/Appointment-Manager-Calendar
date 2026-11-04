@@ -61,11 +61,21 @@ export async function verifyPassword(password, encoded) {
 
 const dummyHashes = new Map();
 
-/** Spends the same work as a real verification, so unknown e-mails are not distinguishable by timing. */
-export async function verifyAgainstDummy(password, params = DEFAULT_HASH_PARAMS) {
+const dummyHashFor = (params) => {
   const cacheKey = JSON.stringify(params);
   if (!dummyHashes.has(cacheKey)) dummyHashes.set(cacheKey, hashPassword(randomBytes(32).toString('hex'), params));
-  await verifyPassword(typeof password === 'string' ? password : '', await dummyHashes.get(cacheKey));
+  return dummyHashes.get(cacheKey);
+};
+
+/**
+ * Creates and caches the dummy hash ahead of time, so a fresh worker does not pay the
+ * extra hash computation during the first login attempt for an unknown e-mail.
+ */
+export const prewarmDummyHash = (params = DEFAULT_HASH_PARAMS) => dummyHashFor(params);
+
+/** Spends the same work as a real verification, so unknown e-mails are not distinguishable by timing. */
+export async function verifyAgainstDummy(password, params = DEFAULT_HASH_PARAMS) {
+  await verifyPassword(typeof password === 'string' ? password : '', await dummyHashFor(params));
   return false;
 }
 

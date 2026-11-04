@@ -140,11 +140,21 @@ export async function startServer({
   isPassenger = typeof globalThis.PhusionPassenger !== 'undefined',
 }) {
   const startedAt = performance.now();
+  // CPU vs wall-clock and fault counters distinguish host-level causes of a slow start:
+  // low CPU with high moduleLoadMs means the process was starved/descheduled (e.g. LVE throttling),
+  // while high majorPageFaults/fsReads mean a cold page cache (e.g. a backup evicting node_modules).
+  const resources = process.resourceUsage();
   logger.info('startup.begin', {
     node: process.version,
     passenger: isPassenger,
-    // Time since the Node process started, i.e. mostly module loading before startServer() ran.
+    // Time since the Node process started: Node bootstrap, module loading and all module-scope
+    // work in index.js — including auth.init, whose duration is a subset of this value.
     moduleLoadMs: Math.round(process.uptime() * 1000),
+    cpuUserMs: Math.round(resources.userCPUTime / 1000),
+    cpuSystemMs: Math.round(resources.systemCPUTime / 1000),
+    majorPageFaults: resources.majorPageFault,
+    fsReads: resources.fsRead,
+    involuntaryContextSwitches: resources.involuntaryContextSwitches,
     initAttempts: options.initAttempts,
     initRetryDelayMs: options.initRetryDelayMs,
     initTimeoutMs: options.initTimeoutMs,
