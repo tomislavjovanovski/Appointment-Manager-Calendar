@@ -92,6 +92,8 @@ Binary Excel, `.xlsx`, arbitrary practice-data files and JSON backup restores ar
 
 ### Matching and preservation
 
+The patient directory loads **100 patients per page** on desktop and mobile, sorted by **Last Visit / Последна посета** (newest first; patients without appointments last). Search covers the entire directory by name, email, phone or EMBG before pagination. Counts summarize all matching patients, not just the displayed page. The sidebar fetches patient totals without downloading patient records. Booking and other existing full-list consumers are unchanged. With the current JSON-file storage, the backend still reads the source files to filter/sort; pagination reduces network transfer and browser memory/rendering, not database-level file reads.
+
 - EMBG is a **13-digit string**, preserving leading zeros. Records with the same name but different EMBGs remain separate patients.
 - Name fallback only matches existing records without an EMBG. Ambiguous matches and possible Latin/Cyrillic equivalents require review.
 - Import fills missing EMBG/address fields, creates new patients and synchronizes non-empty valid FZO registration dates. Existing patient IDs, contact details, notes, appointments and patients absent from the file are preserved.

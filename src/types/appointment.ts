@@ -21,6 +21,21 @@ export interface PatientWithActivity extends Patient {
   lastAppointmentAt: string | null;
 }
 
+export interface PatientPage {
+  patients: PatientWithActivity[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  patientsWithVisits: number;
+  totalAppointments: number;
+}
+
+export interface PatientSummary {
+  total: number;
+  newThisMonth: number;
+}
+
 export interface Appointment {
   id: string;
   title: string;

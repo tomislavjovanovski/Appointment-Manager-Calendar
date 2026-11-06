@@ -11,8 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Plus, User, Phone, Mail, Calendar, Activity, ArrowUpRight, Users } from 'lucide-react';
-import { Patient, PatientWithActivity } from '@/types/appointment';
+import { Search, Plus, User, Phone, Mail, Calendar, Activity, ArrowUpRight, Users, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Patient, PatientWithActivity, PatientPage } from '@/types/appointment';
 import { patientsStorage } from '@/lib/storage';
 import { format } from 'date-fns';
 import { useI18n } from '@/i18n';
@@ -28,32 +28,46 @@ interface PatientListProps {
 
 export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted, refreshTrigger, navigation }: PatientListProps) {
   const { t, dateFnsLocale } = useI18n();
-  const [patients, setPatients] = useState<PatientWithActivity[]>([]);
+  const [result, setResult] = useState<PatientPage | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [query, setQuery] = useState({ page: 1, search: '' });
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [retry, setRetry] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQuery((current) => current.search === searchQuery.trim()
+        ? current
+        : { page: 1, search: searchQuery.trim() });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    setStatus('loading');
     const loadData = async () => {
       try {
-        const patientsData = await patientsStorage.getWithActivity();
-        if (active) setPatients(patientsData);
+        const data = await patientsStorage.getPage(query.page, query.search, controller.signal);
+        if (active) {
+          setResult(data);
+          setStatus('ready');
+        }
       } catch (error) {
-        // Avoid console.error noise in offline/test mode (smoke test treats it as a failure).
-        console.warn('Patients: failed to load data, using empty defaults.', error);
-        if (active) setPatients([]);
+        if (active && !controller.signal.aborted) {
+          console.warn('Patients: failed to load the patient page.', error);
+          setStatus('error');
+        }
       }
     };
     
     void loadData();
-    return () => { active = false; };
-  }, [refreshTrigger]);
-  
-  const filteredPatients = patients.filter(patient =>
-    `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.phone.includes(searchQuery) ||
-    (patient.embg ?? '').includes(searchQuery)
-  );
+    return () => { active = false; controller.abort(); };
+  }, [refreshTrigger, query, retry]);
+
+  const loading = status === 'loading' || query.search !== searchQuery.trim();
+  const filteredPatients = !loading && status === 'ready' ? result?.patients ?? [] : [];
 
   const getPatientAppointmentCount = (patient: PatientWithActivity) => {
     return patient.appointmentCount || 0;
@@ -63,14 +77,8 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
     return patient.lastAppointmentAt;
   };
 
-  const totalAppointments = filteredPatients.reduce(
-    (sum, patient) => sum + getPatientAppointmentCount(patient),
-    0
-  );
-
-  const patientsWithVisits = filteredPatients.filter(
-    (patient) => getPatientAppointmentCount(patient) > 0
-  ).length;
+  const totalAppointments = result?.totalAppointments ?? 0;
+  const patientsWithVisits = result?.patientsWithVisits ?? 0;
 
   const patientInitials = (patient: Patient) =>
     `${patient.firstName?.[0] ?? ''}${patient.lastName?.[0] ?? ''}`.toUpperCase() || 'P';
@@ -109,7 +117,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
             </div>
             <div className="min-w-0">
               <div className="line-clamp-2 text-[10px] font-medium uppercase leading-tight tracking-wide text-muted-foreground md:text-xs md:leading-normal">{t('patients.title')}</div>
-              <div className="text-lg font-semibold text-foreground md:text-2xl">{filteredPatients.length}</div>
+              <div data-testid="patients-total" className="text-lg font-semibold text-foreground md:text-2xl">{result?.total ?? 0}</div>
             </div>
           </CardContent>
         </Card>
@@ -120,7 +128,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
             </div>
             <div className="min-w-0">
               <div className="line-clamp-2 text-[10px] font-medium uppercase leading-tight tracking-wide text-muted-foreground md:text-xs md:leading-normal">{t('patients.withVisits')}</div>
-              <div className="text-lg font-semibold text-foreground md:text-2xl">{patientsWithVisits}</div>
+              <div data-testid="patients-with-visits" className="text-lg font-semibold text-foreground md:text-2xl">{patientsWithVisits}</div>
             </div>
           </CardContent>
         </Card>
@@ -131,7 +139,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
             </div>
             <div className="min-w-0">
               <div className="line-clamp-2 text-[10px] font-medium uppercase leading-tight tracking-wide text-muted-foreground md:text-xs md:leading-normal">{t('createAppointment.appointmentDetails')}</div>
-              <div className="text-lg font-semibold text-foreground md:text-2xl">{totalAppointments}</div>
+              <div data-testid="patients-total-appointments" className="text-lg font-semibold text-foreground md:text-2xl">{totalAppointments}</div>
             </div>
           </CardContent>
         </Card>
@@ -144,6 +152,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
               <CardTitle className="text-lg font-semibold tracking-tight">{t('patients.directory')}</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {t('patients.directoryDescription')}
+                {' '}{t('patients.sortedByLastVisit')}
               </p>
             </div>
             <div className="flex flex-row items-center gap-2 sm:gap-3">
@@ -152,6 +161,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                 <Input
                   data-testid="patient-search-input"
                   placeholder={t('patients.searchPlaceholder')}
+                  maxLength={200}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 border-border/80 bg-background/80 pl-10 text-base shadow-sm md:h-10 md:text-sm transition-colors focus-visible:ring-primary/25"
@@ -163,7 +173,17 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0" aria-busy={loading}>
+          {loading ? (
+            <p role="status" className="p-6 text-center text-muted-foreground">{t('patients.loading')}</p>
+          ) : status === 'error' ? (
+            <div role="alert" className="space-y-3 p-6 text-center">
+              <p className="text-destructive">{t('patients.loadFailed')}</p>
+              <Button variant="outline" onClick={() => setRetry((value) => value + 1)}>
+                <RefreshCw className="mr-2 h-4 w-4" />{t('patients.retry')}
+              </Button>
+            </div>
+          ) : <>
           {/* Patient List */}
           <div className="md:hidden">
             {filteredPatients.length === 0 ? (
@@ -280,7 +300,7 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
                     <TableHead>{t('patients.contact')}</TableHead>
                     <TableHead>{t('createPatient.dob')}</TableHead>
                     <TableHead>{t('patientImport.registrationDate')}</TableHead>
-                    <TableHead>{t('patients.lastVisit')}</TableHead>
+                    <TableHead aria-sort="descending">{t('patients.lastVisit')}</TableHead>
                     <TableHead>{t('patients.activity')}</TableHead>
                     <TableHead className="pr-6">{t('patients.notesColumn')}</TableHead>
                     <TableHead className="w-12 pr-4"><span className="sr-only">{t('patients.delete')}</span></TableHead>
@@ -367,6 +387,31 @@ export function PatientList({ onPatientClick, onCreatePatient, onPatientDeleted,
               </Table>
             )}
           </div>
+          </>}
+          {result && (
+            <nav aria-label={t('patients.pagination')} className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 p-3 md:px-5">
+              <p className="text-xs text-muted-foreground" data-testid="patients-page-range">
+                {t('patients.pageRange', {
+                  start: result.total === 0 ? 0 : (result.page - 1) * result.pageSize + 1,
+                  end: Math.min(result.page * result.pageSize, result.total),
+                  total: result.total,
+                })}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" data-testid="patients-prev-page"
+                  disabled={loading || status !== 'ready' || result.page <= 1}
+                  onClick={() => setQuery((current) => ({ ...current, page: result.page - 1 }))}>
+                  <ChevronLeft className="h-4 w-4" /><span className="sr-only">{t('patients.previousPage')}</span>
+                </Button>
+                <span className="text-xs tabular-nums" data-testid="patients-page-number">{t('patients.pageNumber', { page: result.page, pages: result.totalPages })}</span>
+                <Button size="sm" variant="outline" data-testid="patients-next-page"
+                  disabled={loading || status !== 'ready' || result.page >= result.totalPages}
+                  onClick={() => setQuery((current) => ({ ...current, page: result.page + 1 }))}>
+                  <ChevronRight className="h-4 w-4" /><span className="sr-only">{t('patients.nextPage')}</span>
+                </Button>
+              </div>
+            </nav>
+          )}
         </CardContent>
       </Card>
     </div>

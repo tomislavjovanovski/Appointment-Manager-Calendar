@@ -1,4 +1,4 @@
-import { Patient, PatientWithActivity, Appointment, AppointmentSettings } from '@/types/appointment';
+import { Patient, PatientWithActivity, PatientPage, PatientSummary, Appointment, AppointmentSettings } from '@/types/appointment';
 import { normalizeLocale, type AppLocale } from '@/i18n/types';
 import { normalizePatientForm, normalizePatientUpdates } from '@/lib/patientForm';
 import { authFetch } from '@/lib/auth';
@@ -171,6 +171,11 @@ export const initializeData = async () => {
 export const patientsStorage = {
   getAll: async (): Promise<Patient[]> => apiCall('/patients') as Promise<Patient[]>,
   getWithActivity: async (): Promise<PatientWithActivity[]> => apiCall('/patients') as Promise<PatientWithActivity[]>,
+  getPage: (page: number, search: string, signal?: AbortSignal): Promise<PatientPage> =>
+    apiCall(`/patients/directory?${new URLSearchParams({ page: String(page), search })}`, {
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
+    }),
+  getSummary: (): Promise<PatientSummary> => apiCall('/patients/summary'),
 
   resolve: async (patient: Omit<Patient, 'id' | 'createdAt'>): Promise<{ patient: Patient; reused: boolean }> =>
     apiCall('/patients/resolve', {

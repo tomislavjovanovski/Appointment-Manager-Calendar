@@ -25,6 +25,7 @@ export async function prepareAuth(ctx: BrowserContext, baseURL?: string) {
   await ctx.route('**/api/auth/me', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ user: E2E_USER, csrfToken: E2E_CSRF }) }));
   await ctx.route('**/api/auth/logout', (route) => route.fulfill({ status: 204, body: '' }));
+  await ctx.route('**/api/patients/summary', (route) => route.fulfill({ json: { total: 0, newThisMonth: 0 } }));
   // The Settings page loads this protected endpoint. Unmocked, a running backend answers 401 for the
   // mocked session and the app treats that as an expired session, returning to the login page.
   await ctx.route('**/api/health/details', (route) =>

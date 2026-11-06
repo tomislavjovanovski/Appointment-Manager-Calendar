@@ -45,7 +45,7 @@ const Index = () => {
   const [savingAppointment, setSavingAppointment] = useState(false);
   const appointmentSaveInFlightRef = useRef(false);
   const [sidebarAppointments, setSidebarAppointments] = useState<Appointment[]>([]);
-  const [sidebarPatients, setSidebarPatients] = useState<Patient[]>([]);
+  const [patientSummary, setPatientSummary] = useState({ total: 0, newThisMonth: 0 });
   const [patientStatsError, setPatientStatsError] = useState(false);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState(false);
@@ -127,7 +127,7 @@ const Index = () => {
       setPatientStatsError(false);
       try {
         const [patients, appointments] = await Promise.all([
-          patientsStorage.getAll().catch(() => {
+          patientsStorage.getSummary().catch(() => {
             if (isMounted) setPatientStatsError(true);
             return null;
           }),
@@ -149,9 +149,9 @@ const Index = () => {
 
         if (isMounted) {
           setSidebarAppointments(appointments);
-          if (patients) setSidebarPatients(patients);
+          if (patients) setPatientSummary(patients);
           setSidebarStats({
-            totalPatients: patients?.length ?? 0,
+            totalPatients: patients?.total ?? 0,
             totalVisits: appointments.length,
             visitsThisMonth,
           });
@@ -188,8 +188,8 @@ const Index = () => {
   );
 
   const patientStatItems = [
-    { label: t('sidebar.totalPatients'), value: sidebarPatients.length },
-    { label: t('sidebar.newPatientsMonth'), value: sidebarPatients.filter((patient) => isSameMonth(new Date(patient.createdAt), today)).length },
+    { label: t('sidebar.totalPatients'), value: patientSummary.total },
+    { label: t('sidebar.newPatientsMonth'), value: patientSummary.newThisMonth },
   ];
 
   const activeTabTitle = {

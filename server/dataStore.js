@@ -327,6 +327,45 @@ export function createDataStore({
       });
     },
 
+    async getPatientPage({ page = 1, search = '' } = {}) {
+      if (!Number.isSafeInteger(page) || page < 1 || typeof search !== 'string' || search.length > 200) {
+        const error = new Error('Patient page must be a positive integer and search must be at most 200 characters.');
+        error.statusCode = 400;
+        throw error;
+      }
+      const query = search.trim().toLowerCase();
+      const directory = await store.getPatientDirectory();
+      const matches = query ? directory.filter((patient) =>
+        [`${patient.firstName ?? ''} ${patient.lastName ?? ''}`, patient.email, patient.phone, patient.embg]
+          .some((value) => String(value ?? '').toLowerCase().includes(query))
+      ) : directory;
+      const pageSize = 100;
+      const total = matches.length;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const currentPage = Math.min(page, totalPages);
+      return {
+        patients: matches.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+        page: currentPage,
+        pageSize,
+        total,
+        totalPages,
+        patientsWithVisits: matches.filter((patient) => patient.appointmentCount > 0).length,
+        totalAppointments: matches.reduce((total, patient) => total + patient.appointmentCount, 0),
+      };
+    },
+
+    async getPatientSummary() {
+      const patients = await readPatients();
+      const now = new Date();
+      return {
+        total: patients.length,
+        newThisMonth: patients.filter((patient) => {
+          const created = new Date(patient.createdAt);
+          return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
+        }).length,
+      };
+    },
+
     async createPatient(input) {
       const patients = await readPatients();
       const firstName = String(input.firstName ?? '').trim();

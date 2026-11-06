@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures/base';
 import { PATIENTS } from '../test-data/seed';
 import type { Appointment } from '../../src/types/appointment';
+import { mockPatientDirectory } from '../utils/patientDirectoryMock';
 
 function historyAppointment(id: string, patientId: string, startTime: string, notes: string): Appointment {
   return {
@@ -134,6 +135,7 @@ test.describe('Appointment edit history', () => {
       historyAppointment('recent', PATIENTS.alice.id, '2026-10-19T10:00:00', 'Recent patient visit'),
       historyAppointment('bob', PATIENTS.bob.id, '2026-10-12T10:00:00', 'Private Bob note'),
     ];
+    await mockPatientDirectory(page, () => [PATIENTS.alice, PATIENTS.bob], () => records);
     await page.route('**/api/appointments', (route) => route.fulfill({ json: records }));
     await page.goto('/');
     await page.getByTestId('nav-patients').click();

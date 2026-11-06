@@ -8,6 +8,7 @@ import { patientHelper } from '../utils/patientHelper';
 import { apiMockHelper } from '../utils/apiMockHelper';
 import { prepareAuth } from '../utils/authHelper';
 import { PATIENTS } from '../test-data/seed';
+import { mockPatientDirectory } from '../utils/patientDirectoryMock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,7 @@ export const test = base.extend<MedicalFixtures>({
       await route.continue();
     });
 
+    await mockPatientDirectory(ctx, () => _patients, () => _appointments);
     await ctx.route('**/api/appointments', async (route) => {
       const req = route.request();
       try {
@@ -248,6 +250,7 @@ export const test = base.extend<MedicalFixtures>({
     const _appointments: any[] = [];
     let _settings: any = { startTime: '08:00', endTime: '18:00', workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30 };
 
+    await mockPatientDirectory(ctx, () => _patients, () => _appointments);
     await ctx.route('**/api/patients', async (route) => {
       const req = route.request();
       if (req.method() === 'GET') {

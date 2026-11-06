@@ -72,6 +72,21 @@ export function createApp({ dataStore, dataDir, auth }) {
     res.json(await dataStore.getPatientDirectory());
   }));
 
+  app.get('/api/patients/directory', asyncRoute(async (req, res) => {
+    const rawPage = req.query.page ?? '1';
+    const search = req.query.search ?? '';
+    if (typeof rawPage !== 'string' || !/^[1-9]\d*$/.test(rawPage) || typeof search !== 'string') {
+      const error = new Error('Invalid patient directory query.');
+      error.statusCode = 400;
+      throw error;
+    }
+    res.json(await dataStore.getPatientPage({ page: Number(rawPage), search }));
+  }));
+
+  app.get('/api/patients/summary', asyncRoute(async (_req, res) => {
+    res.json(await dataStore.getPatientSummary());
+  }));
+
   app.post('/api/patients', asyncRoute(async (req, res) => {
     requireObjectPayload(req.body, 'Patient');
     const patient = await dataStore.createPatient(req.body);
