@@ -32,7 +32,7 @@ const Index = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [brandSettings, setBrandSettings] = useState<Pick<AppointmentSettings, 'practiceName' | 'logoDataUrl'>>(initialSettings ?? {});
+  const [brandSettings, setBrandSettings] = useState<Pick<AppointmentSettings, 'practiceName' | 'logoDataUrl' | 'appointmentTypes'>>(initialSettings ?? {});
   const brandName = brandSettings.practiceName?.trim() || t('sidebar.appName');
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
@@ -420,6 +420,7 @@ const Index = () => {
         patientStatsError={patientStatsError || overviewError}
         brandName={brandName}
         logoDataUrl={brandSettings.logoDataUrl}
+        settings={brandSettings}
         overviewLoading={overviewLoading}
         overviewError={overviewError}
         onOverviewRetry={handleRefresh}
@@ -431,7 +432,7 @@ const Index = () => {
           <SheetHeader className="sr-only">
             <SheetTitle>{t('sidebar.menu')}</SheetTitle>
           </SheetHeader>
-          <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} patientStats={patientStatItems} patientStatsError={patientStatsError || overviewError} overviewLoading={overviewLoading} overviewError={overviewError} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} className="h-full w-full border-r-0" />
+          <Sidebar activeTab={activeTab} onTabChange={handleTabChange} stats={sidebarStatItems} patientStats={patientStatItems} patientStatsError={patientStatsError || overviewError} overviewLoading={overviewLoading} overviewError={overviewError} brandName={brandName} logoDataUrl={brandSettings.logoDataUrl} settings={brandSettings} className="h-full w-full border-r-0" />
         </SheetContent>
       </Sheet>
       <main className="flex-1 min-w-0 bg-gradient-to-b from-muted/25 via-background to-background p-4 sm:p-6 md:bg-none md:bg-workspace md:px-3 md:py-4">

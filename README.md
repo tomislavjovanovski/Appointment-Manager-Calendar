@@ -32,12 +32,13 @@ It is a tool for dental teams, not a patient-facing dentist directory or a clini
 | **Месечна статистика и увид во работата** | Monthly appointments, unique patients, days with bookings, booked hours, category breakdowns and comparisons with the previous month. |
 | **Пристап од компјутер и мобилен** | Desktop weekly calendar and mobile daily agenda, with responsive patient, statistics and settings screens. |
 | **Едноставен увоз на податоци** | Supported FZO patient lists, with a comparison preview, validation and explicit confirmation before changes are saved. |
-| **Прилагодување според ординацијата** | Working days/hours, appointment durations, default category, practice name/logo and language. Category names and colors are predefined. |
+| **Прилагодување според ординацијата** | Working days/hours, appointment durations, default category, editable category names/colors, custom categories, practice name/logo and language. |
 | **Едноставен систем без непотребна сложеност** | Four main workspace areas: calendar, patients, statistics and settings. |
 
 ### Calendar and booking
 
 - Supported appointment durations are **30, 45, 60, 90 and 120 minutes**. Default durations are configurable per category; the calendar interval can be **15, 30 or 60 minutes**.
+- In **Settings → Appointments and activities**, edit category names/colors or add a category, configure its default duration and optionally select it as the default, then **Save settings**. Changes are stored with backend settings and used in booking, calendars, history, legends and statistics. Existing category IDs and appointment dates/durations remain unchanged. Unedited built-in names follow the selected language; edited/custom names are used in both languages. Category deletion is not supported.
 - Name inputs search existing patients. Saving reuses a unique normalized name match; ambiguous matches require selecting a record. A new record is created only when there is no match. Reusing a patient does not overwrite their details.
 - Suggestions update after a 500 ms typing pause, show exact matches first and offer **Show more** for large lists. Identical names include distinguishing contact/date information when available. Closing the dialog clears the search.
 - Availability guidance considers working days, daily hours, existing bookings and one-off unavailable slots. An unavailable slot can be added from the booking dialog without creating an appointment.
@@ -129,7 +130,7 @@ Settings stays on one page, organized into:
 |---|---|
 | **Ординација** | Practice name/logo and Macedonian/English language. PNG, JPEG and WebP logos are supported up to 128 KB. |
 | **Работно време** | Working days, default/per-day hours, calendar interval and one-off unavailable slots. |
-| **Термини и активности** | Default durations and category for new appointments; predefined category colors. Inactive Google Calendar settings remain visible. |
+| **Термини и активности** | Editable category names/colors, new categories, and default durations/category for new appointments. Inactive Google Calendar settings remain visible. |
 | **Известувања** | Legacy webhook/template/time controls remain in the code. Their presence is not a supported appointment-notification or automated-reminder capability. |
 | **Кориснички профил** | Per-user desktop sidebar collapse preference, restored at login. Mobile navigation is unchanged. |
 | **Систем и податоци** | Separate patient import/merge and API Health sections. Health includes status, data directory, record counts, last check and manual refresh. |

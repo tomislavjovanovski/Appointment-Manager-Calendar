@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useI18n } from '@/i18n';
 import { appointmentsStorage, settingsStorage } from '@/lib/storage';
 import { getMonthStatistics, type TypeKey } from '@/lib/statistics';
-import { APPOINTMENT_TYPES } from '@/lib/appointmentTypes';
+import { getAppointmentType, appointmentTypeLabel } from '@/lib/appointmentTypes';
 import { cn } from '@/lib/utils';
 import type { Appointment, AppointmentSettings } from '@/types/appointment';
 
@@ -89,8 +89,8 @@ export function MonthlyStatistics({ navigation, refreshTrigger = 0 }: Readonly<M
   const previousMonthName = format(subMonths(month, 1), 'LLLL', { locale: dateFnsLocale });
   const previousLabel = (value: string) => t('statistics.previousValue', { month: previousMonthName, value });
   const vsPrevious = t('statistics.vsMonth', { month: previousMonthName });
-  const typeLabel = (type: TypeKey) => (type === 'other' ? t('statistics.otherType') : t(APPOINTMENT_TYPES[type].labelKey));
-  const typeColor = (type: TypeKey) => (type === 'other' ? '#94a3b8' : APPOINTMENT_TYPES[type].color);
+  const typeLabel = (type: TypeKey) => (type === 'other' ? t('statistics.otherType') : appointmentTypeLabel(getAppointmentType(type, settings), t));
+  const typeColor = (type: TypeKey) => (type === 'other' ? '#94a3b8' : getAppointmentType(type, settings).color);
 
   // "Other" covers appointments with an unknown type and is only shown when used.
   const typeRows = current && previous

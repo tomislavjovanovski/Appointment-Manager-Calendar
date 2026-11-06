@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/auth/AuthProvider';
-import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES, APPOINTMENT_DURATIONS, DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
+import { getAppointmentTypes, appointmentTypeLabel, getAppointmentTypeDuration, APPOINTMENT_DURATIONS } from '@/lib/appointmentTypes';
 import { PatientMergePanel } from './PatientMergePanel';
 import { PatientImportPanel } from './PatientImportPanel';
 
@@ -130,6 +130,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [patientImportVersion, setPatientImportVersion] = useState(0);
+  const appointmentTypes = getAppointmentTypes(settings);
   const { toast } = useToast();
   const apiHealthUrl = buildApiUrl('/health');
 
@@ -195,7 +196,12 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
 
   const handleSave = async () => {
     try {
+      if (Object.values(settings.appointmentTypes ?? {}).some((type) => type.name !== undefined && !type.name.trim())) {
+        toast({ title: t('settings.saveErrorTitle'), description: t('settings.typeNameRequired'), variant: 'destructive' });
+        return;
+      }
       const savedSettings = await settingsStorage.save(settings);
+      setSettings(savedSettings);
       onSettingsSaved?.(savedSettings);
       setLocale(normalizeLocale(settings.locale));
       toast({
@@ -367,31 +373,49 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
         <TabsContent value="appointments" className="mt-0 space-y-4 sm:space-y-6">
           <SettingsGroupHeading title={t('settings.tabAppointments')} description={t('settings.groupAppointmentsDescription')} />
           <SettingsSection icon={Clock} title={t('settings.typeDurations')} description={t('settings.typeDurationsHint')}>
+            <p className="text-sm text-muted-foreground">{t('settings.editTypesHint')}</p>
             <p className="text-sm text-muted-foreground">{t('settings.defaultAppointmentTypeHint')}</p>
             <RadioGroup
               aria-label={t('settings.defaultAppointmentType')}
               value={settings.defaultAppointmentType ?? 'procedure'}
               onValueChange={(value) => {
-                const type = APPOINTMENT_TYPE_VALUES.find((type) => type === value);
+                const type = Object.keys(appointmentTypes).find((type) => type === value);
                 if (!type) throw new Error('Invalid default appointment type');
                 setSettings((current) => ({ ...current, defaultAppointmentType: type }));
               }}
               className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {APPOINTMENT_TYPE_VALUES.map((type) => (
+              {Object.entries(appointmentTypes).map(([type, definition]) => (
                 <div key={type} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor={`default-duration-${type}`} className="flex min-w-0 items-center gap-2 leading-snug">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: APPOINTMENT_TYPES[type].color }} aria-hidden="true" />
-                      {t(APPOINTMENT_TYPES[type].labelKey)}
-                    </Label>
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <Input type="color" className="h-9 w-10 shrink-0 cursor-pointer p-1"
+                        aria-label={`${appointmentTypeLabel(definition, t)} — ${t('settings.typeColor')}`}
+                        data-testid={`settings-type-color-${type}`} value={definition.color}
+                        onChange={(event) => {
+                          const color = event.target.value;
+                          setSettings((current) => ({
+                            ...current,
+                            appointmentTypes: { ...current.appointmentTypes, [type]: { ...current.appointmentTypes?.[type], color } },
+                          }));
+                        }} />
+                      <Input maxLength={100} aria-label={`${t('settings.typeName')} — ${type}`}
+                        data-testid={`settings-type-name-${type}`} value={appointmentTypeLabel(definition, t)}
+                        onChange={(event) => {
+                          const name = event.target.value;
+                          setSettings((current) => ({
+                            ...current,
+                            appointmentTypes: { ...current.appointmentTypes, [type]: { ...current.appointmentTypes?.[type], name, color: definition.color } },
+                          }));
+                        }} />
+                    </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <RadioGroupItem value={type} id={`default-type-${type}`} data-testid={`settings-default-type-${type}`} aria-label={`${t(APPOINTMENT_TYPES[type].labelKey)} — ${t('settings.defaultAppointmentType')}`} />
+                      <RadioGroupItem value={type} id={`default-type-${type}`} data-testid={`settings-default-type-${type}`} aria-label={`${appointmentTypeLabel(definition, t)} — ${t('settings.defaultAppointmentType')}`} />
                       <Label htmlFor={`default-type-${type}`} className="cursor-pointer text-xs">{t('settings.defaultTypeShort')}</Label>
                     </div>
                   </div>
                   <Select
-                    value={String(settings.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type])}
+                    value={String(getAppointmentTypeDuration(type, settings))}
                     onValueChange={(value) => {
                       const duration = APPOINTMENT_DURATIONS.find((minutes) => String(minutes) === value);
                       if (duration === undefined) throw new Error('Invalid appointment duration');
@@ -401,7 +425,7 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
                       }));
                     }}
                   >
-                    <SelectTrigger id={`default-duration-${type}`} data-testid={`settings-type-duration-${type}`}>
+                    <SelectTrigger id={`default-duration-${type}`} aria-label={`${appointmentTypeLabel(definition, t)} — ${t('settings.typeDuration')}`} data-testid={`settings-type-duration-${type}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -413,6 +437,17 @@ export function TabbedSettingsPanel({ onSettingsSaved, onPatientsMerged, navigat
                 </div>
               ))}
             </RadioGroup>
+            <Button type="button" variant="outline" data-testid="settings-add-type"
+              onClick={() => {
+                const id = `custom-${Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+                setSettings((current) => ({
+                  ...current,
+                  appointmentTypes: { ...current.appointmentTypes, [id]: { name: t('settings.newType'), color: '#2563eb' } },
+                  appointmentTypeDurations: { ...current.appointmentTypeDurations, [id]: 30 },
+                }));
+              }}>
+              {t('settings.addType')}
+            </Button>
           </SettingsSection>
           <GoogleCalendarSync />
         </TabsContent>

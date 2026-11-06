@@ -1,6 +1,6 @@
 import { eachDayOfInterval, endOfMonth, format, isValid, startOfMonth } from 'date-fns';
 import type { Appointment, AppointmentSettings } from '@/types/appointment';
-import { APPOINTMENT_TYPE_VALUES, type AppointmentType } from '@/lib/appointmentTypes';
+import { getAppointmentTypes, type AppointmentType } from '@/lib/appointmentTypes';
 
 const EXCLUDED_STATUSES = new Set<Appointment['status']>(['cancelled', 'no-show']);
 
@@ -44,9 +44,6 @@ const durationMinutes = (appointment: Appointment) => {
   if (Number.isFinite(minutes) && minutes > 0) return minutes;
   return Number(appointment.duration) || 0;
 };
-
-const typeOf = (appointment: Appointment): TypeKey =>
-  (APPOINTMENT_TYPE_VALUES as readonly string[]).includes(appointment.type) ? appointment.type : 'other';
 
 /** Appointments that count towards statistics: valid start time and not cancelled or no-show. */
 export const countedAppointments = (appointments: Appointment[]) =>
@@ -106,7 +103,7 @@ function subtractBlockedSlots(
 
 export function getMonthStatistics(
   appointments: Appointment[],
-  settings: Pick<AppointmentSettings, 'workingDays' | 'startTime' | 'endTime' | 'dailyHours' | 'blockedSlots'>,
+  settings: Pick<AppointmentSettings, 'workingDays' | 'startTime' | 'endTime' | 'dailyHours' | 'blockedSlots' | 'appointmentTypes'>,
   month: Date,
 ): MonthStatistics {
   const monthStart = startOfMonth(month);
@@ -176,10 +173,10 @@ export function getMonthStatistics(
   }
 
   const byType = new Map<TypeKey, TypeStatistics>(
-    [...APPOINTMENT_TYPE_VALUES, 'other' as const].map((type) => [type, { type, count: 0, minutes: 0 }]),
+    [...Object.keys(getAppointmentTypes(settings)), 'other'].map((type) => [type, { type, count: 0, minutes: 0 }]),
   );
   for (const appointment of inMonth) {
-    const entry = byType.get(typeOf(appointment))!;
+    const entry = byType.get(appointment.type) ?? byType.get('other')!;
     entry.count += 1;
     entry.minutes += durationMinutes(appointment);
   }

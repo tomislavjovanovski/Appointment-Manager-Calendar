@@ -4,9 +4,9 @@ import { RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useI18n } from '@/i18n';
-import { APPOINTMENT_TYPES } from '@/lib/appointmentTypes';
-import { appointmentsStorage } from '@/lib/storage';
-import type { Appointment } from '@/types/appointment';
+import { getAppointmentType, appointmentTypeLabel } from '@/lib/appointmentTypes';
+import { appointmentsStorage, settingsStorage } from '@/lib/storage';
+import type { Appointment, AppointmentSettings } from '@/types/appointment';
 
 interface PatientAppointmentHistoryProps {
   patientId?: string | null;
@@ -19,7 +19,8 @@ export function PatientAppointmentHistory({
   active,
   currentAppointmentId,
 }: PatientAppointmentHistoryProps) {
-  const { t, dateFnsLocale } = useI18n();
+  const { t, dateFnsLocale, initialSettings } = useI18n();
+  const [settings, setSettings] = useState<AppointmentSettings | null>(() => settingsStorage.getCached() ?? initialSettings);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [historyRetry, setHistoryRetry] = useState(0);
@@ -29,8 +30,9 @@ export function PatientAppointmentHistory({
     let cancelled = false;
     setAppointments([]);
     setHistoryState('loading');
-    appointmentsStorage.getByPatient(patientId).then((records) => {
+    Promise.all([appointmentsStorage.getByPatient(patientId), settingsStorage.get()]).then(([records, savedSettings]) => {
       if (cancelled) return;
+      setSettings(savedSettings);
       setAppointments([...records].sort((first, second) =>
         (Date.parse(second.startTime) || 0) - (Date.parse(first.startTime) || 0)
       ));
@@ -62,7 +64,7 @@ export function PatientAppointmentHistory({
         <ol className="space-y-2">
           {appointments.map((appointment) => {
             const date = new Date(appointment.startTime);
-            const appointmentType = APPOINTMENT_TYPES[appointment.type];
+            const appointmentType = getAppointmentType(appointment.type, settings);
             return (
               <li
                 key={appointment.id}
@@ -75,7 +77,7 @@ export function PatientAppointmentHistory({
                     {isValid(date) ? format(date, 'PP', { locale: dateFnsLocale }) : t('patientHistory.unknownDate')}
                   </time>
                   <span className="block break-words text-xs font-medium text-muted-foreground" data-testid="patient-history-type">
-                    {appointmentType ? t(appointmentType.labelKey) : appointment.type}
+                    {appointmentTypeLabel(appointmentType, t)}
                   </span>
                   {appointment.id === currentAppointmentId && (
                     <span className="text-xs font-medium text-primary" data-testid="current-appointment-label">

@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 import { useCurrentAppointment } from '@/hooks/use-current-appointment';
-import { APPOINTMENT_TYPES, appointmentBackgroundColor, darkenHexColor } from '@/lib/appointmentTypes';
+import { getAppointmentType, appointmentTypeLabel, appointmentBackgroundColor, darkenHexColor } from '@/lib/appointmentTypes';
 import { createScheduleSnapshot, SnapshotItem } from '@/lib/scheduleSnapshot';
 import { SnapshotDialog } from './SnapshotDialog';
 
@@ -473,6 +473,8 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
             const lastName = patient?.lastName?.trim();
             const phone = patient?.phone?.trim() || t(patients === null ? 'dashboard.phoneUnavailable' : 'dashboard.noPhone');
             const isCurrent = isCurrentAppointment(appointment);
+            const definition = getAppointmentType(appointment.type, settings);
+            const typeLabel = appointmentTypeLabel(definition, t);
             return (
             <button
               key={appointment.id}
@@ -481,14 +483,14 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
               type="button"
               onClick={() => onAppointmentClick(appointment)}
               className="relative flex w-full items-stretch overflow-hidden rounded-2xl border border-border/70 text-left text-foreground shadow-soft transition-transform active:scale-[0.99]"
-              style={{ backgroundColor: appointmentBackgroundColor(APPOINTMENT_TYPES[appointment.type].color, isCurrent) }}
+              style={{ backgroundColor: appointmentBackgroundColor(definition.color, isCurrent) }}
             >
               {isCurrent && (
                 <span className="pointer-events-none absolute right-2.5 top-2.5" role="img" aria-label={t('dashboard.currentAppointment')}>
                   <Clock3 className="h-4 w-4 motion-safe:animate-pulse" aria-hidden="true" />
                 </span>
               )}
-              <div className="w-1 shrink-0" style={{ backgroundColor: isCurrent ? darkenHexColor(APPOINTMENT_TYPES[appointment.type].color) : APPOINTMENT_TYPES[appointment.type].color }} />
+              <div className="w-1 shrink-0" style={{ backgroundColor: isCurrent ? darkenHexColor(definition.color) : definition.color }} />
               <div className="grid min-w-0 flex-1 grid-cols-[minmax(3.25rem,15fr)_minmax(0,85fr)]">
                 <div className="flex flex-col items-center justify-center gap-1 border-r border-border/70 bg-muted/20 px-1 py-2 text-xs tabular-nums">
                   <time dateTime={appointment.startTime} className="font-semibold text-foreground">{format(new Date(appointment.startTime), 'HH:mm')}</time>
@@ -505,7 +507,10 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
                       <Phone className="h-4 w-4 shrink-0" />
                       <span className="min-w-0 break-words">{phone}</span>
                     </p>
-                    <p className="mt-1 border-t border-border/70 pt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">{appointment.title || t(APPOINTMENT_TYPES[appointment.type].labelKey)}</p>
+                    <p className="mt-1 border-t border-border/70 pt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                      <span data-testid="mobile-appointment-type">{typeLabel}</span>
+                      {appointment.title && appointment.title !== typeLabel && <span className="block">{appointment.title}</span>}
+                    </p>
                   </div>
                 </div>
               </div>

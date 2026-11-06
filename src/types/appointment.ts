@@ -1,5 +1,5 @@
 import type { AppLocale } from '@/i18n/types';
-import type { AppointmentType, AppointmentDuration } from '@/lib/appointmentTypes';
+import type { AppointmentType, AppointmentDuration, AppointmentTypeCustomization } from '@/lib/appointmentTypes';
 
 export interface Patient {
   id: string;
@@ -74,6 +74,7 @@ export interface AppointmentSettings {
   breakTime: number; // minutes between appointments
   timeSlotMinutes: 15 | 30 | 60; // grid/time step in minutes
   appointmentTypeDurations?: Partial<Record<AppointmentType, AppointmentDuration>>;
+  appointmentTypes?: Record<AppointmentType, AppointmentTypeCustomization>;
   defaultAppointmentType?: AppointmentType;
   notifications: NotificationSettings;
 }

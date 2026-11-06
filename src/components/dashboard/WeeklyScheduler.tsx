@@ -14,17 +14,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useCurrentAppointment } from '@/hooks/use-current-appointment';
-import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES, appointmentBackgroundColor, darkenHexColor } from '@/lib/appointmentTypes';
+import { getAppointmentTypes, getAppointmentType, appointmentTypeLabel, appointmentBackgroundColor, darkenHexColor } from '@/lib/appointmentTypes';
 import BrandLogo from '@/components/brand/BrandLogo';
 import brand from '@/config/brand.json';
 import { useAuth } from '@/auth/AuthProvider';
 import { SidebarToggle } from '@/components/layout/Sidebar';
 
 const SCHEDULER_ZOOM = 44 / 60;
-
-function appointmentTypeColor(type: Appointment['type'] | undefined): string {
-  return type ? APPOINTMENT_TYPES[type]?.color ?? '#64748b' : '#64748b';
-}
 
 interface WeeklySchedulerProps {
   onCreateAppointment: (date: Date) => void;
@@ -168,7 +164,8 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
         }
         
         const patientName = apt.patientName || 'Unknown Patient';
-        const typeTranslation = t(APPOINTMENT_TYPES[apt.type as Appointment['type']].labelKey);
+        const definition = getAppointmentType(apt.type, settings);
+        const typeTranslation = appointmentTypeLabel(definition, t);
         const title = t('dashboard.eventTitle', {
           name: patientName,
           type: typeTranslation,
@@ -180,7 +177,8 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
           title: title || `${patientName} — ${typeTranslation}`,
           start: start,
           end: end,
-          color: appointmentTypeColor(apt.type),
+          color: definition.color,
+          typeLabel: typeTranslation,
           appointment: apt,
           // The scheduler keeps its first eventRenderer, so patient data must travel with the event.
           patient: patients?.find((record) => record.id === apt.patientId),
@@ -459,7 +457,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 const patientPhone = patient?.phone?.trim() || (schedulerEvent?.patientsLoaded === false ? t('dashboard.phoneUnavailable') : '');
                 const renderedHeight = blockHeight * SCHEDULER_ZOOM;
                 const cardLayout = renderedHeight >= 60 ? 'tall' : renderedHeight >= 40 ? 'medium' : 'compact';
-                const typeLabel = apt?.type ? t(APPOINTMENT_TYPES[apt.type].labelKey) : '';
+                const typeLabel = schedulerEvent?.typeLabel ?? '';
                 const timeLabel = `${format(schedulerEvent.start, 'HH:mm')} – ${format(schedulerEvent.end, 'HH:mm')}`;
                 const bgColor = schedulerEvent?.color || '#3b82f6';
                 const isDragging = draggingEventId === apt?.id;
@@ -683,10 +681,10 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
           </div>
           <section className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/60 bg-background px-4 py-3"
             aria-label={t('dashboard.appointmentTypes')} data-testid="calendar-appointment-type-legend">
-            {APPOINTMENT_TYPE_VALUES.map((type) => (
+            {Object.entries(getAppointmentTypes(settings)).map(([type, definition]) => (
               <span key={type} data-appointment-type={type} className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: APPOINTMENT_TYPES[type].color }} aria-hidden="true" />
-                {t(APPOINTMENT_TYPES[type].labelKey)}
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: definition.color }} aria-hidden="true" />
+                {appointmentTypeLabel(definition, t)}
               </span>
             ))}
           </section>

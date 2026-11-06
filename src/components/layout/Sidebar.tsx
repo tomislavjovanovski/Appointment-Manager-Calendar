@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthProvider';
-import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES } from '@/lib/appointmentTypes';
+import { getAppointmentTypes, appointmentTypeLabel } from '@/lib/appointmentTypes';
+import type { AppointmentSettings } from '@/types/appointment';
 import { useToast } from '@/hooks/use-toast';
 
 interface SidebarStat {
@@ -22,6 +23,7 @@ interface SidebarProps {
   className?: string;
   brandName?: string;
   logoDataUrl?: string;
+  settings?: Pick<AppointmentSettings, 'appointmentTypes'>;
   overviewLoading?: boolean;
   overviewError?: boolean;
   onOverviewRetry?: () => void;
@@ -64,8 +66,8 @@ export function SidebarToggle({ collapsed, className, showLabel = false }: Reado
 }
 
 export function Sidebar({ activeTab, onTabChange, stats = [], className, brandName, logoDataUrl,
-  overviewLoading, overviewError, onOverviewRetry, patientStats = [], patientStatsError, showNavigation = true }: Readonly<SidebarProps>) {
-  const { t } = useI18n();
+  overviewLoading, overviewError, onOverviewRetry, patientStats = [], patientStatsError, showNavigation = true, settings }: Readonly<SidebarProps>) {
+  const { t, initialSettings } = useI18n();
   const { user, logout } = useAuth();
   const collapsed = !showNavigation && user?.preferences?.desktopSidebarCollapsed === true;
   const compact = !showNavigation;
@@ -187,16 +189,16 @@ export function Sidebar({ activeTab, onTabChange, stats = [], className, brandNa
         {!compact && <section className="mt-4 border-t border-sidebar-border/60 pt-3" aria-label={t('dashboard.appointmentTypes')} data-testid="appointment-type-legend">
           <h2 className="mb-2 px-2 text-sm font-semibold">{t('dashboard.appointmentTypes')}</h2>
           <dl className="space-y-1.5">
-            {APPOINTMENT_TYPE_VALUES.map((type) => (
+            {Object.entries(getAppointmentTypes(settings ?? initialSettings)).map(([type, definition]) => (
               <div key={type} className="flex items-start gap-2 rounded-lg border border-sidebar-border/80 bg-sidebar-accent/20 px-2 py-1.5">
                 <span
                   className="mt-0.5 h-4 w-4 shrink-0 rounded-md border border-white/70 shadow-sm"
-                  style={{ backgroundColor: APPOINTMENT_TYPES[type].color, boxShadow: `0 0 0 2px ${APPOINTMENT_TYPES[type].color}33` }}
+                  style={{ backgroundColor: definition.color, boxShadow: `0 0 0 2px ${definition.color}33` }}
                   aria-hidden="true"
                 />
                 <div className="min-w-0">
-                  <dt className="text-xs font-semibold leading-snug">{t(APPOINTMENT_TYPES[type].labelKey)}</dt>
-                  <dd className="mt-0.5 text-[11px] leading-relaxed text-sidebar-foreground">{t(APPOINTMENT_TYPES[type].descriptionKey)}</dd>
+                  <dt className="text-xs font-semibold leading-snug">{appointmentTypeLabel(definition, t)}</dt>
+                  {definition.descriptionKey && <dd className="mt-0.5 text-[11px] leading-relaxed text-sidebar-foreground">{t(definition.descriptionKey)}</dd>}
                 </div>
               </div>
             ))}

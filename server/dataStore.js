@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS = {
   breakTime: 15,
   timeSlotMinutes: 30,
   defaultAppointmentType: 'procedure',
+  appointmentTypes: {},
   appointmentTypeDurations: {
     consultation: 30,
     'follow-up': 30,
@@ -42,8 +43,26 @@ export const DEFAULT_SETTINGS = {
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 const validateTypeDurations = (settings) => {
+  const customizations = settings.appointmentTypes;
+  if (customizations !== undefined && (
+    !customizations || typeof customizations !== 'object' || Array.isArray(customizations) ||
+    Object.entries(customizations).some(([id, value]) =>
+      !/^[a-z][a-z0-9-]{0,79}$/.test(id) || ['constructor', 'prototype', 'other'].includes(id) ||
+      !value || typeof value !== 'object' || Array.isArray(value) ||
+      !/^#[0-9a-f]{6}$/i.test(value.color) ||
+      (value.name !== undefined && (typeof value.name !== 'string' || !value.name.trim() || value.name.length > 100)) ||
+      (!Object.hasOwn(DEFAULT_SETTINGS.appointmentTypeDurations, id) && value.name === undefined))
+  )) {
+    const error = new Error('Appointment types must have a valid ID, a name up to 100 characters, and a six-digit hex color.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const isKnownType = (type) => typeof type === 'string' && (
+    Object.hasOwn(DEFAULT_SETTINGS.appointmentTypeDurations, type) ||
+    Object.hasOwn(customizations ?? {}, type)
+  );
   if (settings.defaultAppointmentType !== undefined &&
-      !Object.hasOwn(DEFAULT_SETTINGS.appointmentTypeDurations, settings.defaultAppointmentType)) {
+      !isKnownType(settings.defaultAppointmentType)) {
     const error = new Error('Default appointment type must be a known appointment type.');
     error.statusCode = 400;
     throw error;
@@ -52,7 +71,7 @@ const validateTypeDurations = (settings) => {
   if (durations === undefined) return;
   if (!durations || typeof durations !== 'object' || Array.isArray(durations) ||
       Object.entries(durations).some(([type, duration]) =>
-        !Object.hasOwn(DEFAULT_SETTINGS.appointmentTypeDurations, type) ||
+        !isKnownType(type) ||
         ![30, 45, 60, 90, 120].includes(duration))) {
     const error = new Error('Appointment type defaults must use a known type and a duration of 30, 45, 60, 90, or 120 minutes.');
     error.statusCode = 400;
@@ -75,6 +94,7 @@ const validateBrandLogo = (settings) => {
 const mergeSettings = (partial = {}) => ({
   ...DEFAULT_SETTINGS,
   ...partial,
+  appointmentTypes: { ...partial.appointmentTypes },
   locale: partial.locale === 'en' ? 'en' : 'mk',
   blockedSlots: Array.isArray(partial.blockedSlots) ? partial.blockedSlots : [],
   appointmentTypeDurations: {
@@ -209,7 +229,7 @@ export function createDataStore({
     await fs.unlink(mergeJournalFile);
   };
 
-  const validateAppointment = (input, patients) => {
+  const validateAppointment = (input, patients, settings) => {
     const patientId = String(input.patientId ?? '').trim();
     const title = String(input.title ?? '').trim();
     const startTime = String(input.startTime ?? '').trim();
@@ -244,7 +264,8 @@ export function createDataStore({
       error.statusCode = 400;
       throw error;
     }
-    if (!['consultation', 'follow-up', 'procedure', 'prevention', 'prosthetics-orthodontics', 'urgent'].includes(type)) {
+    if (!Object.hasOwn(DEFAULT_SETTINGS.appointmentTypeDurations, type) &&
+        !Object.hasOwn(settings.appointmentTypes, type)) {
       const error = new Error('Appointment type is invalid.');
       error.statusCode = 400;
       throw error;
@@ -538,8 +559,8 @@ export function createDataStore({
     },
 
     async createAppointment(input) {
-      const [appointments, patients] = await Promise.all([readAppointments(), readPatients()]);
-      const details = validateAppointment(input, patients);
+      const [appointments, patients, settings] = await Promise.all([readAppointments(), readPatients(), readSettings()]);
+      const details = validateAppointment(input, patients, settings);
       const appointment = {
         id: randomUUID(),
         createdAt: input.createdAt ?? new Date().toISOString(),
@@ -553,7 +574,7 @@ export function createDataStore({
     },
 
     async updateAppointment(id, updates) {
-      const [appointments, patients] = await Promise.all([readAppointments(), readPatients()]);
+      const [appointments, patients, settings] = await Promise.all([readAppointments(), readPatients(), readSettings()]);
       const index = appointments.findIndex((appointment) => appointment.id === id);
       if (index === -1) {
         const error = new Error('Appointment not found.');
@@ -561,7 +582,7 @@ export function createDataStore({
         throw error;
       }
 
-      const details = validateAppointment({ ...appointments[index], ...updates }, patients);
+      const details = validateAppointment({ ...appointments[index], ...updates }, patients, settings);
       appointments[index] = {
         ...appointments[index],
         ...updates,
@@ -593,19 +614,31 @@ export function createDataStore({
 
     async saveSettings(nextSettings) {
       validateBrandLogo(nextSettings);
-      validateTypeDurations(nextSettings);
-      const settings = mergeSettings(nextSettings);
+      const current = await readSettings();
+      const settings = mergeSettings({
+        ...nextSettings,
+        appointmentTypes: { ...current.appointmentTypes, ...nextSettings.appointmentTypes },
+        appointmentTypeDurations: { ...current.appointmentTypeDurations, ...nextSettings.appointmentTypeDurations },
+      });
+      // Validate the supplied map too: spreading null or an array would hide invalid input.
+      if (nextSettings.appointmentTypes !== undefined) {
+        validateTypeDurations({ appointmentTypes: nextSettings.appointmentTypes });
+      }
+      validateTypeDurations({ ...nextSettings, appointmentTypes: settings.appointmentTypes });
       await writeJsonFile(settingsFile, settings);
       return settings;
     },
 
     async updateSettings(partialSettings) {
       validateBrandLogo(partialSettings);
-      validateTypeDurations(partialSettings);
+      if (partialSettings.appointmentTypes !== undefined) {
+        validateTypeDurations({ appointmentTypes: partialSettings.appointmentTypes });
+      }
       const current = await readSettings();
       const next = mergeSettings({
         ...current,
         ...partialSettings,
+        appointmentTypes: { ...current.appointmentTypes, ...partialSettings.appointmentTypes },
         appointmentTypeDurations: {
           ...current.appointmentTypeDurations,
           ...partialSettings.appointmentTypeDurations,
@@ -619,6 +652,7 @@ export function createDataStore({
           ...partialSettings.notifications,
         },
       });
+      validateTypeDurations({ ...partialSettings, appointmentTypes: next.appointmentTypes });
       await writeJsonFile(settingsFile, next);
       return next;
     },

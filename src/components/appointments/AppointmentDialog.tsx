@@ -49,13 +49,13 @@ import { findExactPatients, normalizePatientName } from '../../../server/patient
 import type { Appointment, AppointmentSettings, Patient as StoredPatient } from "@/types/appointment";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from '@/i18n';
-import { APPOINTMENT_TYPES, APPOINTMENT_TYPE_VALUES, APPOINTMENT_DURATIONS, DEFAULT_APPOINTMENT_TYPE_DURATIONS } from '@/lib/appointmentTypes';
+import { getAppointmentTypes, getAppointmentType, appointmentTypeLabel, getAppointmentTypeDuration, APPOINTMENT_DURATIONS } from '@/lib/appointmentTypes';
 
 const appointmentSchema = z.object({
   title: z.string(),
   patientId: z.string().nullable(),
   syncToGoogle: z.boolean().optional(),
-  type: z.enum(APPOINTMENT_TYPE_VALUES).optional(),
+  type: z.string().min(1).optional(),
   status: z.enum(["scheduled", "completed", "cancelled", "no-show"]).optional(),
   duration: z.enum(["30", "45", "60", "90", "120"]).optional(),
   start: z.string().min(1),
@@ -287,7 +287,7 @@ export default function AppointmentDialog({
       : "consultation");
     const duration = String(mergedInitial?.duration ??
       (effectiveMode === "create"
-        ? settingsStorage.getCached()?.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type]
+        ? getAppointmentTypeDuration(type, settingsStorage.getCached())
         : 30)) as AppointmentDuration;
 
     return {
@@ -477,7 +477,7 @@ export default function AppointmentDialog({
     }
     if (mergedInitial?.duration || formState.dirtyFields.duration || formState.dirtyFields.type) return;
     const start = new Date(defaultValues.start);
-    const preferredDuration = availabilitySettings.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type];
+    const preferredDuration = getAppointmentTypeDuration(type, availabilitySettings);
     const fittingDuration = selectedDate
       ? getAvailableStartDurations(start, preferredDuration, availabilitySettings, occupiedAppointments).get(start.getTime())
       : preferredDuration;
@@ -585,7 +585,7 @@ export default function AppointmentDialog({
     const type = data.type ?? 'consultation';
     const enrichedData: AppointmentDialogSubmitData = {
       ...data,
-      title: data.title.trim() || t(APPOINTMENT_TYPES[type].labelKey),
+      title: data.title.trim() || appointmentTypeLabel(getAppointmentType(type, availabilitySettings), t),
       patientName: patient ? patient.name : undefined,
       syncToGoogle: false,
     };
@@ -708,7 +708,7 @@ export default function AppointmentDialog({
                           data-testid="appointment-title-input"
                           autoComplete="off"
                           {...register("title")}
-                          placeholder={t(APPOINTMENT_TYPES[watch("type") ?? 'procedure'].labelKey)}
+                          placeholder={appointmentTypeLabel(getAppointmentType(watch("type") ?? 'procedure', availabilitySettings), t)}
                           className="h-10 border-border bg-background shadow-sm"
                         />
                       </div>
@@ -717,10 +717,10 @@ export default function AppointmentDialog({
                         <Select
                           disabled={availabilityLoading || availabilityError}
                           onValueChange={(val) => {
-                            const type = APPOINTMENT_TYPE_VALUES.find((type) => type === val);
+                            const type = Object.keys(getAppointmentTypes(availabilitySettings)).find((type) => type === val);
                             if (!type) throw new Error('Invalid appointment type');
                             setValue("type", type, { shouldDirty: true, shouldValidate: true });
-                            const duration = availabilitySettings?.appointmentTypeDurations?.[type] ?? DEFAULT_APPOINTMENT_TYPE_DURATIONS[type];
+                            const duration = getAppointmentTypeDuration(type, availabilitySettings);
                             setValue("duration", String(duration) as AppointmentDuration, { shouldDirty: true, shouldValidate: true });
                           }}
                           value={watch("type") ?? "procedure"}
@@ -728,19 +728,19 @@ export default function AppointmentDialog({
                           <SelectTrigger id="type" aria-labelledby="appointment-type-label" data-testid="appointment-type-select" className="h-10 border-border bg-background shadow-sm">
                             <SelectValue placeholder={t('appointment.selectType')}>
                               <span className="inline-flex min-w-0 items-center gap-2">
-                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: APPOINTMENT_TYPES[watch("type") ?? "procedure"].color }} aria-hidden="true" />
-                                <span className="truncate">{t(APPOINTMENT_TYPES[watch("type") ?? "procedure"].labelKey)}</span>
+                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: getAppointmentType(watch("type") ?? "procedure", availabilitySettings).color }} aria-hidden="true" />
+                                <span className="truncate">{appointmentTypeLabel(getAppointmentType(watch("type") ?? "procedure", availabilitySettings), t)}</span>
                               </span>
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {APPOINTMENT_TYPE_VALUES.map((type) => (
+                            {Object.entries(getAppointmentTypes(availabilitySettings)).map(([type, definition]) => (
                               <SelectItem key={type} value={type} data-testid={`appointment-type-option-${type}`} className="focus:bg-muted focus:text-foreground data-[highlighted]:bg-muted data-[highlighted]:text-foreground">
                                 <span className="inline-flex items-center gap-2">
-                                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: APPOINTMENT_TYPES[type].color }} aria-hidden="true" />
+                                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: definition.color }} aria-hidden="true" />
                                   <span className="flex flex-col">
-                                    <span>{t(APPOINTMENT_TYPES[type].labelKey)}</span>
-                                    <span className="text-xs text-muted-foreground">{t(APPOINTMENT_TYPES[type].descriptionKey)}</span>
+                                    <span>{appointmentTypeLabel(definition, t)}</span>
+                                    {definition.descriptionKey && <span className="text-xs text-muted-foreground">{t(definition.descriptionKey)}</span>}
                                   </span>
                                 </span>
                               </SelectItem>
