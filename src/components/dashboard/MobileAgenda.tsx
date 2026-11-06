@@ -12,7 +12,6 @@ import { useCurrentAppointment } from '@/hooks/use-current-appointment';
 import { getAppointmentType, appointmentTypeLabel, appointmentBackgroundColor, darkenHexColor } from '@/lib/appointmentTypes';
 import { createScheduleSnapshot, SnapshotItem } from '@/lib/scheduleSnapshot';
 import { SnapshotDialog } from './SnapshotDialog';
-import { localDayDate, type DocumentationReview } from '@/lib/documentationReminders';
 
 interface MobileAgendaProps {
   onCreateAppointment: (date: Date) => void;
@@ -21,11 +20,9 @@ interface MobileAgendaProps {
   blockedSlots?: BlockedSlot[];
   onUnblockSlot?: (slot: BlockedSlot) => Promise<void>;
   documentationReminderIds?: ReadonlySet<string>;
-  documentationReview?: DocumentationReview | null;
-  documentationPendingIds?: ReadonlySet<string>;
 }
 
-export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, blockedSlots, onUnblockSlot, documentationReminderIds, documentationReview, documentationPendingIds }: MobileAgendaProps) {
+export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, blockedSlots, onUnblockSlot, documentationReminderIds }: MobileAgendaProps) {
   const { dateFnsLocale, t, initialSettings } = useI18n();
   const isCurrentAppointment = useCurrentAppointment();
   const [settings, setSettings] = useState<AppointmentSettings | null>(() => settingsStorage.getCached() ?? initialSettings);
@@ -96,21 +93,9 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
   }, [weekStart, workingDays]);
 
   const agendaDates = useMemo(() =>
-    documentationReview ? [localDayDate(documentationReview.day)] :
     Array.from({ length: dayCount }, (_, index) => addDays(agendaStart, index))
       .filter((date) => !workingDays?.length || workingDays.includes(date.getDay())),
-  [agendaStart, dayCount, workingDays, documentationReview]);
-
-  useEffect(() => {
-    if (!documentationReview) return;
-    const date = localDayDate(documentationReview.day);
-    initialDateAdjustedRef.current = true;
-    setSelectedDate(date);
-    setWeekStart(startOfWeek(date, { weekStartsOn: 1 }));
-    setAgendaStart(date);
-    setDayCount(1);
-    pendingScrollRef.current = date;
-  }, [documentationReview]);
+  [agendaStart, dayCount, workingDays]);
 
   const isWorkingDay = (date: Date) => !currentSettings || currentSettings.workingDays.includes(date.getDay());
   const isFullDay = (date: Date) => Boolean(currentSettings) && !loading && isWorkingDay(date) &&
@@ -126,18 +111,17 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
     const now = new Date();
     return new Map(agendaDates.map((date) => {
       const dayAppointments = appointments
-        .filter((appointment) => isSameDay(new Date(appointment.startTime), date) &&
-          (!documentationReview || documentationPendingIds?.has(appointment.id)))
+        .filter((appointment) => isSameDay(new Date(appointment.startTime), date))
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
       const working = !currentSettings || currentSettings.workingDays.includes(date.getDay());
-      const freeGaps = !documentationReview && currentSettings && working && !isBefore(date, today)
+      const freeGaps = currentSettings && working && !isBefore(date, today)
         ? getFreeGaps(date, currentSettings, appointments) : [];
-      const gaps = splitIntoSlots(!documentationReview && isSameDay(date, now) && currentSettings
+      const gaps = splitIntoSlots(isSameDay(date, now) && currentSettings
         ? getFreeGaps(date, currentSettings, appointments, now) : freeGaps);
       const timeline = [
         ...dayAppointments.map((appointment) => ({ kind: 'appointment' as const, start: new Date(appointment.startTime), appointment })),
         ...gaps.map((gap) => ({ kind: 'gap' as const, start: gap.start, end: gap.end })),
-        ...(documentationReview ? [] : blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), date))
+        ...(blockedSlots ?? []).filter((slot) => isSameDay(new Date(slot.startTime), date))
           .map((slot) => ({ kind: 'blocked' as const, start: new Date(slot.startTime), end: new Date(slot.endTime), slot })),
       ].sort((a, b) => a.start.getTime() - b.start.getTime());
       return [format(date, 'yyyy-MM-dd'), {
@@ -145,7 +129,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
         full: Boolean(currentSettings) && !loading && working && !isBefore(date, today) && freeGaps.length === 0,
       }];
     }));
-  }, [agendaDates, appointments, blockedSlots, currentSettings, loading, today, documentationReview, documentationPendingIds]);
+  }, [agendaDates, appointments, blockedSlots, currentSettings, loading, today]);
 
   const patientsById = useMemo(() => new Map(patients?.map((patient) => [patient.id, patient])), [patients]);
   const scrollToDate = (date: Date) => {
@@ -428,7 +412,7 @@ export function MobileAgenda({ onCreateAppointment, onAppointmentClick, refreshT
             <h3 className="text-base font-semibold">{format(date, 'EEEE, d MMMM', { locale: dateFnsLocale })}</h3>
             <p className="text-xs text-muted-foreground">{dayAppointments.length === 1 ? t('mobile.appointmentsOne') : t('mobile.appointments', { count: dayAppointments.length })}</p>
           </div>
-        {(!documentationReview && !isWorkingDay(date)) || timeline.length === 0 ? (
+        {!isWorkingDay(date) || timeline.length === 0 ? (
         <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
           <CardContent className="flex flex-col items-center px-5 py-10 text-center">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Clock3 className="h-5 w-5" /></span>

@@ -3,6 +3,9 @@ import brand from '@/config/brand.json';
 
 const en: Record<string, string> = {
   'documentation.title': 'Appointment documentation',
+  'documentation.bulkDescription': 'Add notes for appointments without documentation, then save them together. Blank fields are left unchanged.',
+  'documentation.saveNotes': 'Save all notes',
+  'documentation.saveFailed': 'Some notes could not be saved. Unsaved notes are kept here; please try again.',
   'documentation.latestEnded': 'The scheduled time with {{name}} has ended. You can add a note.',
   'documentation.gentleSummary': '{{date}}: {{count}} appointments could use a note.',
   'documentation.editNotes': 'Edit notes',
@@ -793,6 +796,9 @@ const en: Record<string, string> = {
 
 const mk: Record<string, string> = {
   'documentation.title': 'Документација на термини',
+  'documentation.bulkDescription': 'Додадете белешки за термините без документација и зачувајте ги заедно. Празните полиња остануваат непроменети.',
+  'documentation.saveNotes': 'Зачувај ги сите белешки',
+  'documentation.saveFailed': 'Некои белешки не можеа да се зачуваат. Незачуваните белешки остануваат тука; обидете се повторно.',
   'documentation.latestEnded': 'Закажаното време со {{name}} заврши. Можете да додадете белешка.',
   'documentation.gentleSummary': '{{date}}: можете да додадете белешки за {{count}} термини.',
   'documentation.editNotes': 'Уреди белешки',

@@ -199,7 +199,7 @@ All colors MUST be HSL.
   }
 
   .weekly-scheduler div:has(> .rs__cell) {
-    grid-template-columns: 72px repeat(7, minmax(0, 1fr)) !important;
+    grid-template-columns: var(--calendar-columns, 72px repeat(7, minmax(0, 1fr))) !important;
   }
 
   .weekly-scheduler .rs__cell:not(.rs__time) {
@@ -301,6 +301,18 @@ All colors MUST be HSL.
     .weekly-scheduler .rs__time .MuiTypography-root {
       color: hsl(var(--muted-foreground));
       font-size: 15px;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1279px) {
+    .weekly-scheduler {
+      --scheduler-zoom: 0.6666666667;
+      --calendar-closed-day-width: 0.5fr;
+    }
+
+    .weekly-scheduler time[data-calendar-working-day="false"] {
+      flex-direction: column;
+      gap: 2px;
     }
   }
 

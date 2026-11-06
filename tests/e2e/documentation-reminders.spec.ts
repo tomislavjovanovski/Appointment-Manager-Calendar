@@ -93,7 +93,7 @@ for (const mobile of [false, true]) {
       expect(state.records).toEqual(before);
     });
 
-    test('end-of-day review shows precise counts and filters the relevant day until resolved', async ({ page }) => {
+    test('end-of-day modal saves all entered notes without filtering the calendar', async ({ page }) => {
       await page.clock.setFixedTime(at('12:00'));
       const state = await mockAppointments(page, [
         appointment('missing-one', '09:00'), appointment('documented', '10:00', { notes: 'Saved note' }),
@@ -113,26 +113,27 @@ for (const mobile of [false, true]) {
       await expect(summary).toHaveCSS('background-color', 'rgb(254, 215, 170)');
       await expect(summary.getByTestId('documentation-counts')).toHaveCount(0);
       await summary.getByTestId('review-documentation').click();
+      const dialog = page.getByTestId('documentation-dialog');
+      await expect(dialog).toBeVisible();
       await expect(page.getByTestId('documentation-counts')).toHaveText('Appointments: 5 · Completed: 3 · With notes: 3 · Without notes: 2');
       await expect(page.getByTestId('pending-documentation-appointment')).toHaveCount(2);
-      await expect(page.getByTestId('documentation-filter')).toContainText('(2)');
+      await expect(page.getByTestId('documentation-filter')).toHaveCount(0);
       const cards = page.getByTestId(mobile ? 'mobile-appointment' : 'appointment-block');
-      await expect(cards).toHaveCount(2);
-      await expect(cardById(page, 'documented', mobile)).toHaveCount(0);
-      await cardById(page, 'missing-one', mobile).click();
-      await page.getByTestId('appointment-notes').fill('Now documented');
-      await page.getByTestId('booking-submit-btn').click();
-      await expect(page.getByTestId('booking-dialog')).toBeHidden();
-      await expect(page.getByTestId('documentation-counts')).toHaveText('Appointments: 5 · Completed: 3 · With notes: 4 · Without notes: 1');
-      await expect(cards).toHaveCount(1);
+      await expect(cards).toHaveCount(5);
+      await page.getByTestId('pending-documentation-appointment').filter({ hasText: 'missing-one' })
+        .getByTestId('documentation-note').fill('Now documented');
+      await page.getByTestId('pending-documentation-appointment').filter({ hasText: 'missing-two' })
+        .getByTestId('documentation-note').fill('Final documentation');
+      await page.getByTestId('save-documentation-notes').click();
+      await expect(page.getByTestId('documentation-counts')).toHaveText('Appointments: 5 · Completed: 3 · With notes: 5 · Without notes: 0');
       expect(state.records[1].notes).toBe('Saved note');
-      await cards.click();
-      await page.getByTestId('appointment-notes').fill('Final documentation');
-      await page.getByTestId('booking-submit-btn').click();
+      expect(state.records[0].notes).toBe('Now documented');
+      expect(state.records[2].notes).toBe('Final documentation');
+      expect(state.updates.map(({ updates }) => Object.keys(updates))).toEqual([['notes'], ['notes']]);
       await expect(summary).toHaveCount(0);
-      await expect(cards).toHaveCount(0);
-      await expect(page.getByTestId('documentation-filter')).toContainText('All documentation for this day is resolved.');
-      await page.getByRole('button', { name: 'Show all appointments', exact: true }).click();
+      await expect(dialog).toContainText('All documentation for this day is resolved.');
+      await page.getByTestId('close-documentation').click();
+      await expect(dialog).toBeHidden();
       await expect(cards).toHaveCount(5);
     });
   });
@@ -252,12 +253,10 @@ test('overnight summary belongs to the local start day, waits until its end and 
   await expect(summary).toHaveAttribute('data-day', '2026-11-06');
   await summary.getByTestId('review-documentation').click();
   await expect(page.getByTestId('documentation-counts')).toContainText('Completed: 1');
-  const card = page.getByRole('button', { name: /23:30 Alice Thornton.*00:30/ });
-  await expect(card).toBeVisible();
-  await card.click();
-  await page.getByTestId('appointment-notes').fill('Overnight treatment documented');
-  await expect(page.getByTestId('booking-submit-btn')).toBeEnabled();
-  await page.getByTestId('booking-submit-btn').click();
+  const row = page.getByTestId('pending-documentation-appointment');
+  await expect(row).toContainText('23:30 – 00:30');
+  await row.getByTestId('documentation-note').fill('Overnight treatment documented');
+  await page.getByTestId('save-documentation-notes').click();
   await expect(summary).toHaveCount(0);
 });
 
@@ -269,11 +268,10 @@ test('documentation-only edits preserve an unchanged overlapping schedule and sa
   const state = await mockAppointments(page, [overlapping, appointment('other', '09:15')]);
   await page.goto('/');
   await page.getByTestId('review-documentation').click();
-  await page.getByTestId('pending-documentation-appointment').filter({ hasText: 'overlapping' }).click();
-  await page.getByTestId('appointment-notes').fill('Overlap documented');
-  await expect(page.getByTestId('booking-submit-btn')).toBeEnabled();
-  await page.getByTestId('booking-submit-btn').click();
-  await expect(page.getByTestId('booking-dialog')).toBeHidden();
+  await page.getByTestId('pending-documentation-appointment').filter({ hasText: 'overlapping' })
+    .getByTestId('documentation-note').fill('Overlap documented');
+  await page.getByTestId('save-documentation-notes').click();
+  await expect(page.getByTestId('pending-documentation-appointment')).toHaveCount(1);
   expect(state.records[0].notes).toBe('Overlap documented');
   expect(state.records[0].startTime).toBe(overlapping.startTime);
   expect(state.records[0].endTime).toBe(overlapping.endTime);
@@ -353,7 +351,7 @@ test('one compact end-of-day banner offers older pending days without stacking n
   await expect(banner).toHaveAttribute('data-day', '2026-11-06');
   await page.getByRole('combobox', { name: 'Choose a documentation day' }).selectOption('2026-11-05');
   await banner.getByTestId('review-documentation').click();
-  await expect(page.getByTestId('documentation-filter')).toContainText('5 Nov 2026');
+  await expect(page.getByRole('dialog')).toContainText('5 Nov 2026');
   await expect(page.getByTestId('pending-documentation-appointment')).toContainText('yesterday');
 });
 
@@ -426,6 +424,113 @@ test('all ended statuses without notes are listed together in end-of-day review 
   expect(state.records.map((record) => ({ ...record, documentationReviewedAt: undefined })))
     .toEqual(before.map((record) => ({ ...record, documentationReviewedAt: undefined })));
   await expect(page.getByTestId('documentation-counts')).toContainText('Without notes: 4');
+  const rows = page.getByTestId('pending-documentation-appointment');
+  for (let index = 0; index < 4; index++) {
+    await rows.nth(index).getByTestId('documentation-note').fill(`Outcome ${index}`);
+  }
+  await page.getByTestId('save-documentation-notes').click();
+  await expect(rows).toHaveCount(0);
+  expect(state.records.map((record) => record.status)).toEqual(before.map((record) => record.status));
+  expect(state.records.map((record) => record.notes)).toEqual(['Outcome 0', 'Outcome 1', 'Outcome 2', 'Outcome 3']);
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.getByTestId('documentation-summary')).toBeHidden();
+});
+
+test('bulk notes leave blank fields untouched and cancel never writes drafts', async ({ page }) => {
+  await page.clock.setFixedTime(at('12:00'));
+  const state = await mockAppointments(page, [
+    appointment('first', '09:00'), appointment('blank', '10:00', { notes: ' \n ' }),
+  ]);
+  await page.goto('/');
+  await page.getByTestId('review-documentation').click();
+  const rows = page.getByTestId('pending-documentation-appointment');
+  await expect(page.getByTestId('save-documentation-notes')).toBeDisabled();
+  await rows.nth(0).getByTestId('documentation-note').fill('Discarded draft');
+  await page.getByTestId('close-documentation').click();
+  expect(state.updates).toEqual([]);
+  await page.getByTestId('review-documentation').click();
+  await expect(rows.nth(0).getByTestId('documentation-note')).toHaveValue('');
+  await rows.nth(0).getByTestId('documentation-note').fill('Saved outcome');
+  await rows.nth(1).getByTestId('documentation-note').fill(' \n\t ');
+  await page.getByTestId('save-documentation-notes').click();
+  await expect(rows).toHaveCount(1);
+  await expect(page.getByTestId('save-documentation-notes')).toBeDisabled();
+  expect(state.updates).toEqual([{ id: 'first', updates: { notes: 'Saved outcome' } }]);
+  expect(state.records[1].notes).toBe(' \n ');
+});
+
+test('partial bulk save failure retains remaining drafts and retry does not resave successful notes', async ({ page }) => {
+  await page.clock.setFixedTime(at('12:00'));
+  const state = await mockAppointments(page, [
+    appointment('first', '09:00'), appointment('second', '10:00'), appointment('third', '11:00'),
+  ]);
+  let attempts = 0;
+  await page.route('**/api/appointments/second', (route) => {
+    attempts += 1;
+    return attempts === 1
+      ? route.fulfill({ status: 500, json: { error: 'Note write failed' } })
+      : route.fallback();
+  });
+  await page.goto('/');
+  await page.getByTestId('review-documentation').click();
+  const rows = page.getByTestId('pending-documentation-appointment');
+  for (let index = 0; index < 3; index++) {
+    await rows.nth(index).getByTestId('documentation-note').fill(`Saved note ${index}`);
+  }
+  await page.getByTestId('save-documentation-notes').click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Note write failed' })).toBeVisible();
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).getByTestId('documentation-note')).toHaveValue('Saved note 1');
+  await expect(rows.nth(1).getByTestId('documentation-note')).toHaveValue('Saved note 2');
+  await page.getByTestId('save-documentation-notes').click();
+  await expect(rows).toHaveCount(0);
+  await expect(page.getByTestId('documentation-dialog').getByRole('alert')).toHaveCount(0);
+  expect(state.updates.map(({ id }) => id)).toEqual(['first', 'second', 'third']);
+  expect(state.records.map(({ notes }) => notes)).toEqual(['Saved note 0', 'Saved note 1', 'Saved note 2']);
+});
+
+test('notes modal remains usable at mobile size with a long list and acknowledgement keeps drafts', async ({ page }) => {
+  await page.clock.setFixedTime(at('19:00'));
+  const state = await mockAppointments(page, Array.from({ length: 15 }, (_, index) =>
+    appointment(`record-${index}`, `${String(8 + Math.floor(index / 2)).padStart(2, '0')}:${index % 2 ? '30' : '00'}`)));
+  await page.goto('/');
+  await page.getByTestId('review-documentation').click();
+  await page.setViewportSize({ width: 375, height: 667 });
+  const dialog = page.getByTestId('documentation-dialog');
+  const fields = dialog.getByTestId('documentation-note');
+  await fields.first().fill('Keep this draft');
+  await dialog.getByTestId('acknowledge-documentation').click();
+  await expect(dialog.getByTestId('acknowledge-documentation')).toHaveCount(0, { timeout: 15_000 });
+  await expect(fields.first()).toHaveValue('Keep this draft');
+  expect(state.records.every(({ notes }) => notes === '')).toBe(true);
+  await fields.last().fill('Final row note');
+  const bounds = await dialog.boundingBox();
+  expect(bounds!.width).toBeLessThanOrEqual(375);
+  expect(bounds!.height).toBeLessThanOrEqual(667);
+  await expect(dialog.getByTestId('save-documentation-notes')).toBeInViewport();
+  await dialog.getByTestId('save-documentation-notes').click();
+  await expect(fields).toHaveCount(13);
+  expect(state.records[0].notes).toBe('Keep this draft');
+  expect(state.records[14].notes).toBe('Final row note');
+});
+
+test('documentation rows use a 40:60 side-by-side split with two-line notes fields', async ({ page }) => {
+  await page.clock.setFixedTime(at('12:00'));
+  await mockAppointments(page, [appointment('target', '09:00', { type: 'prosthetics-orthodontics' })]);
+  await page.goto('/');
+  await page.getByTestId('review-documentation').click();
+  const row = page.getByTestId('pending-documentation-appointment');
+  await expect(row).toContainText('Prosthetics & orthodontics');
+  await expect(row.getByTestId('documentation-note')).toHaveAttribute('rows', '2');
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 375, height: 667 }]) {
+    await page.setViewportSize(viewport);
+    const details = await row.getByTestId('documentation-appointment-details').boundingBox();
+    const notes = await row.getByTestId('documentation-note-column').boundingBox();
+    expect(details!.x + details!.width).toBeLessThan(notes!.x);
+    expect(details!.width / (details!.width + notes!.width)).toBeCloseTo(0.4, 2);
+    expect(notes!.y).toBeLessThan(details!.y + details!.height);
+    expect(details!.y).toBeLessThan(notes!.y + notes!.height);
+    const field = row.getByTestId('documentation-note');
+    expect(await field.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  }
 });

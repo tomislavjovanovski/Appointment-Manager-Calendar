@@ -19,7 +19,6 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import brand from '@/config/brand.json';
 import { useAuth } from '@/auth/AuthProvider';
 import { SidebarToggle } from '@/components/layout/Sidebar';
-import { localDayDate, type DocumentationReview } from '@/lib/documentationReminders';
 
 const SCHEDULER_ZOOM = 44 / 60;
 
@@ -33,13 +32,11 @@ interface WeeklySchedulerProps {
   brandName?: string;
   logoDataUrl?: string;
   documentationReminderIds?: ReadonlySet<string>;
-  documentationReview?: DocumentationReview | null;
-  documentationPendingIds?: ReadonlySet<string>;
   onAppointmentsChanged?: () => void;
   documentationBanner?: React.ReactNode;
 }
 
-export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, navigation, blockedSlots, onUnblockSlot, brandName, logoDataUrl, documentationReminderIds, documentationReview, documentationPendingIds, onAppointmentsChanged, documentationBanner }: WeeklySchedulerProps) {
+export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, navigation, blockedSlots, onUnblockSlot, brandName, logoDataUrl, documentationReminderIds, onAppointmentsChanged, documentationBanner }: WeeklySchedulerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const sidebarCollapsed = user?.preferences?.desktopSidebarCollapsed === true;
@@ -61,9 +58,6 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
   }, [blockedSlots]);
   const currentSettings = blockedSlots ? { ...settings, blockedSlots } : settings;
   const [viewDate, setViewDate] = useState<Date>(() => new Date());
-  useEffect(() => {
-    if (documentationReview) setViewDate(localDayDate(documentationReview.day));
-  }, [documentationReview]);
 
   const weekStart = useMemo(
     () => startOfWeek(viewDate, { weekStartsOn: 1 }),
@@ -88,6 +82,13 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
   );
 
   const isWorkingDay = (date: Date) => workingDays.includes(date.getDay());
+  const schedulerStyle: React.CSSProperties & { '--calendar-columns': string } = {
+    zoom: `var(--scheduler-zoom, ${SCHEDULER_ZOOM})`,
+    width: '100%',
+    '--calendar-columns': `72px ${[1, 2, 3, 4, 5, 6, 0].map((day) =>
+      workingDays.includes(day) ? 'minmax(0, 1fr)' : 'minmax(0, var(--calendar-closed-day-width, 1fr))'
+    ).join(' ')}`,
+  };
 
   const getNextWorkingDate = (date: Date) => {
     for (let offset = 0; offset < 7; offset += 1) {
@@ -201,9 +202,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     })
     .filter((e: any) => e !== null);
 
-  const events = documentationReview
-    ? appointmentEvents.filter((event) => documentationPendingIds?.has(event.event_id))
-    : appointmentEvents;
+  const events = appointmentEvents;
   // The scheduler retains its first renderer; refresh it when reminder membership changes.
   const reminderRenderKey = [...documentationReminderIds ?? []].sort().join(',');
 
@@ -418,7 +417,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
               </Popover>
               {documentationBanner}
           </div>
-          <div className="weekly-scheduler bg-muted/5" style={{ zoom: SCHEDULER_ZOOM, width: '100%' }}>
+          <div className="weekly-scheduler bg-muted/5" style={schedulerStyle}>
             <Scheduler
               key={`${weekStart.toISOString()}-${refreshTrigger}-${reminderRenderKey}`}
               view="week"
@@ -581,6 +580,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                 headRenderer: ({ day }: { day: Date }) => (
                   <time
                     dateTime={format(day, 'yyyy-MM-dd')}
+                    data-calendar-working-day={isWorkingDay(day) ? 'true' : 'false'}
                     aria-current={isSameDay(day, new Date()) ? 'date' : undefined}
                     className={cn('flex h-full w-full items-center justify-center gap-2 whitespace-nowrap px-1 text-[17px] leading-none', isSameDay(day, new Date()) && 'bg-primary/5 text-primary')}
                   >

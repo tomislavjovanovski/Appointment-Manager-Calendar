@@ -360,7 +360,7 @@ test.describe('Smoke — Application Loads', () => {
 
   test('calendar grid contrast stays aligned without viewport overflow', async ({ pageWithPatients: page }) => {
     await page.goto('/');
-    for (const width of [1440, 1920, 1366, 1024]) {
+    for (const width of [1440, 1920, 1366, 1280, 1279, 1024, 768]) {
       await page.setViewportSize({ width, height: 900 });
       await page.getByTestId('nav-scheduler').click();
       await expect(page.getByTestId('scheduler-grid')).toBeVisible();
@@ -391,6 +391,18 @@ test.describe('Smoke — Application Loads', () => {
       expect(lineColors?.daySeparator).not.toBe(lineColors?.halfHour);
       expect(lineColors?.timeBackground).not.toBe('rgba(0, 0, 0, 0)');
       expect(lineColors?.todayBackground).not.toBe('rgba(0, 0, 0, 0)');
+      const sizes = await page.evaluate(() => {
+        const working = document.querySelector<HTMLElement>('.weekly-scheduler .rs__cell:has(> div[data-slot-day="1"])');
+        const closed = document.querySelector<HTMLElement>('.weekly-scheduler .rs__cell:has(> div[data-slot-day="6"])');
+        if (!working || !closed) throw new Error('Calendar day columns are missing');
+        return {
+          rowHeight: working.getBoundingClientRect().height,
+          workingWidth: working.getBoundingClientRect().width,
+          closedWidth: closed.getBoundingClientRect().width,
+        };
+      });
+      expect(Math.abs(sizes.rowHeight - (width < 1280 ? 40 : 44))).toBeLessThan(1);
+      expect(Math.abs(sizes.closedWidth - sizes.workingWidth * (width < 1280 ? 0.5 : 1))).toBeLessThan(2);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     }
 

@@ -36,11 +36,6 @@ export interface DocumentationDay {
   pending: Appointment[];
 }
 
-export interface DocumentationReview {
-  day: string;
-  requestId: number;
-}
-
 export function deriveDocumentationReminders(appointments: Appointment[], now: number) {
   const days = new Map<string, { appointment: Appointment; start: number; end: number }[]>();
   const invalidIds: string[] = [];

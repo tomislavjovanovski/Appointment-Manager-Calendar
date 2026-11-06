@@ -17,9 +17,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Menu, Plus } from 'lucide-react';
 import { format, isSameDay, isSameMonth, isSameWeek, isValid } from 'date-fns';
-import { DocumentationSummary, DocumentationReviewDetails } from '@/components/dashboard/DocumentationSummary';
+import { DocumentationSummary, DocumentationReviewDialog } from '@/components/dashboard/DocumentationSummary';
 import { useDocumentationReminders } from '@/hooks/use-documentation-reminders';
-import { appointmentTimes, localDayDate, type DocumentationReview } from '@/lib/documentationReminders';
+import { appointmentTimes } from '@/lib/documentationReminders';
 import BrandLogo from '@/components/brand/BrandLogo';
 import brand from '@/config/brand.json';
 
@@ -31,7 +31,7 @@ const rangesOverlap = (
 ) => startA < endB && startB < endA;
 
 const Index = () => {
-  const { t, dateFnsLocale, initialSettings } = useI18n();
+  const { t, initialSettings } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -48,7 +48,7 @@ const Index = () => {
   const [savingAppointment, setSavingAppointment] = useState(false);
   const appointmentSaveInFlightRef = useRef(false);
   const [sidebarAppointments, setSidebarAppointments] = useState<Appointment[]>([]);
-  const [documentationReview, setDocumentationReview] = useState<DocumentationReview | null>(null);
+  const [documentationReviewDay, setDocumentationReviewDay] = useState<string | null>(null);
   const [dismissedDocumentation, setDismissedDocumentation] = useState<Set<string>>(() => new Set());
   const [patientSummary, setPatientSummary] = useState({ total: 0, newThisMonth: 0 });
   const [patientStatsError, setPatientStatsError] = useState(false);
@@ -113,14 +113,23 @@ const Index = () => {
   }, []);
 
   const documentation = useDocumentationReminders(sidebarAppointments, handleRefresh);
-  const selectedDocumentationSummary = documentation.summaries.find((summary) => summary.day === documentationReview?.day);
-  const documentationPendingIds = useMemo(() => new Set(
-    selectedDocumentationSummary?.pending.map((appointment) => appointment.id) ?? []
-  ), [selectedDocumentationSummary]);
+  const selectedDocumentationSummary = documentation.summaries.find((summary) => summary.day === documentationReviewDay);
 
   const handleDocumentationReview = (day: string) => {
-    setDocumentationReview((current) => ({ day, requestId: (current?.requestId ?? 0) + 1 }));
+    setDocumentationReviewDay(day);
     setActiveTab('dashboard');
+  };
+
+  const handleDocumentationNotesSave = async (notes: { id: string; notes: string }[]) => {
+    try {
+      // The JSON store writes whole files; avoid parallel read-modify-write updates.
+      for (const note of notes) {
+        const updated = await appointmentsStorage.update(note.id, { notes: note.notes });
+        setSidebarAppointments((current) => current.map((record) => record.id === updated.id ? updated : record));
+      }
+    } finally {
+      handleRefresh();
+    }
   };
 
   const handleDocumentationAcknowledgement = async (appointments: Appointment[]) => {
@@ -418,8 +427,6 @@ const Index = () => {
               blockedSlots={blockedSlots}
               onUnblockSlot={handleUnblockSlot}
               documentationReminderIds={documentation.previousIds}
-              documentationReview={documentationReview}
-              documentationPendingIds={documentationPendingIds}
             />
             <div className="hidden md:block">
               <WeeklyScheduler
@@ -432,8 +439,6 @@ const Index = () => {
                 blockedSlots={blockedSlots}
                 onUnblockSlot={handleUnblockSlot}
                 documentationReminderIds={documentation.previousIds}
-                documentationReview={documentationReview}
-                documentationPendingIds={documentationPendingIds}
                 onAppointmentsChanged={handleRefresh}
                 documentationBanner={<DocumentationSummary
                   summaries={overviewError ? [] : documentation.summaries}
@@ -525,28 +530,19 @@ const Index = () => {
             <Plus className="h-5 w-5" />
           </Button>
         </header>
-        {documentationReview && activeTab === 'dashboard' && (
-          <div data-testid="documentation-filter" className="mb-3 hidden flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm md:flex">
-            <p role="status">{documentationPendingIds.size ? t('documentation.filter', {
-              date: format(localDayDate(documentationReview.day), 'd MMM yyyy', { locale: dateFnsLocale }),
-              count: documentationPendingIds.size,
-            }) : t('documentation.resolved')}</p>
-            <Button type="button" size="sm" variant="outline"
-              onClick={() => setDocumentationReview(null)}>{t('documentation.clearFilter')}</Button>
-            {selectedDocumentationSummary && (
-              <DocumentationReviewDetails
-                summary={selectedDocumentationSummary}
-                onAppointmentClick={handleAppointmentClick}
-                onAcknowledge={handleDocumentationAcknowledgement}
-              />
-            )}
-          </div>
-        )}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsContent value={activeTab} className="mt-0">{renderContent()}</TabsContent>
         </Tabs>
       </main>
       
+      {selectedDocumentationSummary && activeTab === 'dashboard' && (
+        <DocumentationReviewDialog key={selectedDocumentationSummary.day}
+          summary={selectedDocumentationSummary}
+          onClose={() => setDocumentationReviewDay(null)}
+          onSaveNotes={handleDocumentationNotesSave}
+          onAcknowledge={handleDocumentationAcknowledgement}
+        />
+      )}
       <AppointmentDialog
         open={appointmentDialogOpen}
         onOpenChange={(open) => {

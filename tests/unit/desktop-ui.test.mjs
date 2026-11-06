@@ -75,3 +75,26 @@ test('appointment scroll area clips header and footer to the inherited modal cor
   assert.ok(appointment.includes('popper: { container: () => pickerContainerRef.current'));
   assert.match(appointment, /ref=\{pickerContainerRef\}\s+className="(?![^"]*overflow-hidden)[^"]*"/);
 });
+
+test('compact calendar sizing is limited to smaller desktop screens and respects configured working days', async () => {
+  const styles = postcss.parse(await read('src/index.css'));
+  const compact = [];
+  styles.walkRules('.weekly-scheduler', (rule) => {
+    if (rule.nodes.some((node) => node.prop === '--scheduler-zoom')) compact.push(rule);
+  });
+  assert.equal(compact.length, 1);
+  assert.equal(compact[0].parent.params, '(min-width: 768px) and (max-width: 1279px)');
+  const values = Object.fromEntries(compact[0].nodes.map((node) => [node.prop, node.value]));
+  assert.ok(Math.abs(Number(values['--scheduler-zoom']) * 60 - 40) < 0.001);
+  assert.equal(values['--calendar-closed-day-width'], '0.5fr');
+  const scheduler = await read('src/components/dashboard/WeeklyScheduler.tsx');
+  assert.ok(scheduler.includes('const SCHEDULER_ZOOM = 44 / 60'));
+  assert.ok(scheduler.includes('[1, 2, 3, 4, 5, 6, 0].map((day)'));
+  assert.ok(scheduler.includes("workingDays.includes(day) ? 'minmax(0, 1fr)'"));
+  assert.ok(scheduler.includes('minmax(0, var(--calendar-closed-day-width, 1fr))'));
+  assert.ok(scheduler.includes("data-calendar-working-day={isWorkingDay(day) ? 'true' : 'false'}"));
+  styles.walkRules('.weekly-scheduler time[data-calendar-working-day="false"]', (rule) => {
+    assert.equal(rule.parent.params, '(min-width: 768px) and (max-width: 1279px)');
+    assert.ok(rule.nodes.some((node) => node.prop === 'flex-direction' && node.value === 'column'));
+  });
+});

@@ -42,6 +42,7 @@ It is a tool for dental teams, not a patient-facing dentist directory or a clini
 - Use color-coded categories for consultations, follow-ups, procedures, cleaning/prevention, prosthetics/orthodontics, and urgent interventions.
 - Configure appointment durations: 30, 45, 60, 90, and 120 minutes.
 - Configure calendar intervals: 15, 30, or 60 minutes.
+- At 768–1279px, the weekly calendar uses compact 40px rows and non-working-day columns half as wide as working days. Larger desktop screens retain 44px rows and equal columns; mobile retains its agenda.
 - Set category names, colors, default durations, and a default category.
 - Search existing patients when booking. Unique matches are reused without overwriting patient details; ambiguous matches require selection.
 - Availability guidance considers working days, working hours, existing appointments, and one-off unavailable slots.
@@ -59,7 +60,7 @@ Availability guidance is not an atomic reservation or a complete server-side ove
 - After the day's last scheduled appointment ends, the end-of-day **Review notes** banner replaces the individual prompt; pencils remain available on ended appointments.
 - At day's end the banner offers **Review notes** instead. It waits until every appointment for that day has ended, including cancelled and no-show appointments.
 - Days use the device/browser's local timezone, consistent with the calendar. An overnight appointment belongs to its local start day, and that day's summary waits until its actual end, even after midnight.
-- **Review notes** opens the relevant day, filters pending appointments, and exposes total appointments, explicitly completed, with-notes and without-notes counts and a pending list on desktop. Multiple unresolved days are selectable from the single banner. Saving notes or changing statuses recalculates the counts; a status change alone does not resolve a missing note.
+- **Review notes** opens a modal styled like the appointment form, without navigating or filtering the calendar. It shows the selected day's total, explicitly completed, with-notes and without-notes counts. Each undocumented appointment has its date, patient, type and status on the left (40%) and a two-line notes field on the right (60%). **Save all notes** saves non-blank entries together; existing notes, blank fields, statuses and scheduled times are unchanged. Saved rows leave the pending list; failed and unsaved entries retain their drafts for retry. Multiple unresolved days are selectable from the single banner. A status change alone does not resolve a missing note.
 - **Dismiss** hides the latest-appointment prompt, or quiets the end-of-day banner for the current application session, without writing appointment data. Its review action remains accessible. **Mark reminder reviewed** persists an optional `documentationReviewedAt` timestamp separately from notes and status. Reviewed appointments still count as undocumented until notes are saved.
 - Mobile keeps subtle pencil indicators only; no banner or end-of-day notification is shown.
 - Desktop banners use a light orange background for individual note prompts and a stronger orange background for end-of-day review. Dismissed/reviewed end-of-day reminders stay muted, with their review action accessible.
