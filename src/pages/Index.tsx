@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { APP_NAVIGATION, Sidebar, SidebarToggle } from '@/components/layout/Sidebar';
 import { useAuth } from '@/auth/AuthProvider';
 import { WeeklyScheduler } from '@/components/dashboard/WeeklyScheduler';
@@ -16,7 +16,10 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Menu, Plus } from 'lucide-react';
-import { isSameDay, isSameMonth, isSameWeek, isValid } from 'date-fns';
+import { format, isSameDay, isSameMonth, isSameWeek, isValid } from 'date-fns';
+import { DocumentationSummary, DocumentationReviewDetails } from '@/components/dashboard/DocumentationSummary';
+import { useDocumentationReminders } from '@/hooks/use-documentation-reminders';
+import { appointmentTimes, localDayDate, type DocumentationReview } from '@/lib/documentationReminders';
 import BrandLogo from '@/components/brand/BrandLogo';
 import brand from '@/config/brand.json';
 
@@ -28,7 +31,7 @@ const rangesOverlap = (
 ) => startA < endB && startB < endA;
 
 const Index = () => {
-  const { t, initialSettings } = useI18n();
+  const { t, dateFnsLocale, initialSettings } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -45,6 +48,8 @@ const Index = () => {
   const [savingAppointment, setSavingAppointment] = useState(false);
   const appointmentSaveInFlightRef = useRef(false);
   const [sidebarAppointments, setSidebarAppointments] = useState<Appointment[]>([]);
+  const [documentationReview, setDocumentationReview] = useState<DocumentationReview | null>(null);
+  const [dismissedDocumentation, setDismissedDocumentation] = useState<Set<string>>(() => new Set());
   const [patientSummary, setPatientSummary] = useState({ total: 0, newThisMonth: 0 });
   const [patientStatsError, setPatientStatsError] = useState(false);
   const [overviewLoading, setOverviewLoading] = useState(true);
@@ -103,9 +108,40 @@ const Index = () => {
     setPatientDialogOpen(true);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const documentation = useDocumentationReminders(sidebarAppointments, handleRefresh);
+  const selectedDocumentationSummary = documentation.summaries.find((summary) => summary.day === documentationReview?.day);
+  const documentationPendingIds = useMemo(() => new Set(
+    selectedDocumentationSummary?.pending.map((appointment) => appointment.id) ?? []
+  ), [selectedDocumentationSummary]);
+
+  const handleDocumentationReview = (day: string) => {
+    setDocumentationReview((current) => ({ day, requestId: (current?.requestId ?? 0) + 1 }));
+    setActiveTab('dashboard');
   };
+
+  const handleDocumentationAcknowledgement = async (appointments: Appointment[]) => {
+    const documentationReviewedAt = new Date().toISOString();
+    try {
+      // The JSON store writes whole files; avoid parallel read-modify-write updates.
+      for (const appointment of appointments) {
+        const updated = await appointmentsStorage.update(appointment.id, { documentationReviewedAt });
+        setSidebarAppointments((current) => current.map((record) => record.id === updated.id ? updated : record));
+      }
+    } finally {
+      handleRefresh();
+    }
+  };
+
+  const selectedNeedsReminderReview = selectedAppointment &&
+    !sidebarAppointments.find((appointment) => appointment.id === selectedAppointment.id)?.documentationReviewedAt &&
+    (documentation.previousIds.has(selectedAppointment.id) ||
+     documentation.summaries.some((summary) => summary.pending.some((appointment) => appointment.id === selectedAppointment.id)));
+  const selectedNeedsReview = selectedNeedsReminderReview ||
+    (selectedAppointment && documentation.latestEnded?.id === selectedAppointment.id);
 
   useEffect(() => {
     document.title = brandName === brand.name ? brand.name : `${brandName} | ${brand.name}`;
@@ -214,8 +250,10 @@ const Index = () => {
     setSavingAppointment(true);
 
     try {
-      const patientsArr = await patientsStorage.getAll().catch(() => []);
-      const existingAppointments = await appointmentsStorage.getAll().catch(() => []);
+      const [patientsArr, existingAppointments] = await Promise.all([
+        patientsStorage.getAll(),
+        appointmentsStorage.getAll(),
+      ]);
       const patientObj = patientsArr.find((p: any) => {
         const id = p.id ?? p._id ?? p.patientId ?? String(p.email ?? p.name ?? '');
         return id === data.patientId;
@@ -223,19 +261,25 @@ const Index = () => {
       let patientName: string | undefined = data.patientName;
       if (patientObj) {
         const fullName = `${patientObj.firstName ?? ''} ${patientObj.lastName ?? ''}`.trim();
-        patientName = (patientObj.name ?? fullName) || patientObj.email;
+        const legacyName = 'name' in patientObj && typeof patientObj.name === 'string' ? patientObj.name : undefined;
+        patientName = (legacyName ?? fullName) || patientObj.email;
       }
 
-      // normalize dates to ISO strings
-      const startISO = new Date(data.start).toISOString();
-      const endISO = new Date(data.end).toISOString();
+      const originalTimes = selectedAppointment ? appointmentTimes(selectedAppointment) : null;
+      const unchangedSchedule = originalTimes &&
+        format(new Date(originalTimes.start), "yyyy-MM-dd'T'HH:mm") === data.start &&
+        format(new Date(originalTimes.end), "yyyy-MM-dd'T'HH:mm") === data.end &&
+        Number(data.duration) === selectedAppointment.duration;
+      // Preserve exact persisted timestamps when only editing documentation/status.
+      const startISO = new Date(unchangedSchedule ? originalTimes.start : data.start).toISOString();
+      const endISO = new Date(unchangedSchedule ? originalTimes.end : data.end).toISOString();
       const startMs = new Date(startISO).getTime();
       const endMs = new Date(endISO).getTime();
       const durationMs = new Date(endISO).getTime() - new Date(startISO).getTime();
       const durationMinutes = Math.round(durationMs / (1000 * 60));
       const validDuration = durationMinutes as 30 | 45 | 60 | 90 | 120;
 
-      const conflictingAppointment = existingAppointments.find((appointment: any) => {
+      const conflictingAppointment = !unchangedSchedule && existingAppointments.find((appointment: any) => {
         if (appointment.id === selectedAppointment?.id) {
           return false;
         }
@@ -269,9 +313,9 @@ const Index = () => {
           patientId: data.patientId,
           patientName: patientName,
           type: data.type || 'consultation',
-          startTime: startISO,
-          endTime: endISO,
-          duration: validDuration,
+          startTime: unchangedSchedule ? selectedAppointment.startTime ?? startISO : startISO,
+          endTime: unchangedSchedule ? selectedAppointment.endTime ?? endISO : endISO,
+          duration: unchangedSchedule ? selectedAppointment.duration : validDuration,
           notes: data.notes,
           status: data.status || selectedAppointment.status || 'scheduled',
           createdAt: selectedAppointment.createdAt || new Date().toISOString()
@@ -373,6 +417,9 @@ const Index = () => {
               refreshTrigger={refreshTrigger}
               blockedSlots={blockedSlots}
               onUnblockSlot={handleUnblockSlot}
+              documentationReminderIds={documentation.previousIds}
+              documentationReview={documentationReview}
+              documentationPendingIds={documentationPendingIds}
             />
             <div className="hidden md:block">
               <WeeklyScheduler
@@ -384,6 +431,18 @@ const Index = () => {
                 refreshTrigger={refreshTrigger}
                 blockedSlots={blockedSlots}
                 onUnblockSlot={handleUnblockSlot}
+                documentationReminderIds={documentation.previousIds}
+                documentationReview={documentationReview}
+                documentationPendingIds={documentationPendingIds}
+                onAppointmentsChanged={handleRefresh}
+                documentationBanner={<DocumentationSummary
+                  summaries={overviewError ? [] : documentation.summaries}
+                  latestEnded={overviewError ? null : documentation.latestEnded}
+                  dismissed={dismissedDocumentation}
+                  onDismiss={(key) => setDismissedDocumentation((current) => new Set(current).add(key))}
+                  onReview={handleDocumentationReview}
+                  onAppointmentClick={handleAppointmentClick}
+                />}
               />
             </div>
           </>
@@ -466,6 +525,23 @@ const Index = () => {
             <Plus className="h-5 w-5" />
           </Button>
         </header>
+        {documentationReview && activeTab === 'dashboard' && (
+          <div data-testid="documentation-filter" className="mb-3 hidden flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm md:flex">
+            <p role="status">{documentationPendingIds.size ? t('documentation.filter', {
+              date: format(localDayDate(documentationReview.day), 'd MMM yyyy', { locale: dateFnsLocale }),
+              count: documentationPendingIds.size,
+            }) : t('documentation.resolved')}</p>
+            <Button type="button" size="sm" variant="outline"
+              onClick={() => setDocumentationReview(null)}>{t('documentation.clearFilter')}</Button>
+            {selectedDocumentationSummary && (
+              <DocumentationReviewDetails
+                summary={selectedDocumentationSummary}
+                onAppointmentClick={handleAppointmentClick}
+                onAcknowledge={handleDocumentationAcknowledgement}
+              />
+            )}
+          </div>
+        )}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsContent value={activeTab} className="mt-0">{renderContent()}</TabsContent>
         </Tabs>
@@ -487,6 +563,9 @@ const Index = () => {
         onSubmit={handleSaveAppointment}
         onUpdated={handleRefresh}
         onDelete={handleDeleteAppointment}
+        onReviewDocumentation={selectedNeedsReview && selectedAppointment ? async () => {
+          await handleDocumentationAcknowledgement([selectedAppointment]);
+        } : undefined}
         onBlockSlot={handleBlockSlot}
         refreshTrigger={refreshTrigger}
         saving={savingAppointment}

@@ -10,7 +10,7 @@ This suite follows **risk-based testing**: effort is proportional to business im
 |---|---|---|
 | E2E (this suite) | Playwright | Full user journeys, data consistency, failure modes |
 | API | Playwright `page.route` | Backend contract verification (mocked) |
-| Unit | Vitest (separate) | Pure functions: date logic, validation schemas |
+| Unit | Node `node:test` | Pure functions and component/control regressions |
 
 **Not covered here** (intentional):
 - Visual regression (add Percy/Argos if design system matures)
@@ -112,6 +112,27 @@ npx playwright show-report
 **Login:** the app requires a session. UI tests mock `/api/auth/me` automatically. Tests that call the real backend need a test account: set `E2E_AUTH_EMAIL` and `E2E_AUTH_PASSWORD` (create it with `node server/manage-users.js create`), and the fixtures sign in before each test. `tests/e2e/concurrency.spec.ts` imports `@playwright/test` directly and does not sign in yet. Backend auth and API-protection tests run without a browser: `npm run test:server`.
 
 ---
+
+### Documentation reminder coverage
+
+```bash
+node --test tests/unit/documentation-reminders.test.mjs tests/unit/booking-controls.test.mjs
+npm run test:server -- tests/server/documentation-reminders.spec.ts tests/server/type-durations.spec.ts
+npx playwright test tests/e2e/documentation-reminders.spec.ts tests/e2e/appointment-history.spec.ts
+```
+
+The browser suite uses mocked persisted appointments and a controlled clock in
+`Europe/Skopje`, covering desktop-only gentle banners, mobile pencil indicators
+without banners, end-of-day counts behind review, review filters, note saves,
+return/refetch, session dismissal, persistent review, failed acknowledgement,
+overnight review, scheduled-end reminders during empty slots, and the transition
+from an individual banner to one end-of-day summary without polling. Unit tests additionally exercise
+simultaneous starts, gaps, overlaps, legacy records, future exclusions, reminders
+for all statuses (including cancelled/no-show) without automatic completion,
+UTC/local-day differences in positive and negative offsets, and DST boundaries.
+Server tests verify acknowledgement persistence, validation, and preservation of
+notes/statuses across a datastore restart. None of these tests modify live patient
+or appointment data.
 
 ### Required `data-testid` Attributes
 

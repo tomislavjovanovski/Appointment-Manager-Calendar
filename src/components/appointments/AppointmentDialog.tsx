@@ -208,6 +208,7 @@ type Props = {
   onAppointmentCreated?: (data: AppointmentDialogSubmitData) => void;
   onUpdated?: (data: AppointmentDialogSubmitData) => void;
   onDelete?: () => Promise<void> | void;
+  onReviewDocumentation?: () => Promise<void>;
   onBlockSlot?: (start: Date, end: Date) => Promise<void>;
   // if provided, dialog acts as edit form
   appointment?: AppointmentDialogAppointment;
@@ -245,6 +246,7 @@ export default function AppointmentDialog({
   onAppointmentCreated,
   onUpdated,
   onDelete,
+  onReviewDocumentation,
   onBlockSlot,
   appointment,
   refreshTrigger = 0,
@@ -254,6 +256,7 @@ export default function AppointmentDialog({
   // Determine effective mode: explicit mode wins, otherwise presence of `appointment` means edit
   const effectiveMode: "create" | "edit" = mode ?? (appointment ? "edit" : "create");
   const [activeTab, setActiveTab] = useState('details');
+  const [reviewingDocumentation, setReviewingDocumentation] = useState(false);
 
   useEffect(() => {
     setActiveTab('details');
@@ -366,7 +369,10 @@ export default function AppointmentDialog({
   const selectedStarts = useMemo(() => workingSlots.filter((start) =>
     availableDurations.get(start.getTime()) === Number(durationValue ?? '30')
   ), [workingSlots, availableDurations, durationValue]);
-  const startIsAvailable = selectedStarts.some((start) => start.getTime() === selectedStart.getTime());
+  const unchangedSchedule = Boolean(appointment &&
+    startValue === defaultValues.start && endValue === defaultValues.end &&
+    Number(durationValue) === appointment.duration);
+  const startIsAvailable = unchangedSchedule || selectedStarts.some((start) => start.getTime() === selectedStart.getTime());
 
   useEffect(() => {
     let isMounted = true;
@@ -996,6 +1002,27 @@ export default function AppointmentDialog({
                       rows={1}
                       className="h-10 min-h-10 border-border bg-background shadow-sm"
                     />
+                    {onReviewDocumentation && (
+                      <Button type="button" variant="ghost" size="sm" className="h-auto whitespace-normal text-left"
+                        data-testid="review-appointment-reminder" disabled={reviewingDocumentation || saving}
+                        onClick={async () => {
+                          setReviewingDocumentation(true);
+                          setSubmissionError(null);
+                          try {
+                            await onReviewDocumentation();
+                          } catch (error) {
+                            setSubmissionError(error instanceof Error ? error.message : t('documentation.reviewFailed'));
+                            setSubmissionErrorId('documentation-review-error');
+                          } finally {
+                            setReviewingDocumentation(false);
+                          }
+                        }}>
+                        {t(reviewingDocumentation ? 'appointment.saving' : 'documentation.markReviewed')}
+                      </Button>
+                    )}
+                    {submissionErrorId === 'documentation-review-error' && submissionError && (
+                      <p role="alert" className="text-sm text-destructive">{submissionError}</p>
+                    )}
                   </div>
                 </div>
               </section>

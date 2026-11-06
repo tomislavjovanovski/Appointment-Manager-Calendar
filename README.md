@@ -45,10 +45,26 @@ It is a tool for dental teams, not a patient-facing dentist directory or a clini
 - Set category names, colors, default durations, and a default category.
 - Search existing patients when booking. Unique matches are reused without overwriting patient details; ambiguous matches require selection.
 - Availability guidance considers working days, working hours, existing appointments, and one-off unavailable slots.
+- Documentation reminders: subtle pencil indicators and a gentle desktop-only note prompt beside the calendar dates.
 
 Category changes are reflected in booking, calendars, history, legends, and statistics. Existing category IDs and appointment dates/durations remain unchanged. Unedited built-in names follow the selected language; edited and custom names are shared across both languages. Category deletion is not supported.
 
 Availability guidance is not an atomic reservation or a complete server-side overlap guarantee. See [Current Limitations](#current-limitations).
+
+**Documentation reminders**
+- A note is meaningful when it contains non-whitespace text. Existing notes are never filled or changed automatically.
+- When a later appointment starts on the same local day, an earlier undocumented appointment receives an amber pencil once it is no longer in progress. Simultaneous starts are treated as a group; gaps and overlaps are supported. The active appointment keeps its existing clock and receives no extra reminder.
+- Documentation reminders apply to all statuses: `scheduled`, `completed`, `cancelled`, and `no-show`. Appointments qualify only after their scheduled end; elapsed time never changes a status. Cancellation/no-show notes can be recorded without implying treatment was performed.
+- Both the pencil and desktop **Edit notes** banner become eligible as soon as an appointment's scheduled time ends, including during empty slots. The banner targets the most recent eligible missing note, falling back to earlier appointments when newer notes are saved or reviewed.
+- After the day's last scheduled appointment ends, the end-of-day **Review notes** banner replaces the individual prompt; pencils remain available on ended appointments.
+- At day's end the banner offers **Review notes** instead. It waits until every appointment for that day has ended, including cancelled and no-show appointments.
+- Days use the device/browser's local timezone, consistent with the calendar. An overnight appointment belongs to its local start day, and that day's summary waits until its actual end, even after midnight.
+- **Review notes** opens the relevant day, filters pending appointments, and exposes total appointments, explicitly completed, with-notes and without-notes counts and a pending list on desktop. Multiple unresolved days are selectable from the single banner. Saving notes or changing statuses recalculates the counts; a status change alone does not resolve a missing note.
+- **Dismiss** hides the latest-appointment prompt, or quiets the end-of-day banner for the current application session, without writing appointment data. Its review action remains accessible. **Mark reminder reviewed** persists an optional `documentationReviewedAt` timestamp separately from notes and status. Reviewed appointments still count as undocumented until notes are saved.
+- Mobile keeps subtle pencil indicators only; no banner or end-of-day notification is shown.
+- Desktop banners use a light orange background for individual note prompts and a stronger orange background for end-of-day review. Dismissed/reviewed end-of-day reminders stay muted, with their review action accessible.
+- Reminder logic runs at the next appointment start/end or local midnight, after data changes, and when opening/returning to the app. It does not poll data or recalculate every second. No notification service, sounds, modal prompts, or background job is involved.
+- Note/status edits to an unchanged booking are allowed even if that existing booking overlaps another appointment or is outside current working hours. Actual scheduling changes still use normal availability validation.
 
 **Patient management**
 - Centralized patient directory with searchable desktop tables and mobile cards.

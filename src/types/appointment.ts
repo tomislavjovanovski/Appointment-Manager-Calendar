@@ -50,6 +50,8 @@ export interface Appointment {
   status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
   notes: string;
   createdAt: string;
+  /** Reminder acknowledgement only; does not indicate clinical documentation or completion. */
+  documentationReviewedAt?: string;
 }
 
 export interface BlockedSlot {

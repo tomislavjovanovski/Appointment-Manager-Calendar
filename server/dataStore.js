@@ -621,6 +621,13 @@ export function createDataStore({
         throw error;
       }
 
+      if (Object.hasOwn(updates, 'documentationReviewedAt') &&
+          (typeof updates.documentationReviewedAt !== 'string' ||
+           !Number.isFinite(Date.parse(updates.documentationReviewedAt)))) {
+        const error = new Error('Documentation review time must be a valid timestamp.');
+        error.statusCode = 400;
+        throw error;
+      }
       const details = validateAppointment({ ...appointments[index], ...updates }, patients, settings);
       appointments[index] = {
         ...appointments[index],

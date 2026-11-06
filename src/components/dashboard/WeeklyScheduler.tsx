@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Clock, Plus, X } from 'lucide-react';
+import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Clock, Pencil, Plus, X } from 'lucide-react';
 import { addDays, addWeeks, endOfWeek, format, isSameDay, startOfWeek } from 'date-fns';
 import { Appointment, BlockedSlot, Patient } from '@/types/appointment';
 import { appointmentsStorage, patientsStorage, settingsStorage } from '@/lib/storage';
@@ -19,6 +19,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import brand from '@/config/brand.json';
 import { useAuth } from '@/auth/AuthProvider';
 import { SidebarToggle } from '@/components/layout/Sidebar';
+import { localDayDate, type DocumentationReview } from '@/lib/documentationReminders';
 
 const SCHEDULER_ZOOM = 44 / 60;
 
@@ -31,9 +32,14 @@ interface WeeklySchedulerProps {
   navigation?: React.ReactNode;
   brandName?: string;
   logoDataUrl?: string;
+  documentationReminderIds?: ReadonlySet<string>;
+  documentationReview?: DocumentationReview | null;
+  documentationPendingIds?: ReadonlySet<string>;
+  onAppointmentsChanged?: () => void;
+  documentationBanner?: React.ReactNode;
 }
 
-export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, navigation, blockedSlots, onUnblockSlot, brandName, logoDataUrl }: WeeklySchedulerProps) {
+export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refreshTrigger = 0, navigation, blockedSlots, onUnblockSlot, brandName, logoDataUrl, documentationReminderIds, documentationReview, documentationPendingIds, onAppointmentsChanged, documentationBanner }: WeeklySchedulerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const sidebarCollapsed = user?.preferences?.desktopSidebarCollapsed === true;
@@ -55,6 +61,9 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
   }, [blockedSlots]);
   const currentSettings = blockedSlots ? { ...settings, blockedSlots } : settings;
   const [viewDate, setViewDate] = useState<Date>(() => new Date());
+  useEffect(() => {
+    if (documentationReview) setViewDate(localDayDate(documentationReview.day));
+  }, [documentationReview]);
 
   const weekStart = useMemo(
     () => startOfWeek(viewDate, { weekStartsOn: 1 }),
@@ -183,6 +192,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
           // The scheduler keeps its first eventRenderer, so patient data must travel with the event.
           patient: patients?.find((record) => record.id === apt.patientId),
           patientsLoaded: patients !== null,
+          documentationReminder: documentationReminderIds?.has(apt.id) === true,
         };
       } catch (e) {
         console.warn('Failed to map appointment:', apt, e);
@@ -191,7 +201,11 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
     })
     .filter((e: any) => e !== null);
 
-  const events = appointmentEvents;
+  const events = documentationReview
+    ? appointmentEvents.filter((event) => documentationPendingIds?.has(event.event_id))
+    : appointmentEvents;
+  // The scheduler retains its first renderer; refresh it when reminder membership changes.
+  const reminderRenderKey = [...documentationReminderIds ?? []].sort().join(',');
 
   const dayHourRanges = workingDays.map((weekday) => {
     const hours = getDayHours(currentSettings, weekday);
@@ -264,6 +278,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       }
 
       await appointmentsStorage.update(apt.id, { startTime: newStartISO, endTime: newEndISO });
+      onAppointmentsChanged?.();
       const updatedAppointments = await appointmentsStorage.getAll().catch(() => appointments);
       setAppointments(updatedAppointments);
       setDraggingEventId(null);
@@ -338,7 +353,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
       {/* Scheduler */}
       <Card className="overflow-hidden rounded-xl border-border/60 shadow-sm">
         <CardContent className="p-0">
-          <div className="flex flex-wrap items-center gap-1 border-b border-border/60 bg-background px-3 py-2">
+          <div data-testid="calendar-date-controls" className="flex flex-wrap items-center gap-1 border-b border-border/60 bg-background px-3 py-2">
               <Button
                 type="button"
                 variant="ghost"
@@ -401,10 +416,11 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                   />
                 </PopoverContent>
               </Popover>
+              {documentationBanner}
           </div>
           <div className="weekly-scheduler bg-muted/5" style={{ zoom: SCHEDULER_ZOOM, width: '100%' }}>
             <Scheduler
-              key={`${weekStart.toISOString()}-${refreshTrigger}`}
+              key={`${weekStart.toISOString()}-${refreshTrigger}-${reminderRenderKey}`}
               view="week"
               height={schedulerHeight}
               events={events}
@@ -468,6 +484,7 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     data-testid="appointment-block"
                     data-status={apt?.status ?? 'scheduled'}
                     data-source="local"
+                    data-appointment-id={apt?.id}
                     data-current={isCurrent ? 'true' : 'false'}
                     data-card-layout={cardLayout}
                     className={cn(
@@ -520,6 +537,13 @@ export function WeeklyScheduler({ onCreateAppointment, onAppointmentClick, refre
                     {isCurrent && (
                       <span className="pointer-events-none absolute right-1 top-1 z-10" role="img" aria-label={t('dashboard.currentAppointment')}>
                         <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
+                    )}
+                    {!isCurrent && schedulerEvent.documentationReminder && (
+                      <span data-testid="previous-documentation-reminder"
+                        className="pointer-events-none absolute right-1 top-1 z-10 text-amber-700"
+                        role="img" aria-label={t('documentation.missing')}>
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                       </span>
                     )}
                     <div className={cn(
