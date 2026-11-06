@@ -102,7 +102,7 @@ export const test = base.extend<MedicalFixtures>({
         return;
       }
 
-      await route.continue();
+      await route.fallback();
     });
 
     await mockPatientDirectory(ctx, () => _patients, () => _appointments);
@@ -287,7 +287,7 @@ export const test = base.extend<MedicalFixtures>({
         await route.fulfill({ status: 204 });
         return;
       }
-      await route.continue();
+      await route.fallback();
     });
     await ctx.route('**/api/appointments', async (route) => {
       const req = route.request();
