@@ -9,6 +9,8 @@ const json = (body: unknown, status = 200) => ({ status, contentType: 'applicati
 
 async function mockApp(ctx: BrowserContext) {
   await ctx.route('**/api/patients', (route) => route.fulfill(json([])));
+  await ctx.route('**/api/patients/summary', (route) => route.fulfill(json({ total: 0, newThisMonth: 0 })));
+  await ctx.route('**/api/google/status', (route) => route.fulfill(json({ connected: false })));
   await ctx.route('**/api/appointments', (route) => route.fulfill(json([])));
   await ctx.route('**/api/settings', (route) => route.fulfill(json({ startTime: '08:00', endTime: '18:00', workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30 })));
 }
@@ -395,6 +397,7 @@ test.describe('Login', () => {
     await page.route('**/api/auth/me', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
     await context.unroute('**/api/patients');
     await context.route('**/api/patients', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
+    await context.route('**/api/patients/directory?*', (route) => route.fulfill(json({ error: 'Authentication required.' }, 401)));
     await page.getByTestId('nav-patients').first().click();
 
     await expect(page.getByTestId('login-error')).toHaveText('Вашата сесија истече. Најавете се повторно.');
