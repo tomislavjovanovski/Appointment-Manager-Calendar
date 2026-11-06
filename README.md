@@ -4,64 +4,112 @@
 
 Повеќе ред во ординацијата. Помалку време за администрација.
 
-МојаОрдинација is a practice-management application for independent dentists and small dental practices in North Macedonia. It brings appointments, patient records and monthly activity together in a Macedonian/English interface, with a weekly desktop calendar and a compact mobile agenda.
+МојаОрдинација is a practice-management application for independent dentists and small dental practices in North Macedonia. It brings appointments, patient records, and monthly activity together in a Macedonian/English interface, with a weekly desktop calendar and a compact mobile agenda.
 
 It is a tool for dental teams, not a patient-facing dentist directory or a clinical charting system.
 
 ## Contents
 
-- [Product overview](#product-overview)
-- [Quick start](#quick-start)
-- [Patient records and FZO import](#patient-records-and-fzo-import)
-- [Statistics: what the numbers mean](#statistics-what-the-numbers-mean)
-- [Settings and public pages](#settings-and-public-pages)
-- [Development and testing](#development-and-testing)
-- [Brand and assets](#brand-and-assets)
-- [Architecture and deployment](#architecture-and-deployment)
-- [Current limitations](#current-limitations)
-- [Changelog](CHANGELOG.md)
+- [Overview](#overview)
+- [Features](#features)
+- [Getting Started](#getting-started)
+- [Patient Data Management](#patient-data-management)
+- [Statistics](#statistics)
+- [Development and Testing](#development-and-testing)
+- [Architecture and Deployment](#architecture-and-deployment)
+- [Brand and Assets](#brand-and-assets)
+- [Current Limitations](#current-limitations)
+- [Changelog](#changelog)
 
-## Product overview
+---
 
-| Capability | What it does |
+## Overview
+
+МојаОрдинација is organized around four main areas:
+
+| Area | Description |
 |---|---|
-| **Прегледен календар за термини** | Weekly calendar with working-hour guidance and color-coded dental categories: consultation, follow-up, procedure, cleaning/prevention, prosthetics/orthodontics and urgent intervention. |
-| **Централизирана евиденција на пациенти** | Patient profiles with contact details, EMBG, birth date, address, emergency contact and notes; searchable desktop table and mobile cards. |
-| **Брзо закажување и управување со термини** | Book for an existing or new patient, choose category and duration, edit or delete with confirmation, and drag to reschedule on desktop. |
-| **Историја на посети** | Saved appointments by patient, newest first, with date, category and notes. Available in patient profiles and existing appointment dialogs. |
-| **Месечна статистика и увид во работата** | Monthly appointments, unique patients, days with bookings, booked hours, category breakdowns and comparisons with the previous month. |
-| **Пристап од компјутер и мобилен** | Desktop weekly calendar and mobile daily agenda, with responsive patient, statistics and settings screens. |
-| **Едноставен увоз на податоци** | Supported FZO patient lists, with a comparison preview, validation and explicit confirmation before changes are saved. |
-| **Прилагодување според ординацијата** | Working days/hours, appointment durations, default category, editable category names/colors, custom categories, practice name/logo and language. |
-| **Едноставен систем без непотребна сложеност** | Four main workspace areas: calendar, patients, statistics and settings. |
+| **Calendar** | Weekly appointment calendar, booking, and schedule management. |
+| **Patients** | Patient records, search, visit history, and duplicate management. |
+| **Statistics** | Monthly activity, booked hours, patient counts, and comparisons. |
+| **Settings** | Practice configuration, working hours, appointment categories, and data management. |
 
-### Calendar and booking
+### Features
 
-- Supported appointment durations are **30, 45, 60, 90 and 120 minutes**. Default durations are configurable per category; the calendar interval can be **15, 30 or 60 minutes**.
-- In **Settings → Appointments and activities**, edit category names/colors or add a category, configure its default duration and optionally select it as the default, then **Save settings**. Changes are stored with backend settings and used in booking, calendars, history, legends and statistics. Existing category IDs and appointment dates/durations remain unchanged. Unedited built-in names follow the selected language; edited/custom names are used in both languages. Category deletion is not supported.
-- Name inputs search existing patients. Saving reuses a unique normalized name match; ambiguous matches require selecting a record. A new record is created only when there is no match. Reusing a patient does not overwrite their details.
-- Suggestions update after a 500 ms typing pause, show exact matches first and offer **Show more** for large lists. Identical names include distinguishing contact/date information when available. Closing the dialog clears the search.
-- Availability guidance considers working days, daily hours, existing bookings and one-off unavailable slots. An unavailable slot can be added from the booking dialog without creating an appointment.
-- Existing appointment dialogs separate **Appointment Details** and **Appointment History**. Switching tabs preserves unsaved edits; history reflects saved records only. Creation remains a single form.
-- Desktop cards emphasize the patient name, showing category/time when space permits. Current appointments use a stronger category tint and a clock indicator.
-- Mobile provides a continuously scrolling agenda with pinned day/week controls and a weekly snapshot preview for sharing/downloading availability without patient names, phone numbers or notes.
+**Calendar and appointments**
+- Create appointments for new or existing patients.
+- Edit, delete, and drag appointments to reschedule on desktop.
+- Use color-coded categories for consultations, follow-ups, procedures, cleaning/prevention, prosthetics/orthodontics, and urgent interventions.
+- Configure appointment durations: 30, 45, 60, 90, and 120 minutes.
+- Configure calendar intervals: 15, 30, or 60 minutes.
+- Set category names, colors, default durations, and a default category.
+- Search existing patients when booking. Unique matches are reused without overwriting patient details; ambiguous matches require selection.
+- Availability guidance considers working days, working hours, existing appointments, and one-off unavailable slots.
 
-Availability guidance is **not** an atomic reservation or complete server-side overlap guarantee. See [Current limitations](#current-limitations).
+Category changes are reflected in booking, calendars, history, legends, and statistics. Existing category IDs and appointment dates/durations remain unchanged. Unedited built-in names follow the selected language; edited and custom names are shared across both languages. Category deletion is not supported.
 
-## Quick start
+Availability guidance is not an atomic reservation or a complete server-side overlap guarantee. See [Current Limitations](#current-limitations).
 
-Use **Node.js 22 LTS**. From the repository root:
+**Patient management**
+- Centralized patient directory with searchable desktop tables and mobile cards.
+- Patient profiles with contact details, EMBG, birth date, address, emergency contact, and notes.
+- Search by name, email, phone, or EMBG.
+- Patient appointment counts, latest appointment date, and saved visit history.
+- Duplicate detection and merging, with appointment reassignment and preservation of conflicting details.
+
+**Statistics**
+- Monthly appointments and unique patients.
+- Days with appointments and booked hours.
+- Working-time utilization.
+- New and returning patients.
+- Appointment category breakdowns.
+- Comparison with the previous month.
+
+**Mobile experience**
+- Continuously scrolling daily agenda.
+- Pinned day/week controls and weekly snapshot preview.
+- Responsive patient, statistics, and settings screens.
+- Weekly availability snapshots can be shared or downloaded without patient names, phone numbers, or notes.
+
+**Practice settings**
+- Practice name, logo, and interface language.
+- Working days and hours.
+- Appointment categories and durations.
+- One-off unavailable slots.
+- Per-user desktop sidebar preference.
+
+---
+
+## Getting Started
+
+### Requirements
+
+- Node.js 22 LTS
+- npm
+
+### Installation
+
+Clone the repository and install dependencies:
 
 ```bash
+git clone <repository-url>
+cd <project-directory>
 npm install
+```
+
+Start the development environment:
+
+```bash
 npm run dev
 ```
 
 Open **http://localhost:8081/**.
 
-The development launcher starts the backend first, checks its health, then starts Vite with an `/api` proxy to `http://127.0.0.1:3000`. It fails visibly if the backend is not ready within 20 seconds or a required port is occupied.
+The development launcher starts the backend first, checks its health, and then starts Vite with an `/api` proxy to `http://127.0.0.1:3000`. It fails visibly if the backend is not ready within 20 seconds or a required port is occupied.
 
-Create a local administrator once:
+### Administrator Setup
+
+Create a local administrator:
 
 ```bash
 node server/manage-users.js create --email you@example.com
@@ -69,85 +117,117 @@ node server/manage-users.js create --email you@example.com
 
 The command prompts for a password twice without displaying it. Authentication files are stored in the Git-ignored private auth directory.
 
-### Development server behavior
+### Development Server
 
-- Change the frontend port with `DEV_PORT=8082 npm run dev` or `npm run dev -- 8082`. The API still requires port `3000` unless the launcher and proxy are changed together.
-- Check the backend at `http://127.0.0.1:3000/api/health`.
-- On Linux/WSL, restarting the launcher stops prior development processes from this project, including suspended ones; unrelated services are not stopped.
-- **Ctrl+C** stops both servers. **Ctrl+Z** also shuts them down instead of leaving them suspended.
+- Change the frontend port with `DEV_PORT=8082 npm run dev` or `npm run dev -- 8082`.
+- The API still requires port `3000` unless the launcher and proxy are changed together.
+- Backend health check: `http://127.0.0.1:3000/api/health`.
 - Frontend edits reload automatically. Restart development after backend changes.
+- `Ctrl+C` stops both servers. `Ctrl+Z` also shuts them down instead of leaving them suspended.
+- On Linux/WSL, restarting the launcher stops previous development processes from this project, including suspended ones; unrelated services are not stopped.
 
-## Patient records and FZO import
+---
 
-Open **Settings → System and data → Data management** to import patients or review duplicate candidates.
+## Patient Data Management
 
-### Supported files and review
+Patient import and duplicate management are available under:
 
-1. Open the linked FZO portal and download the patient list with active ZO1 registrations.
-2. Upload the original **`.xls` Excel XML (SpreadsheetML)** file, or the same format as **`.xml`**.
-3. Review searchable results: new patients, updates, unchanged records, duplicate file rows and rows requiring review.
-4. Confirm the proposed changes explicitly.
+**Settings → System and data → Data management**
 
-Binary Excel, `.xlsx`, arbitrary practice-data files and JSON backup restores are **not supported by the current import panel**. Limits are **10 MB** and **10,000 patient rows**.
+### FZO Patient Import
 
-### Matching and preservation
+The application supports patient lists downloaded from the FZO portal with active ZO1 registrations.
 
-The patient directory loads **100 patients per page** on desktop and mobile, sorted by **Last Visit / Последна посета** (newest first; patients without appointments last). Search covers the entire directory by name, email, phone or EMBG before pagination. Counts summarize all matching patients, not just the displayed page. The sidebar fetches patient totals without downloading patient records. Booking and other existing full-list consumers are unchanged. With the current JSON-file storage, the backend still reads the source files to filter/sort; pagination reduces network transfer and browser memory/rendering, not database-level file reads.
+**Supported formats:**
+- Original `.xls` Excel XML (SpreadsheetML).
+- The same format with an `.xml` extension.
 
-- EMBG is a **13-digit string**, preserving leading zeros. Records with the same name but different EMBGs remain separate patients.
-- Name fallback only matches existing records without an EMBG. Ambiguous matches and possible Latin/Cyrillic equivalents require review.
-- Import fills missing EMBG/address fields, creates new patients and synchronizes non-empty valid FZO registration dates. Existing patient IDs, contact details, notes, appointments and patients absent from the file are preserved.
-- Missing birth dates are derived from valid EMBGs; existing birth dates are never overwritten. Impossible or future dates require review.
-- Birth and registration dates are stored as `YYYY-MM-DD` and displayed as `DD.MM.YYYY`. Registration dates are read-only in patient details and updated through import, not manual editing.
-- Confirmation rejects stale previews and persists the patient list atomically. Repeat imports reuse matching patients rather than creating duplicates.
-- Recoverable FZO export quirks produce visible warnings. Other malformed XML and DTD/entity declarations are rejected.
+**Import limits:** 10 MB and 10,000 patient rows.
 
-### Patient history, merging and deletion
+Binary Excel, `.xlsx`, arbitrary practice-data files, and JSON backup restores are not supported by the current import panel.
 
-Patient profiles show appointment counts, the latest appointment date and saved appointment history. Switching between details and history preserves unsaved profile edits.
+**Import workflow:**
 
-Duplicate candidates are grouped by EMBG, or by name for records without an EMBG. Choose the record to keep and the duplicates to merge, then confirm. Only selected duplicates are removed after their appointments are reassigned; empty fields are filled and conflicting details/notes are preserved in the retained patient's notes. Different EMBGs cannot be merged. Interrupted merges use a recovery journal.
+1. Download the patient list from the linked FZO portal.
+2. Upload the original supported file.
+3. Review new patients, updates, unchanged records, duplicate file rows, and records requiring review.
+4. Confirm the proposed changes.
+
+Changes are saved only after explicit confirmation.
+
+### Matching and Data Preservation
+
+- EMBG is treated as a 13-digit string, preserving leading zeros.
+- Records with the same name but different EMBGs remain separate patients.
+- Name fallback matches only existing records without an EMBG.
+- Ambiguous matches and possible Latin/Cyrillic equivalents require review.
+- Missing EMBG and address fields can be filled during import.
+- Valid, non-empty FZO registration dates are synchronized.
+- Missing birth dates are derived from valid EMBGs. Existing birth dates are never overwritten.
+- Existing patient IDs, contact details, notes, appointments, and patients absent from the import file are preserved.
+- Impossible or future dates require review.
+- Birth and registration dates are stored as `YYYY-MM-DD` and displayed as `DD.MM.YYYY`.
+- Registration dates are read-only in patient details and updated through import.
+- Confirmation rejects stale previews and persists the patient list atomically.
+- Repeated imports reuse matching patients rather than creating duplicates.
+- Recoverable FZO export quirks produce visible warnings. Malformed XML and DTD/entity declarations are rejected.
+
+### Patient Directory and Duplicate Management
+
+The patient directory loads **100 patients per page**, sorted by **Last Visit / Последна посета** (newest first; patients without appointments last).
+
+Search covers the entire directory before pagination. Counts summarize all matching patients, not just the displayed page. The sidebar fetches patient totals without downloading patient records.
+
+With JSON-file storage, the backend still reads source files to filter and sort. Pagination reduces network transfer and browser memory/rendering, not database-level file reads.
+
+Duplicate candidates are grouped by EMBG or, for records without an EMBG, by name.
+
+When merging:
+- Select the record to keep and the duplicates to merge.
+- Appointments are reassigned to the retained patient.
+- Empty fields are filled where possible.
+- Conflicting details and notes are preserved in the retained patient's notes.
+- Records with different EMBGs cannot be merged.
+- Interrupted merges use a recovery journal.
 
 **Back up server data before merging or deleting. There is no in-app undo.** Deleting a patient also deletes all linked appointments. The current Settings page does not provide a general JSON backup/export tool.
 
-## Statistics: what the numbers mean
+---
 
-The Statistics screen supports month navigation, return to the current month and comparison with the previous month.
+## Statistics
 
-- **Appointments and booked hours** count valid scheduled/completed appointments, including future bookings. Cancelled and no-show records are excluded. Booked hours are not verified attendance or staff time.
-- **Days with appointments** are shown against the number of configured working days.
-- **Unique patients** count patients with counted appointments in that month.
-- **Working-time utilization** compares non-overlapping booked time against configured hours on working days that have counted appointments. Blocked slots are excluded from available time. It is not utilization across every configured day in the month.
-- **New/returning patients** use unique patients with completed appointments. A patient is new when their first completed appointment in retained history falls in the selected month; earlier scheduled/cancelled/no-show records do not make them returning.
-- **Category breakdowns** show counts, booked hours and month-to-month changes. An **Other** category appears only when unknown types occur.
-- Failed loads offer a retry. Deleted history cannot establish a patient's true first visit.
+The Statistics screen supports month navigation, returning to the current month, and comparison with the previous month.
 
-Calculations live in [statistics.ts](src/lib/statistics.ts); no separate analytics service is used.
-
-## Settings and public pages
-
-Settings stays on one page, organized into:
-
-| Group | Existing controls |
+| Metric | Definition |
 |---|---|
-| **Ординација** | Practice name/logo and Macedonian/English language. PNG, JPEG and WebP logos are supported up to 128 KB. |
-| **Работно време** | Working days, default/per-day hours, calendar interval and one-off unavailable slots. |
-| **Термини и активности** | Editable category names/colors, new categories, and default durations/category for new appointments. Inactive Google Calendar settings remain visible. |
-| **Известувања** | Legacy webhook/template/time controls remain in the code. Their presence is not a supported appointment-notification or automated-reminder capability. |
-| **Кориснички профил** | Per-user desktop sidebar collapse preference, restored at login. Mobile navigation is unchanged. |
-| **Систем и податоци** | Separate patient import/merge and API Health sections. Health includes status, data directory, record counts, last check and manual refresh. |
+| **Appointments** | Valid scheduled and completed appointments, including future bookings. Cancelled and no-show records are excluded. |
+| **Booked Hours** | Duration of counted appointments. This is not verified attendance or actual staff time. |
+| **Days with Appointments** | Days containing counted appointments, shown against configured working days. |
+| **Unique Patients** | Patients with counted appointments in the selected month. |
+| **Working-Time Utilization** | Non-overlapping booked time compared with configured hours on working days that have counted appointments. Blocked slots are excluded from available time. |
+| **New Patients** | Patients whose first completed appointment in retained history falls in the selected month. |
+| **Returning Patients** | Patients with completed appointments in the selected month whose first completed appointment occurred earlier. |
+| **Category Breakdown** | Appointment counts, booked hours, and month-to-month changes by category. |
 
-The public **About & features** page at `/about` is accessible from login on desktop/mobile and from public-page footers. It presents the nine capabilities above in Macedonian and English, using actual [desktop calendar](public/about-calendar.png) and [mobile agenda](public/about-mobile.png) captures with clearly labeled fictional demo data.
+Additional notes:
+- Scheduled, cancelled, and no-show appointments do not establish a patient's first visit.
+- Working-time utilization is not calculated across every configured working day in the month.
+- An **Other** category appears only when unknown appointment types occur.
+- Deleted history cannot establish a patient's true first visit.
+- Failed loads offer a retry.
 
-Refreshing the application shows a branded, localized session-loading screen instead of flashing the login form. Protected content remains hidden until authentication succeeds; public information pages remain accessible while the session check is pending.
-FAQ, privacy, terms and contact pages are available at `/faq`, `/privacy`, `/terms` and `/contact`. Their content is explicitly marked as **placeholder information**, not finalized policy, legal text or support channels.
+Calculations are implemented in [`src/lib/statistics.ts`](src/lib/statistics.ts). No separate analytics service is used.
 
-## Development and testing
+---
+
+## Development and Testing
+
+### Available Commands
 
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Start frontend and backend together. |
-| `npm run build` | Create the production frontend in `dist/`. |
+| `npm run build` | Build the production frontend into `dist/`. |
 | `npm run preview` | Serve the built frontend only; does not start the API. |
 | `npm run lint` | Run ESLint. |
 | `npx tsc --noEmit -p tsconfig.app.json` | Check frontend TypeScript. |
@@ -157,52 +237,93 @@ FAQ, privacy, terms and contact pages are available at `/faq`, `/privacy`, `/ter
 | `node --test tests/unit/fzo-import.test.mjs` | Check the FZO parser using an isolated Chromium page. |
 | `npm run test:e2e:report` | Open the Playwright HTML report. |
 
-Install the test browser when needed with `npx playwright install chromium`.
+Install the test browser when needed:
 
-The [default Playwright configuration](playwright.config.ts) selects smoke, login, statistics, patient-deduplication and appointment-history specs. Mocked browser tests verify UI behavior, not live backend persistence. Use the server/backend configurations for the corresponding checks. Some legacy specs outside the default selection still target older controls.
+```bash
+npx playwright install chromium
+```
 
-[Testing.md](docs/Testing.md) contains additional test-suite background; consult the current configuration and scripts for supported commands.
+The [default Playwright configuration](playwright.config.ts) selects smoke, login, statistics, patient-deduplication, and appointment-history specs.
 
-## Brand and assets
+Mocked browser tests verify UI behavior, not live backend persistence. Use the server/backend configurations for the corresponding checks. Some legacy specs outside the default selection still target older controls.
 
-- [brand.json](src/config/brand.json) holds shared product copy and browser metadata. **МојаОрдинација** remains Cyrillic in both languages; English interfaces use **Dental Practice Management**.
-- [BrandLogo](src/components/brand/BrandLogo.tsx) displays the supplied transparent [calendar/smile PNG](public/brand-icon.png) without cropping or background removal. The light calendar body belongs to the artwork.
-- Public About styling uses primary blue `#244DDE`, navy `#183153`, light surfaces and existing theme tokens. Application screens retain their established palette and dark-mode styling.
-- Custom practice names/logos remain configurable. Browser titles retain the product name: `Practice name | МојаОрдинација`.
-- Run `npm run generate:brand` after changing shared branding or the source icon to regenerate favicon/install icons, social preview and [manifest](public/manifest.webmanifest). This uses the existing Playwright Chromium installation.
-- The manifest supports standalone installation metadata; it does **not** introduce a service worker or offline patient-data cache.
-- Internal package/storage/session identifiers and legacy synthetic-data prefixes remain unchanged for compatibility.
+See [`docs/Testing.md`](docs/Testing.md) for additional test-suite background. Consult the current configuration and scripts for supported commands.
 
-## Architecture and deployment
+---
 
-**Frontend:** React 18, TypeScript, Vite, Tailwind, Radix/shadcn components, MUI pickers, React Scheduler, date-fns, react-hook-form and Zod.
+## Architecture and Deployment
 
-**Backend:** Express with JSON-file persistence. The current deployment model is **one clinic with one or more administrator accounts**, not isolated multi-clinic tenancy.
+### Technology Stack
+
+**Frontend:** React 18, TypeScript, Vite, Tailwind, Radix/shadcn components, MUI pickers, React Scheduler, date-fns, react-hook-form, and Zod.
+
+**Backend:** Express with JSON-file persistence.
+
+The current deployment model supports **one clinic with one or more administrator accounts**. It is not an isolated multi-clinic or multi-tenant platform.
+
+### Project Structure
 
 | Location | Responsibility |
 |---|---|
-| [src/pages/](src/pages/) | Login, public information and application entry screens. |
-| [src/components/](src/components/) | Calendar, patients, statistics, settings and shared UI. |
-| [src/lib/](src/lib/) | Storage client, appointment rules, FZO parsing and statistics. |
-| [server/](server/) | API routes, persistence, authentication and startup. |
-| [public/](public/) | Brand assets and the current development data directory. |
-| [tests/](tests/) | Browser, backend and parser coverage. |
+| [`src/pages/`](src/pages/) | Login, public information, and application entry screens. |
+| [`src/components/`](src/components/) | Calendar, patients, statistics, settings, and shared UI. |
+| [`src/lib/`](src/lib/) | Storage client, appointment rules, FZO parsing, and statistics. |
+| [`server/`](server/) | API routes, persistence, authentication, and startup. |
+| [`public/`](public/) | Brand assets and current development data directory. |
+| [`tests/`](tests/) | Browser, backend, and parser coverage. |
 
-**Before deployment:** application data must not be exposed through the public web root. Production builds remove `public/data` from `dist/`, but this does not migrate or protect the source data directory automatically.
+### Deployment
 
-See [Operations and deployment](docs/Operations.md) for data layout, environment variables, Passenger deployment, administrator management, backups, rollback and isolated synthetic datasets.
+Production deployment uses Node.js and Passenger.
 
-## Current limitations
+See [`docs/Operations.md`](docs/Operations.md) for data layout, environment variables, Passenger deployment, administrator management, backups, rollback, and isolated synthetic datasets.
 
-- Appointment notifications and automated reminders are **not supported product features**. Legacy browser-originated webhook controls do not provide a built-in gateway, background scheduler, delivery confirmation or deduplication.
-- Google Calendar synchronization is disabled; `/api/google/*` returns `503`.
-- Booking checks are not atomic reservations. Desktop drops reject non-working days and identical occupied start times, but do not enforce every overlap case.
-- Cancelled records still occupy availability slots; no inter-appointment buffer is enforced.
-- Patient and appointment creation are separate writes. If booking fails after creating a patient, retry using the saved patient.
-- Some load failures outside the explicit retry screens can resemble empty data; check backend health before assuming records are absent.
-- No automatic backups, general in-app JSON backup restore, in-app undo, offline patient-data support or database migration.
-- No self-registration, password-reset flow, social login, account switching or multi-clinic data isolation.
+**Important:** Application data must not be exposed through the public web root. Production builds remove `public/data` from `dist/`, but this does not automatically migrate or protect the source data directory.
+
+---
+
+## Brand and Assets
+
+Shared product branding is maintained in [`src/config/brand.json`](src/config/brand.json).
+
+- **МојаОрдинација** remains Cyrillic in both languages.
+- English interfaces use **Dental Practice Management**.
+- Custom practice names and logos remain configurable.
+- Browser titles follow the format `Practice name | МојаОрдинација`.
+
+The [`BrandLogo`](src/components/brand/BrandLogo.tsx) component displays the transparent [`public/brand-icon.png`](public/brand-icon.png) without cropping or background removal. The light calendar body belongs to the original artwork.
+
+Public About styling uses primary blue `#244DDE`, navy `#183153`, light surfaces, and existing theme tokens. Application screens retain their established palette and dark-mode styling.
+
+After changing shared branding or the source icon, run:
+
+```bash
+npm run generate:brand
+```
+
+This regenerates favicon/install icons, the social preview, and the manifest using the existing Playwright Chromium installation.
+
+The manifest supports standalone installation metadata; it does not introduce a service worker or offline patient-data cache. Internal package, storage, session identifiers, and legacy synthetic-data prefixes remain unchanged for compatibility.
+
+---
+
+## Current Limitations
+
+- **Notifications:** Appointment notifications and automated reminders are not supported product features. Legacy browser-originated webhook controls do not provide a built-in gateway, background scheduler, delivery confirmation, or deduplication.
+- **Google Calendar:** Synchronization is disabled; `/api/google/*` returns `503`.
+- **Appointment conflicts:** Booking checks are not atomic reservations. Desktop drops reject non-working days and identical occupied start times, but do not enforce every overlap case.
+- **Availability:** Cancelled records still occupy availability slots. No inter-appointment buffer is enforced.
+- **Patient creation:** Patient and appointment creation are separate writes. If booking fails after creating a patient, retry using the saved patient.
+- **Data loading:** Some load failures outside explicit retry screens can resemble empty data. Check backend health before assuming records are absent.
+- **Backups and recovery:** No automatic backups, general in-app JSON backup/restore, or in-app undo.
+- **Offline support:** No offline patient-data support.
+- **Database:** No database migration is currently implemented.
+- **Accounts:** No self-registration, password-reset flow, social login, account switching, or multi-clinic data isolation.
+
+---
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for dated product and engineering changes. Historical entries describe behavior at the time; this README describes the current implementation. Neither document implies that changes have been deployed to production.
+See [`CHANGELOG.md`](CHANGELOG.md) for dated product and engineering changes.
+
+Historical entries describe behavior at the time of implementation. This README describes the current implementation. Neither document implies that changes have been deployed to production.
