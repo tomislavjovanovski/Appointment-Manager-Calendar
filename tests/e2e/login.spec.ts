@@ -3,12 +3,14 @@
 
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { E2E_USER } from '../utils/authHelper';
+import { mockPatientDirectory } from '../utils/patientDirectoryMock';
 import brand from '../../src/config/brand.json' with { type: 'json' };
 
 const json = (body: unknown, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
 async function mockApp(ctx: BrowserContext) {
   await ctx.route('**/api/patients', (route) => route.fulfill(json([])));
+  await mockPatientDirectory(ctx, () => []);
   await ctx.route('**/api/google/status', (route) => route.fulfill(json({ connected: false })));
   await ctx.route('**/api/appointments', (route) => route.fulfill(json([])));
   await ctx.route('**/api/settings', (route) => route.fulfill(json({ startTime: '08:00', endTime: '18:00', workingDays: [1, 2, 3, 4, 5], timeSlotMinutes: 30 })));

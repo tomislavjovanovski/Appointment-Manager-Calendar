@@ -134,6 +134,11 @@ Server tests verify acknowledgement persistence, validation, and preservation of
 notes/statuses across a datastore restart. None of these tests modify live patient
 or appointment data.
 
+Login tests use their own auth routes instead of the authenticated base fixture.
+Their app mocks also include patient summary and directory endpoints through
+`mockPatientDirectory`, so protected requests do not reach the real backend and
+expire a mocked session.
+
 ### Required `data-testid` Attributes
 
 Add these to your React components. This list is the contract between QA and Dev:
